@@ -23,10 +23,11 @@ jobs:
           script: |
             cd /root/payforme
             git pull origin main
+            npm install canvas sharp --ignore-scripts=false
             pnpm install
             pnpm build
             # 先杀掉旧进程，再启动，避免旧版本残余导致列缺失报错
             pm2 delete payforme || true
-            pm2 start server.ts --name payforme --interpreter ~/.npm-global/bin/tsx || pm2 start server.ts --name payforme --interpreter $(which tsx)
+            pm2 start server.ts --name payforme --interpreter ./node_modules/.bin/tsx
             pm2 save
             echo "✅ 部署成功！"
