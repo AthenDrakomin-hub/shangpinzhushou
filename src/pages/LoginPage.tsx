@@ -46,17 +46,23 @@ export default function LoginPage({ handleLogin, isAuthLoading, authError, onFor
   const error = localError || authError;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
-      {/* 背景装饰 */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-100 dark:bg-blue-900/20 rounded-full blur-3xl opacity-50" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-100 dark:bg-purple-900/20 rounded-full blur-3xl opacity-50" />
+    <div 
+      className="min-h-screen flex items-center justify-center p-4 bg-cover bg-center bg-no-repeat relative"
+      style={{ backgroundImage: 'url("/beijing.png")' }}
+    >
+      {/* 深色遮罩层，确保登录框内容在复杂背景上依然清晰可见 */}
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"></div>
+
+      {/* 背景装饰 (由于有实体背景图，此处可作为光效点缀或移除，这里保留作光晕点缀) */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl opacity-50" />
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl opacity-50" />
       </div>
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative w-full max-w-md"
+        className="relative w-full max-w-md z-10"
       >
         {/* Logo 和标题 */}
         <div className="text-center mb-8">
@@ -64,14 +70,12 @@ export default function LoginPage({ handleLogin, isAuthLoading, authError, onFor
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.1 }}
-            className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-500/30 mb-4"
+            className="inline-flex items-center justify-center w-20 h-20 rounded-2xl mb-4 overflow-hidden shadow-2xl"
           >
-            <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-            </svg>
+            <img src="/logo.svg" alt="商品页助手 Logo" className="w-full h-full object-cover" />
           </motion.div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">商品页助手</h1>
-          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">登录您的账户继续使用</p>
+          <h1 className="text-3xl font-bold text-white drop-shadow-md">商品页助手</h1>
+          <p className="text-gray-200 text-sm mt-2 drop-shadow">登录您的账户继续使用</p>
         </div>
 
         {/* 登录卡片 */}
