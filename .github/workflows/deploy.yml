@@ -1,0 +1,29 @@
+name: Deploy to Vultr
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VULTR_HOST }}
+          username: ${{ secrets.VULTR_USERNAME }}
+          key: ${{ secrets.VULTR_SSH_KEY }}
+          port: 22
+          script: |
+            cd /root/payforme
+            git pull origin main
+            pnpm install
+            pnpm build
+            pm2 restart payforme
+            echo "✅ 部署成功！"
