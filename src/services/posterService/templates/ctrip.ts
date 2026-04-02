@@ -5,24 +5,11 @@
 
 import { Canvas, CanvasRenderingContext2D, Image } from 'canvas';
 import { PosterData } from '../types';
-import { safeLoadImage, drawImageError, drawHeavyText, drawNormalText, roundRect, truncateText } from '../utils';
+import { safeLoadImage, drawImageError, drawHeavyText, drawNormalText, drawMultiLineText, roundRect, truncateText } from '../utils';
 import path from 'path';
 
-const POSTER_WIDTH = 640;
-const POSTER_HEIGHT = 900;
-
-// Logo路径
-const LOGO_PATH = path.join(process.cwd(), 'public/logos/ctrip.png');
-
-// 绘制云朵装饰
-function drawCloud(ctx: CanvasRenderingContext2D, x: number, y: number, size: number) {
-  ctx.fillStyle = 'rgba(255,255,255,0.6)';
-  ctx.beginPath();
-  ctx.arc(x, y, size, 0, Math.PI * 2);
-  ctx.arc(x + size * 0.8, y - size * 0.2, size * 0.7, 0, Math.PI * 2);
-  ctx.arc(x + size * 1.5, y, size * 0.9, 0, Math.PI * 2);
-  ctx.fill();
-}
+const POSTER_WIDTH = 750;
+const POSTER_HEIGHT = 1334;
 
 export async function renderCtripTemplate(
   ctx: CanvasRenderingContext2D, 
@@ -31,139 +18,115 @@ export async function renderCtripTemplate(
 ): Promise<Buffer> {
   const w = POSTER_WIDTH, h = POSTER_HEIGHT;
 
-  // 天空渐变背景
-  const skyGrad = ctx.createLinearGradient(0, 0, 0, h);
-  skyGrad.addColorStop(0, '#4A90E2');
-  skyGrad.addColorStop(0.5, '#87CEEB');
-  skyGrad.addColorStop(1, '#F8F9FA');
-  ctx.fillStyle = skyGrad;
+  // 1. 深海蓝渐变背景 (携程高级感)
+  const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
+  bgGrad.addColorStop(0, '#0F2C59');
+  bgGrad.addColorStop(1, '#051329');
+  ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, w, h);
-  
-  // 云朵装饰
-  drawCloud(ctx, 80, 120, 35);
-  drawCloud(ctx, w - 120, 80, 40);
-  drawCloud(ctx, w/2, 150, 30);
 
-  // 顶部品牌条 - 携程蓝
-  const grad = ctx.createLinearGradient(0, 0, w, 0);
-  grad.addColorStop(0, '#0066CC');
-  grad.addColorStop(1, '#0088FF');
-  ctx.fillStyle = grad;
-  roundRect(ctx, 20, 15, w - 40, 80, 40);
-  ctx.fill();
-  
-  // 携程Logo
-  try {
-    const logoImg: any = await safeLoadImage(LOGO_PATH);
-    ctx.drawImage(logoImg as Image, 35, 25, 140, 55);
-  } catch (e) {
-    ctx.fillStyle = '#FFFFFF';
-    roundRect(ctx, 35, 25, 50, 50, 25);
-    ctx.fill();
-    drawHeavyText(ctx, 'C', 60, 58, '#0066CC', 32, 'center');
-    drawHeavyText(ctx, '携程旅行', 100, 55, '#FFFFFF', 26);
-  }
-  
-  drawNormalText(ctx, '说走就走', w - 130, 55, '#FFFFFF', 16);
+  // 顶部光效
+  const glow = ctx.createRadialGradient(w/2, 0, 0, w/2, 0, 600);
+  glow.addColorStop(0, 'rgba(0, 134, 246, 0.4)');
+  glow.addColorStop(1, 'rgba(0, 134, 246, 0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, w, h);
 
-  // 白色内容卡片
-  ctx.fillStyle = '#FFFFFF';
-  roundRect(ctx, 20, 110, w - 40, 380, 20);
-  ctx.fill();
-  
-  // 投影
-  ctx.shadowColor = 'rgba(0,0,0,0.1)';
-  ctx.shadowBlur = 15;
-  ctx.shadowOffsetY = 8;
-
-  // 商品图片
+  // 2. 主视觉图 (圆角超大图)
   try {
     const img: any = await safeLoadImage(data.image);
     ctx.save();
-    roundRect(ctx, 32, 120, w - 64, 240, 16);
+    roundRect(ctx, 40, 60, w - 80, 700, 32);
     ctx.clip();
-    ctx.drawImage(img as Image, 32, 120, w - 64, 240);
+    
+    // 居中自适应裁剪
+    const imgW = (img as Image).width;
+    const imgH = (img as Image).height;
+    const scale = Math.max((w - 80) / imgW, 700 / imgH);
+    const drawW = imgW * scale;
+    const drawH = imgH * scale;
+    const dx = 40 + ((w - 80) - drawW) / 2;
+    const dy = 60 + (700 - drawH) / 2;
+    
+    ctx.drawImage(img as Image, dx, dy, drawW, drawH);
     ctx.restore();
+    
+    // 底部渐变遮罩 (让文字更清晰)
+    const imgGrad = ctx.createLinearGradient(0, 500, 0, 760);
+    imgGrad.addColorStop(0, 'transparent');
+    imgGrad.addColorStop(1, 'rgba(0,0,0,0.8)');
+    ctx.fillStyle = imgGrad;
+    roundRect(ctx, 40, 500, w - 80, 260, [0, 0, 32, 32]);
+    ctx.fill();
   } catch (e) {
-    drawImageError(ctx, 32, 120, w - 64, 240, data.image);
+    drawImageError(ctx, 40, 60, w - 80, 700, data.image);
   }
-  
-  // 重置阴影
-  ctx.shadowColor = 'transparent';
-  ctx.shadowBlur = 0;
-  ctx.shadowOffsetY = 0;
 
-  // 商品名称
-  drawHeavyText(ctx, truncateText(ctx, data.name || '精选旅行', w - 64), 32, 400, '#1a1a1a', 28);
-  
-  // 价格
-  const currentPriceText = `¥${data.price.toFixed(2)}`;
-  drawHeavyText(ctx, currentPriceText, 32, 455, '#FF7D13', 46);
-  
-  ctx.font = 'bold 46px sans-serif';
-  const currentPriceWidth = ctx.measureText(currentPriceText).width;
-  
+  // 3. 悬浮标题卡片
+  drawMultiLineText(ctx, data.name || '豪华精选', 70, 640, w - 140, 50, 2, '#FFFFFF', 40, 'left');
+
+  // 4. 价格模块 (金卡风格)
+  const infoY = 800;
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+  ctx.lineWidth = 1;
+  roundRect(ctx, 40, infoY, w - 80, 200, 24);
+  ctx.fill();
+  ctx.stroke();
+
+  // 金色渐变价格
+  const goldGrad = ctx.createLinearGradient(0, infoY + 60, 0, infoY + 120);
+  goldGrad.addColorStop(0, '#F9D490');
+  goldGrad.addColorStop(1, '#E2B155');
+
+  drawHeavyText(ctx, '¥', 70, infoY + 70, '#F9D490', 36);
+  ctx.fillStyle = goldGrad;
+  ctx.font = 'bold 72px sans-serif';
+  ctx.fillText(data.price.toFixed(2), 105, infoY + 70);
+
   // 原价
   if (data.originalPrice && data.originalPrice > data.price) {
-    ctx.fillStyle = '#999999';
-    ctx.font = '18px sans-serif';
-    const origPriceText = `原价 ¥${data.originalPrice.toFixed(2)}`;
-    ctx.fillText(origPriceText, 32 + currentPriceWidth + 15, 455);
+    const priceTextWidth = ctx.measureText(data.price.toFixed(2)).width;
+    const origX = 105 + priceTextWidth + 20;
+    
+    ctx.font = '24px sans-serif';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.fillText(`原价 ¥${data.originalPrice.toFixed(2)}`, origX, infoY + 60);
     
     // 删除线
-    const origPriceWidth = ctx.measureText(origPriceText).width;
+    const origWidth = ctx.measureText(`原价 ¥${data.originalPrice.toFixed(2)}`).width;
     ctx.beginPath();
-    ctx.moveTo(32 + currentPriceWidth + 15, 450);
-    ctx.lineTo(32 + currentPriceWidth + 15 + origPriceWidth, 450);
-    ctx.strokeStyle = '#999999';
-    ctx.lineWidth = 1;
+    ctx.moveTo(origX - 2, infoY + 52);
+    ctx.lineTo(origX + origWidth + 2, infoY + 52);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.lineWidth = 2;
     ctx.stroke();
-  } else {
-    drawNormalText(ctx, '起', 32 + currentPriceWidth + 10, 455, '#999999', 18);
   }
-  
-  // 出发地标签
+
+  // 描述文字
   if (data.description) {
-    ctx.fillStyle = '#E3F2FD';
-    roundRect(ctx, 32, 475, 200, 28, 14);
-    ctx.fill();
-    drawNormalText(ctx, truncateText(ctx, data.description, 30), 42, 493, '#0066CC', 13);
+    drawMultiLineText(ctx, data.description, 70, infoY + 130, w - 140, 34, 2, 'rgba(255, 255, 255, 0.6)', 22, 'left');
   }
 
-  // 服务标签
-  const services = ['低价保障', '退改无忧', '出票保障'];
-  let serviceX = 32;
-  services.forEach(service => {
-    ctx.fillStyle = '#FFF8E1';
-    roundRect(ctx, serviceX, 520, 180, 32, 16);
-    ctx.fill();
-    drawNormalText(ctx, service, serviceX + 90, 540, '#FF8F00', 13, 'center');
-    serviceX += 195;
-  });
-
-  // 二维码区域
+  // 5. 底部二维码
+  const bottomY = h - 260;
+  
   try {
     const qr: any = await safeLoadImage(data.qrUrl);
-    
-    // 蓝色渐变背景
-    const qrGrad = ctx.createLinearGradient(0, 580, w, 710);
-    qrGrad.addColorStop(0, '#0066CC');
-    qrGrad.addColorStop(1, '#0088FF');
-    ctx.fillStyle = qrGrad;
-    roundRect(ctx, 20, 580, w - 40, 300, 20);
-    ctx.fill();
-    
-    // 二维码
     ctx.fillStyle = '#FFFFFF';
-    roundRect(ctx, 40, 600, 140, 140, 12);
+    roundRect(ctx, 40, bottomY, 180, 180, 16);
     ctx.fill();
-    ctx.drawImage(qr as Image, 50, 610, 120, 120);
+    ctx.drawImage(qr as Image, 50, bottomY + 10, 160, 160);
   } catch (e) { /* 图片加载失败 */ }
-  
-  // CTA 文字
-  drawHeavyText(ctx, '扫码立即预订', 210, 660, '#FFFFFF', 24);
-  drawNormalText(ctx, '全球旅行 · 品质保障', 210, 695, '#FFFFFF', 14);
-  drawNormalText(ctx, '携程在手 · 说走就走', 210, 720, 'rgba(255,255,255,0.7)', 12);
+
+  drawHeavyText(ctx, '长按识别小程序码', 250, bottomY + 60, '#FFFFFF', 32);
+  drawNormalText(ctx, '即刻探索更多惊喜特惠', 250, bottomY + 110, 'rgba(255, 255, 255, 0.6)', 22);
+
+  // 蓝色强调按钮
+  ctx.fillStyle = '#0086F6';
+  roundRect(ctx, 250, bottomY + 140, 140, 40, 20);
+  ctx.fill();
+  drawHeavyText(ctx, '立即抢购', 320, bottomY + 167, '#FFFFFF', 16, 'center');
 
   return canvas.toBuffer('image/png');
 }

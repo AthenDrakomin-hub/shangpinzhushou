@@ -155,6 +155,53 @@ export function drawNormalText(
 }
 
 /**
+ * 绘制多行文本
+ */
+export function drawMultiLineText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  lineHeight: number,
+  maxLines: number,
+  color: string,
+  fontSize: number,
+  align: CanvasTextAlign = 'left'
+) {
+  ctx.font = `${fontSize}px ${FONT_FAMILY}`;
+  ctx.textAlign = align;
+  ctx.fillStyle = color;
+
+  const chars = text.split('');
+  let line = '';
+  let currentY = y;
+  let lineCount = 0;
+
+  for (let i = 0; i < chars.length; i++) {
+    const testLine = line + chars[i];
+    const metrics = ctx.measureText(testLine);
+    
+    if (metrics.width > maxWidth && i > 0) {
+      if (lineCount === maxLines - 1) {
+        ctx.fillText(line.slice(0, -1) + '...', x, currentY);
+        return;
+      }
+      ctx.fillText(line, x, currentY);
+      line = chars[i];
+      currentY += lineHeight;
+      lineCount++;
+    } else {
+      line = testLine;
+    }
+  }
+  
+  if (lineCount < maxLines) {
+    ctx.fillText(line, x, currentY);
+  }
+}
+
+/**
  * 绘制圆角矩形
  */
 export function roundRect(

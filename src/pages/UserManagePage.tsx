@@ -385,7 +385,7 @@ function CreateEmployeeModal({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="添加员工">
-      <div className="space-y-4">
+      <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">邮箱</label>
           <input
@@ -394,6 +394,7 @@ function CreateEmployeeModal({
             onChange={(e) => setForm({ ...form, email: e.target.value })}
             placeholder="employee@example.com"
             className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            autoComplete="username"
           />
         </div>
 
@@ -417,6 +418,7 @@ function CreateEmployeeModal({
               onChange={(e) => setForm({ ...form, password: e.target.value })}
               placeholder="至少6个字符"
               className="w-full px-4 py-2 pr-10 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              autoComplete="new-password"
             />
             <button
               type="button"
@@ -444,14 +446,14 @@ function CreateEmployeeModal({
         </div>
 
         <div className="flex gap-3 pt-4">
-          <Button variant="secondary" className="flex-1" onClick={onClose}>
+          <Button variant="secondary" className="flex-1" onClick={onClose} type="button">
             取消
           </Button>
-          <Button variant="primary" className="flex-1" loading={isLoading} onClick={handleSubmit}>
+          <Button variant="primary" className="flex-1" loading={isLoading} type="submit">
             创建
           </Button>
         </div>
-      </div>
+      </form>
     </Modal>
   );
 }

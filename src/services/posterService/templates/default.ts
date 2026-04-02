@@ -5,32 +5,10 @@
 
 import { Canvas, CanvasRenderingContext2D, Image } from 'canvas';
 import { PosterData } from '../types';
-import { safeLoadImage, drawImageError, drawHeavyText, drawNormalText, roundRect, truncateText } from '../utils';
-import path from 'path';
+import { safeLoadImage, drawImageError, drawHeavyText, drawNormalText, drawMultiLineText, roundRect, truncateText } from '../utils';
 
-const POSTER_WIDTH = 640;
-const POSTER_HEIGHT = 900;
-
-// Logo路径
-const LOGO_PATH = path.join(process.cwd(), 'public/logos/default.png');
-
-// 绘制几何装饰元素
-function drawGeometricShapes(ctx: CanvasRenderingContext2D, w: number, h: number) {
-  // 左上角三角形
-  ctx.fillStyle = 'rgba(255,255,255,0.08)';
-  ctx.beginPath();
-  ctx.moveTo(0, 0);
-  ctx.lineTo(100, 0);
-  ctx.lineTo(0, 100);
-  ctx.closePath();
-  ctx.fill();
-  
-  // 右下角圆形
-  ctx.fillStyle = 'rgba(255,255,255,0.06)';
-  ctx.beginPath();
-  ctx.arc(w - 60, h - 60, 50, 0, Math.PI * 2);
-  ctx.fill();
-}
+const POSTER_WIDTH = 750;
+const POSTER_HEIGHT = 1200;
 
 export async function renderDefaultTemplate(
   ctx: CanvasRenderingContext2D, 
@@ -39,111 +17,129 @@ export async function renderDefaultTemplate(
 ): Promise<Buffer> {
   const w = POSTER_WIDTH, h = POSTER_HEIGHT;
 
-  // 多色渐变背景
-  const grad = ctx.createLinearGradient(0, 0, w, h);
-  grad.addColorStop(0, '#667eea');
-  grad.addColorStop(0.5, '#764ba2');
-  grad.addColorStop(1, '#f093fb');
-  ctx.fillStyle = grad;
+  // 1. 渐变背景 (现代弥散光风格)
+  const bgGrad = ctx.createLinearGradient(0, 0, w, h);
+  bgGrad.addColorStop(0, '#fdfbfb');
+  bgGrad.addColorStop(1, '#ebedee');
+  ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, w, h);
-  
-  // 添加几何装饰
-  drawGeometricShapes(ctx, w, h);
 
-  // 毛玻璃卡片效果 - 顶部信息区
-  ctx.fillStyle = 'rgba(255,255,255,0.95)';
-  roundRect(ctx, 25, 25, w - 50, 120, 24);
+  // 装饰性光晕
+  const glow1 = ctx.createRadialGradient(w, 0, 0, w, 0, 400);
+  glow1.addColorStop(0, 'rgba(102, 126, 234, 0.15)');
+  glow1.addColorStop(1, 'rgba(102, 126, 234, 0)');
+  ctx.fillStyle = glow1;
+  ctx.fillRect(0, 0, w, h);
+
+  const glow2 = ctx.createRadialGradient(0, h, 0, 0, h, 400);
+  glow2.addColorStop(0, 'rgba(118, 75, 162, 0.1)');
+  glow2.addColorStop(1, 'rgba(118, 75, 162, 0)');
+  ctx.fillStyle = glow2;
+  ctx.fillRect(0, 0, w, h);
+
+  // 2. 主商品卡片 (拟物化玻璃态阴影)
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.08)';
+  ctx.shadowBlur = 40;
+  ctx.shadowOffsetY = 20;
+  ctx.fillStyle = '#FFFFFF';
+  roundRect(ctx, 40, 60, w - 80, h - 120, 32);
   ctx.fill();
-  
-  // Logo
+  ctx.shadowColor = 'transparent';
+
+  // 3. 顶部 Header
+  ctx.fillStyle = '#f8f9fa';
+  roundRect(ctx, 40, 60, w - 80, 80, [32, 32, 0, 0]);
+  ctx.fill();
+  drawHeavyText(ctx, 'SUPER SELECTION', 80, 110, '#333333', 20);
+  drawNormalText(ctx, '精选好物 每日推荐', w - 80 - 150, 110, '#888888', 16);
+
+  // 4. 商品主图 (大比例展示)
   try {
-    const logoImg: any = await safeLoadImage(LOGO_PATH);
-    ctx.drawImage(logoImg as Image, 40, 35, 100, 40);
+    const img: any = await safeLoadImage(data.image);
+    // 裁剪区域 (1:1 方图)
+    ctx.save();
+    roundRect(ctx, 40, 140, w - 80, w - 80, 0);
+    ctx.clip();
+    
+    // 按比例填充图片
+    const imgW = (img as Image).width;
+    const imgH = (img as Image).height;
+    const scale = Math.max((w - 80) / imgW, (w - 80) / imgH);
+    const drawW = imgW * scale;
+    const drawH = imgH * scale;
+    const dx = 40 + ((w - 80) - drawW) / 2;
+    const dy = 140 + ((w - 80) - drawH) / 2;
+    
+    ctx.drawImage(img as Image, dx, dy, drawW, drawH);
+    ctx.restore();
   } catch (e) {
-    drawHeavyText(ctx, '精选好物', 50, 65, '#667eea', 28);
+    drawImageError(ctx, 40, 140, w - 80, w - 80, data.image);
   }
+
+  // 5. 商品信息区
+  const infoY = 140 + (w - 80) + 40;
   
-  // 商品名称
-  drawHeavyText(ctx, truncateText(ctx, data.name || '精选好物', w - 180), 150, 70, '#1a1a2e', 26);
-  
-  // 价格
-  const currentPrice = `¥${data.price.toFixed(2)}`;
-  drawHeavyText(ctx, currentPrice, 50, 125, '#667eea', 40);
+  // 商品名称 (支持两行)
+  drawMultiLineText(ctx, data.name || '精选商品', 80, infoY + 30, w - 160, 48, 2, '#1a1a1a', 36, 'left');
+
+  // 商品描述 (副标题)
+  if (data.description) {
+    drawMultiLineText(ctx, data.description, 80, infoY + 110, w - 160, 32, 2, '#666666', 20, 'left');
+  }
+
+  // 6. 价格与购买区 (底部浮动排版)
+  const bottomY = h - 260;
+
+  // 价格标签
+  ctx.fillStyle = '#FFF1F0';
+  roundRect(ctx, 80, bottomY - 30, 80, 32, 8);
+  ctx.fill();
+  drawHeavyText(ctx, '特惠价', 120, bottomY - 8, '#FF4D4F', 16, 'center');
+
+  // 现价
+  drawHeavyText(ctx, '¥', 80, bottomY + 35, '#FF4D4F', 32);
+  drawHeavyText(ctx, data.price.toFixed(2), 110, bottomY + 35, '#FF4D4F', 64);
 
   // 原价
   if (data.originalPrice && data.originalPrice > data.price) {
-    ctx.font = 'bold 40px sans-serif';
-    const currentPriceWidth = ctx.measureText(currentPrice).width;
+    const priceTextWidth = ctx.measureText(data.price.toFixed(2)).width;
+    const origX = 110 + priceTextWidth + 20;
     
+    ctx.font = '24px sans-serif';
     ctx.fillStyle = '#999999';
-    ctx.font = '20px sans-serif';
-    const origPrice = `¥${data.originalPrice.toFixed(2)}`;
-    const startX = 50 + currentPriceWidth + 15;
-    ctx.fillText(origPrice, startX, 125);
+    ctx.fillText(`¥${data.originalPrice.toFixed(2)}`, origX, bottomY + 30);
     
     // 删除线
-    const origPriceWidth = ctx.measureText(origPrice).width;
+    const origWidth = ctx.measureText(`¥${data.originalPrice.toFixed(2)}`).width;
     ctx.beginPath();
-    ctx.moveTo(startX, 118);
-    ctx.lineTo(startX + origPriceWidth, 118);
+    ctx.moveTo(origX - 2, bottomY + 22);
+    ctx.lineTo(origX + origWidth + 2, bottomY + 22);
     ctx.strokeStyle = '#999999';
     ctx.lineWidth = 2;
     ctx.stroke();
   }
 
-  // 商品图片
-  try {
-    const img: any = await safeLoadImage(data.image);
-    
-    // 投影效果
-    ctx.shadowColor = 'rgba(0,0,0,0.25)';
-    ctx.shadowBlur = 15;
-    ctx.shadowOffsetY = 8;
-    
-    ctx.save();
-    roundRect(ctx, 25, 165, w - 50, 380, 24);
-    ctx.clip();
-    ctx.drawImage(img as Image, 25, 165, w - 50, 380);
-    ctx.restore();
-    
-    // 重置阴影
-    ctx.shadowColor = 'transparent';
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetY = 0;
-  } catch (e) {
-    drawImageError(ctx, 25, 165, w - 50, 380, data.image);
-  }
-
-  // 描述文字
-  if (data.description) {
-    ctx.fillStyle = 'rgba(255,255,255,0.9)';
-    roundRect(ctx, 25, 565, w - 50, 80, 16);
-    ctx.fill();
-    drawNormalText(ctx, truncateText(ctx, data.description, w - 80), 45, 610, '#4a4a6a', 18);
-  }
-
-  // 二维码区域
+  // 7. 二维码区域 (右下角)
   try {
     const qr: any = await safeLoadImage(data.qrUrl);
-    
-    // 白色卡片背景
+    ctx.save();
+    // 二维码阴影和白底
+    ctx.shadowColor = 'rgba(0,0,0,0.1)';
+    ctx.shadowBlur = 15;
     ctx.fillStyle = '#FFFFFF';
-    roundRect(ctx, w/2 - 85, 665, 170, 200, 20);
+    roundRect(ctx, w - 240, bottomY - 60, 160, 160, 16);
     ctx.fill();
+    ctx.shadowColor = 'transparent';
     
-    // 二维码
-    ctx.drawImage(qr as Image, w/2 - 60, 685, 100, 100);
+    ctx.drawImage(qr as Image, w - 230, bottomY - 50, 140, 140);
+    ctx.restore();
     
     // 扫码提示
-    drawHeavyText(ctx, '扫码购买', w/2, 820, '#667eea', 18, 'center');
-    drawNormalText(ctx, '安全支付', w/2, 845, '#999999', 12, 'center');
-  } catch (e) { /* 图片加载失败 */ }
-
-  // 品牌标识 - 右下角
-  ctx.fillStyle = 'rgba(255,255,255,0.25)';
-  roundRect(ctx, w - 130, h - 40, 110, 28, 14);
-  ctx.fill();
-  drawNormalText(ctx, '精选好物', w - 75, h - 26, '#FFFFFF', 12, 'center');
+    ctx.fillStyle = '#F0F2F5';
+    roundRect(ctx, w - 240, bottomY + 110, 160, 36, 18);
+    ctx.fill();
+    drawHeavyText(ctx, '长按扫码购买', w - 160, bottomY + 134, '#666666', 16, 'center');
+  } catch (e) { /* 二维码加载失败不中断 */ }
 
   return canvas.toBuffer('image/png');
 }

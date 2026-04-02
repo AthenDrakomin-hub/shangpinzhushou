@@ -782,13 +782,16 @@ app.delete('/api/products/:id', authMiddleware, async (req: AuthRequest, res: Re
       return res.status(403).json({ error: '无权删除此商品' });
     }
 
+    // 开启事务，解除关联的订单
+    await pool.query('BEGIN');
+    await pool.query('UPDATE public.orders SET product_id = NULL WHERE product_id = $1', [req.params.id]);
     await pool.query('DELETE FROM public.products WHERE id = $1', [req.params.id]);
+    await pool.query('COMMIT');
+    
     res.json({ message: '删除成功' });
   } catch (error: any) {
+    await pool.query('ROLLBACK');
     console.error('Delete product error:', error);
-    if (error.code === '23503') { // foreign_key_violation
-      return res.status(400).json({ error: '该商品已有订单记录，无法直接删除，请将商品下架' });
-    }
     res.status(500).json({ error: '删除商品失败' });
   }
 });
@@ -797,30 +800,58 @@ app.delete('/api/products/:id', authMiddleware, async (req: AuthRequest, res: Re
 // 获取订单列表
 app.get('/api/orders', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const { status, page = 1, limit = 20 } = req.query;
+    const { status, page = 1, limit = 20, search = '' } = req.query;
     const offset = (Number(page) - 1) * Number(limit);
 
-    // 获取商品名称关联
+    // 确保管理员看所有订单，普通用户看自己的和下级的
+    let userFilter = `o.user_id = $1`;
+    let userParams: any[] = [req.user.id];
+
+    if (req.user.role === 'manager' || req.user.role === 'admin') {
+      userFilter = `(o.user_id = $1 OR $2 = 'manager' OR $2 = 'admin')`;
+      userParams = [req.user.id, req.user.role];
+    } else if (req.user.role === 'supervisor') {
+      const visibleUsersRes = await pool.query(`
+        WITH RECURSIVE subordinates AS (
+          SELECT id FROM public.users WHERE id = $1
+          UNION
+          SELECT u.id FROM public.users u
+          INNER JOIN subordinates s ON u.created_by = s.id
+        )
+        SELECT id FROM subordinates;
+      `, [req.user.id]);
+      const visibleUserIds = visibleUsersRes.rows.map(r => r.id);
+      userFilter = `o.user_id = ANY($1)`;
+      userParams = [visibleUserIds];
+    }
+
     let query = `
       SELECT 
-        o.id, o.user_id as "userId", o.product_id as "productId", 
-        p.name as "productName",
-        o.amount, o.payment_amount as "paymentAmount", o.status, 
-        o.payer_info as "payerInfo",
-        o.pay_method as "payMethod", o.channel_code as "channelCode",
-        o.out_trade_no as "outTradeNo", o.order_id as "orderId",
-        o.expires_at as "expiredAt",
-        o.created_at as "createdAt", o.paid_at as "paidAt"
+        o.id, o.user_id, o.product_id, 
+        p.name as product_name,
+        o.amount, o.payment_amount, o.status, 
+        o.payer_info,
+        o.pay_method, o.channel_code,
+        o.out_trade_no, o.order_id,
+        o.expires_at,
+        o.created_at, o.paid_at
       FROM public.orders o
       LEFT JOIN public.products p ON o.product_id = p.id
-      WHERE o.user_id = $1 OR $2 = 'manager'
+      WHERE ${userFilter}
     `;
-    const params: any[] = [req.user.id, req.user.role];
-    let paramIndex = 3;
+    
+    let params: any[] = [...userParams];
+    let paramIndex = params.length + 1;
 
-    if (status) {
+    if (status && status !== 'all') {
       query += ` AND o.status = $${paramIndex}`;
       params.push(status);
+      paramIndex++;
+    }
+
+    if (search) {
+      query += ` AND (o.order_id ILIKE $${paramIndex} OR p.name ILIKE $${paramIndex} OR o.payer_info ILIKE $${paramIndex})`;
+      params.push(`%${search}%`);
       paramIndex++;
     }
 
@@ -830,16 +861,49 @@ app.get('/api/orders', authMiddleware, async (req: AuthRequest, res: Response) =
     const result = await pool.query(query, params);
 
     // 获取总数
-    let countQuery = `SELECT COUNT(*) FROM public.orders WHERE user_id = $1 OR $2 = 'manager'`;
-    const countParams: any[] = [req.user.id, req.user.role];
-    if (status) {
-      countQuery += ` AND status = $3`;
+    let countQuery = `
+      SELECT COUNT(*) 
+      FROM public.orders o
+      LEFT JOIN public.products p ON o.product_id = p.id
+      WHERE ${userFilter}
+    `;
+    let countParams: any[] = [...userParams];
+    let countParamIndex = countParams.length + 1;
+
+    if (status && status !== 'all') {
+      countQuery += ` AND o.status = $${countParamIndex}`;
       countParams.push(status);
+      countParamIndex++;
     }
+    
+    if (search) {
+      countQuery += ` AND (o.order_id ILIKE $${countParamIndex} OR p.name ILIKE $${countParamIndex} OR o.payer_info ILIKE $${countParamIndex})`;
+      countParams.push(`%${search}%`);
+    }
+
     const countResult = await pool.query(countQuery, countParams);
+    
+    // 解析 buyer_name 和 buyer_phone
+    const orders = result.rows.map(row => {
+      let buyer_name = '';
+      let buyer_phone = '';
+      try {
+        if (row.payer_info) {
+          const info = JSON.parse(row.payer_info);
+          buyer_name = info.name || info.buyer_name || '';
+          buyer_phone = info.phone || info.buyer_phone || '';
+        }
+      } catch (e) {}
+      
+      return {
+        ...row,
+        buyer_name,
+        buyer_phone
+      };
+    });
 
     res.json({
-      orders: result.rows,
+      orders: orders,
       total: parseInt(countResult.rows[0].count),
       page: Number(page),
       limit: Number(limit),
@@ -912,29 +976,38 @@ app.get('/api/orders/stats', authMiddleware, async (req: AuthRequest, res: Respo
 // Dashboard 统计数据
 app.get('/api/dashboard/stats', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const isManagerRole = ['manager', 'admin', 'super_admin'].includes(req.user.role);
+    const role = req.user.role;
     const userId = req.user.id;
 
-    // 商品数量
-    let productsQuery = 'SELECT COUNT(*) as count FROM public.products';
-    if (!isManagerRole) {
-      productsQuery += ' WHERE user_id = $1';
-    }
-    const productsResult = await pool.query(productsQuery, isManagerRole ? [] : [userId]);
+    // 获取可见的用户ID列表（包含自己和所有直接/间接下级）
+    // 为了简单，我们查三层：自己 -> 下级 -> 下级的下级
+    const visibleUsersRes = await pool.query(`
+      WITH RECURSIVE subordinates AS (
+        SELECT id FROM public.users WHERE id = $1
+        UNION
+        SELECT u.id FROM public.users u
+        INNER JOIN subordinates s ON u.created_by = s.id
+      )
+      SELECT id FROM subordinates;
+    `, [userId]);
+    const visibleUserIds = visibleUsersRes.rows.map(r => r.id);
+
+    // 商品数量 (自己创建的商品，如果是管理员也可以看所有人的，但这里按实际业务，商户看自己组织内的商品)
+    const productsResult = await pool.query(`
+      SELECT COUNT(*) as count FROM public.products 
+      WHERE user_id = ANY($1)
+    `, [visibleUserIds]);
 
     // 订单统计
-    let ordersQuery = `
+    const ordersResult = await pool.query(`
       SELECT COUNT(*) as total,
              COUNT(*) FILTER (WHERE status = 'paid') as paid,
              COALESCE(SUM(amount) FILTER (WHERE status = 'paid'), 0) as revenue
       FROM public.orders
-    `;
-    if (!isManagerRole) {
-      ordersQuery += ' WHERE user_id = $1';
-    }
-    const ordersResult = await pool.query(ordersQuery, isManagerRole ? [] : [userId]);
+      WHERE user_id = ANY($1)
+    `, [visibleUserIds]);
 
-    // 钱包余额
+    // 钱包余额 (只看自己的)
     const walletResult = await pool.query(`
       SELECT balance, total_earnings
       FROM public.wallets
@@ -942,7 +1015,7 @@ app.get('/api/dashboard/stats', authMiddleware, async (req: AuthRequest, res: Re
     `, [userId]);
 
     // 最近7天销售数据
-    let chartQuery = `
+    const chartResult = await pool.query(`
       SELECT
         DATE(created_at) as date,
         COALESCE(SUM(amount), 0) as sales,
@@ -950,53 +1023,41 @@ app.get('/api/dashboard/stats', authMiddleware, async (req: AuthRequest, res: Re
       FROM public.orders
       WHERE status = 'paid'
         AND created_at >= NOW() - INTERVAL '7 days'
-    `;
-    if (!isManagerRole) {
-      chartQuery += ' AND user_id = $1';
-    }
-    chartQuery += ' GROUP BY DATE(created_at) ORDER BY date';
-    const chartResult = await pool.query(chartQuery, isManagerRole ? [] : [userId]);
+        AND user_id = ANY($1)
+      GROUP BY DATE(created_at) 
+      ORDER BY date
+    `, [visibleUserIds]);
 
     // 最近订单
-    let recentOrdersQuery = `
+    const recentOrdersResult = await pool.query(`
       SELECT o.id, p.name as product_name, o.amount, o.status, o.created_at, o.payer_info
       FROM public.orders o
       LEFT JOIN public.products p ON o.product_id = p.id
-    `;
-    if (!isManagerRole) {
-      recentOrdersQuery += ' WHERE o.user_id = $1';
-    }
-    recentOrdersQuery += ' ORDER BY o.created_at DESC LIMIT 5';
-    const recentOrdersResult = await pool.query(recentOrdersQuery, isManagerRole ? [] : [userId]);
+      WHERE o.user_id = ANY($1)
+      ORDER BY o.created_at DESC 
+      LIMIT 5
+    `, [visibleUserIds]);
 
     // 热销商品（通过订单数计算销量）
     let topProductsResult = { rows: [] };
     try {
-      let topProductsQuery = `
+      topProductsResult = await pool.query(`
         SELECT p.id, p.name, p.price, 
                COALESCE(p.image, '') as image,
                COALESCE(SUM(CASE WHEN o.status = 'paid' THEN 1 ELSE 0 END), 0) as sales
         FROM public.products p
         LEFT JOIN public.orders o ON o.product_id = p.id
-      `;
-      
-      const queryParams: any[] = [];
-      if (!isManagerRole) {
-        topProductsQuery += ' WHERE p.user_id = $1';
-        queryParams.push(userId);
-      }
-      topProductsQuery += ' GROUP BY p.id, p.name, p.price, p.image ORDER BY sales DESC LIMIT 5';
-      topProductsResult = await pool.query(topProductsQuery, queryParams);
+        WHERE p.user_id = ANY($1)
+        GROUP BY p.id, p.name, p.price, p.image 
+        ORDER BY sales DESC 
+        LIMIT 5
+      `, [visibleUserIds]);
     } catch (e) {
       console.error('Top products query error:', e);
     }
 
-    // 用户总数（仅管理员可见）
-    let usersCount = 0;
-    if (isManagerRole) {
-      const usersResult = await pool.query('SELECT COUNT(*) as count FROM public.users');
-      usersCount = parseInt(usersResult.rows[0].count);
-    }
+    // 用户总数（组织内总人数，包含自己）
+    const usersCount = visibleUserIds.length;
 
     const wallet = walletResult.rows[0] || { balance: 0, total_earnings: 0 };
 
@@ -1782,22 +1843,45 @@ app.get('/api/merchant/withdrawals/stats', authMiddleware, supervisorMiddleware,
   try {
     const statsResult = await pool.query(`
       SELECT 
-        COUNT(*) as total_count,
-        COALESCE(SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END), 0) as pending_amount,
-        COALESCE(SUM(CASE WHEN status = 'approved' OR status = 'paid' THEN amount ELSE 0 END), 0) as paid_amount
+        COUNT(*) FILTER (WHERE status = 'pending') as pending_count,
+        COUNT(*) FILTER (WHERE status = 'processing') as processing_count,
+        COUNT(*) FILTER (WHERE status = 'success' OR status = 'paid') as success_count,
+        COALESCE(SUM(amount) FILTER (WHERE status = 'success' OR status = 'paid' AND created_at >= CURRENT_DATE), 0) as today_amount
       FROM public.withdrawals w
       JOIN public.users u ON w.user_id = u.id
       WHERE u.created_by = $1
     `, [req.user.id]);
 
     res.json({
-      pendingCount: parseInt(statsResult.rows[0].total_count) || 0, // Simplified: should be pending count, but keeping original structure logic
-      pendingAmount: parseFloat(statsResult.rows[0].pending_amount) || 0,
-      paidAmount: parseFloat(statsResult.rows[0].paid_amount) || 0
+      stats: {
+        pendingCount: parseInt(statsResult.rows[0].pending_count) || 0,
+        processingCount: parseInt(statsResult.rows[0].processing_count) || 0,
+        successCount: parseInt(statsResult.rows[0].success_count) || 0,
+        todayAmount: parseFloat(statsResult.rows[0].today_amount) || 0
+      }
     });
   } catch (error) {
     console.error('Get withdrawal stats error:', error);
     res.status(500).json({ error: '获取统计失败' });
+  }
+});
+
+// 获取待审核提现记录
+app.get('/api/merchant/withdrawals/pending', authMiddleware, supervisorMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        w.*, u.display_name as user_name, u.email as user_email
+      FROM public.withdrawals w
+      JOIN public.users u ON w.user_id = u.id
+      WHERE u.created_by = $1 AND w.status = 'pending'
+      ORDER BY w.created_at ASC
+    `, [req.user.id]);
+
+    res.json({ withdrawals: result.rows });
+  } catch (error) {
+    console.error('Get pending withdrawals error:', error);
+    res.status(500).json({ error: '获取待审核列表失败' });
   }
 });
 

@@ -344,7 +344,7 @@ export default function OrdersPage({ user, handleBack, showToast }: OrdersPagePr
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50 dark:bg-gray-800">
-                  <tr>
+                  <tr className="whitespace-nowrap">
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">订单号</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">商品</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">金额</th>
@@ -367,34 +367,34 @@ export default function OrdersPage({ user, handleBack, showToast }: OrdersPagePr
                         animate={{ opacity: 1 }}
                         className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                       >
-                        <td className="px-4 py-3 text-sm font-mono text-gray-900 dark:text-white">
+                        <td className="px-4 py-3 text-sm font-mono text-gray-900 dark:text-white whitespace-nowrap">
                           {order.order_id?.slice(0, 12)}...
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
+                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-white max-w-[200px] truncate">
                           {order.product_name || '未知商品'}
                         </td>
-                        <td className="px-4 py-3 text-sm font-medium text-blue-600 dark:text-blue-400">
+                        <td className="px-4 py-3 text-sm font-medium text-blue-600 dark:text-blue-400 whitespace-nowrap">
                           {formatAmount(order.amount)}
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                        <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
                           {order.buyer_name || '-'}
                           {order.buyer_phone && <span className="text-xs block">{order.buyer_phone}</span>}
                         </td>
-                        <td className="px-4 py-3 text-sm">
+                        <td className="px-4 py-3 text-sm whitespace-nowrap">
                           <div className={`flex items-center gap-1 ${payMethodConfig?.color || 'text-gray-500'}`}>
                             {payMethodConfig?.icon}
                             <span>{payMethodConfig?.label || order.pay_method || '-'}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3 whitespace-nowrap">
                           <Badge variant={statusConfig.color as 'success' | 'warning' | 'danger'}>
                             {statusConfig.label}
                           </Badge>
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
+                        <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
                           {formatDate(order.created_at)}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3 whitespace-nowrap">
                           <div className="flex items-center gap-2">
                             <Button
                               variant="ghost"
@@ -407,7 +407,7 @@ export default function OrdersPage({ user, handleBack, showToast }: OrdersPagePr
                                 variant="ghost"
                                 size="sm"
                                 icon={<Trash2 className="w-4 h-4" />}
-                                onClick={() => handleDeleteOrder(order.order_id)}
+                                onClick={() => handleDeleteOrder(order.id)}
                                 className="text-red-500 hover:text-red-600"
                               />
                             )}

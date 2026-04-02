@@ -65,6 +65,17 @@ export default function App() {
     setTimeout(() => setToast(null), 3000);
   };
 
+  // 页面加载时初始化主题
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, []);
+
   // Handle checkout route
   useEffect(() => {
     const path = window.location.pathname;
