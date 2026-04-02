@@ -1018,12 +1018,13 @@ app.post('/api/orders', async (req: Request, res: Response) => {
       console.log('[订单创建] 使用九久支付微信');
       
       const returnUrl = `${projectDomain}/payment/result?orderId=${orderId}`;
+      const wechatNotifyUrl = `${projectDomain}/api/orders/wechat/callback`;
       
       const payResult = await createWechatOrder({
         orderId,
-        amount: product.price,
+        amount: Number(product.price), // 确保传递数值类型
         productName: product.name,
-        notifyUrl,
+        notifyUrl: wechatNotifyUrl,
         callbackUrl: returnUrl,
       });
       
@@ -1074,6 +1075,12 @@ app.post('/api/orders/callback', async (req: Request, res: Response) => {
 
     const order = orderResult.rows[0];
 
+    // 幂等性校验：如果订单已被处理，直接返回成功，防止重复加钱
+    if (order.status === 'paid' || order.status === 'failed') {
+      console.log('Order already processed:', order_sn, 'Current status:', order.status);
+      return res.send('success');
+    }
+
     // state: 0-待支付, 1-已失败, 2-已超时, 3-已支付
     if (state === 3) {
       // 支付成功
@@ -1111,6 +1118,91 @@ app.post('/api/orders/callback', async (req: Request, res: Response) => {
     res.send('success');
   } catch (error) {
     console.error('Order callback error:', error);
+    res.status(500).send('fail');
+  }
+});
+
+// 微信支付（九久支付）回调
+app.post('/api/orders/wechat/callback', async (req: Request, res: Response) => {
+  try {
+    const params = req.method === 'POST' ? req.body : req.query;
+    console.log('JiuJiu Pay Callback:', JSON.stringify(params));
+
+    const { verifyCallbackSign } = await import('./src/services/wechatPay.js');
+    
+    // 提取签名
+    const sign = params.sign;
+    if (!sign) {
+      console.error('No signature provided in callback');
+      return res.status(400).send('fail');
+    }
+
+    // 剔除 sign 字段后验签
+    const signParams = { ...params };
+    delete signParams.sign;
+    
+    if (!verifyCallbackSign(signParams, sign)) {
+      console.error('JiuJiu Pay signature verification failed');
+      return res.status(400).send('fail');
+    }
+
+    // 获取订单号
+    const orderId = params.outTradeNo || params.order_sn || params.out_trade_no;
+    if (!orderId) {
+      console.error('No order ID found in callback');
+      return res.status(400).send('fail');
+    }
+
+    // 判断状态
+    const status = params.status || params.tradeStatus || params.trade_status || params.state;
+    // 九久支付通常回调就代表成功，如果有明确的状态字段，可以进一步判断
+    const isSuccess = status ? (String(status).toUpperCase() === 'SUCCESS' || String(status) === '1' || String(status) === '3') : true;
+
+    const orderResult = await pool.query('SELECT * FROM public.orders WHERE id = $1', [orderId]);
+    if (orderResult.rows.length === 0) {
+      console.error('Wechat Order not found:', orderId);
+      return res.status(404).send('fail');
+    }
+
+    const order = orderResult.rows[0];
+
+    // 幂等性校验
+    if (order.status === 'paid' || order.status === 'failed') {
+      console.log('Wechat Order already processed:', orderId, 'Current status:', order.status);
+      return res.send('success');
+    }
+
+    if (isSuccess) {
+      await pool.query(`
+        UPDATE public.orders SET 
+          status = 'paid', 
+          pay_url = NULL,
+          paid_at = NOW(),
+          updated_at = NOW()
+        WHERE id = $1
+      `, [orderId]);
+
+      await pool.query(`
+        UPDATE products SET sales = sales + 1 WHERE id = $1
+      `, [order.product_id]);
+
+      await pool.query(`
+        UPDATE public.wallets SET 
+          balance = balance + $1,
+          total_earnings = total_earnings + $1,
+          updated_at = NOW()
+        WHERE user_id = $2
+      `, [order.amount, order.user_id]);
+
+      console.log('Wechat Order paid successfully:', orderId);
+    } else {
+      await pool.query(`UPDATE public.orders SET status = 'failed', updated_at = NOW() WHERE id = $1`, [orderId]);
+      console.log('Wechat Order failed:', orderId);
+    }
+
+    res.send('success');
+  } catch (error) {
+    console.error('Wechat Order callback error:', error);
     res.status(500).send('fail');
   }
 });
@@ -1236,13 +1328,19 @@ app.post('/api/withdrawals', authMiddleware, async (req: AuthRequest, res: Respo
     // 冻结余额并创建提现记录
     await pool.query('BEGIN');
 
-    await pool.query(`
+    const updateResult = await pool.query(`
       UPDATE public.wallets SET 
         balance = balance - $1,
         frozen_balance = frozen_balance + $1,
         updated_at = NOW()
-      WHERE user_id = $2
+      WHERE user_id = $2 AND balance >= $1
+      RETURNING id
     `, [amount, req.user.id]);
+
+    if (updateResult.rowCount === 0) {
+      await pool.query('ROLLBACK');
+      return res.status(400).json({ error: '余额不足或发生并发冲突' });
+    }
 
     const result = await pool.query(`
       INSERT INTO public.withdrawals (id, user_id, amount, status, payment_method, payment_account, payment_name, bank_code, bank_name)
@@ -1272,6 +1370,11 @@ app.put('/api/withdrawals/:id', authMiddleware, adminMiddleware, async (req: Aut
     }
 
     const withdrawal = existingResult.rows[0];
+
+    // 幂等性校验：如果提现记录不再是 pending，说明已被处理，直接返回错误
+    if (withdrawal.status !== 'pending') {
+      return res.status(400).json({ error: '该提现记录已被处理，请勿重复操作' });
+    }
 
     await pool.query('BEGIN');
 
@@ -1762,6 +1865,10 @@ async function start() {
     console.log('Starting server...');
     console.log('Working directory:', __dirname);
     console.log('ENCRYPTION_KEY:', config.encryptionKey ? 'set' : 'not set');
+
+    if (config.nodeEnv === 'production' && config.jwtSecret === 'dev-secret-key') {
+      throw new Error('FATAL: JWT_SECRET is not set in production. Using default secret is extremely dangerous!');
+    }
 
     // 初始化数据库
     await initDatabase();

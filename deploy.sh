@@ -2,11 +2,18 @@
 
 # 部署脚本 - 将代码同步到生产服务器
 
-SSH_HOST="167.179.87.106"
-SSH_USER="root"
-SSH_PASS="9-Tr[7RnYS{45=}%"
+# 建议在 CI/CD 环境中配置以下环境变量，不要在脚本中硬编码敏感信息
+SSH_HOST="${SSH_HOST:-167.179.87.106}"
+SSH_USER="${SSH_USER:-root}"
+SSH_PASS="${SSH_PASS}"
 REMOTE_DIR="/root/payforme"
 LOCAL_DIR="/workspace/projects"
+
+if [ -z "$SSH_PASS" ]; then
+  echo "❌ 错误: 未设置 SSH_PASS 环境变量。出于安全考虑，密码已从脚本中移除。"
+  echo "请使用: SSH_PASS='your_password' ./deploy.sh 运行此脚本"
+  exit 1
+fi
 
 # 使用 sshpass 和 rsync 同步文件
 echo "开始同步代码到生产服务器..."
