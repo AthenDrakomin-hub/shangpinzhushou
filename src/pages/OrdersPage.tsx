@@ -106,7 +106,7 @@ export default function OrdersPage({ user, handleBack, showToast }: OrdersPagePr
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
-      setOrders(data || []);
+      setOrders(data.orders || []);
     } catch (error) {
       console.error('Failed to fetch orders:', error);
       showToast('获取订单列表失败', 'error');

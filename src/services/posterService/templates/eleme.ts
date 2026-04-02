@@ -101,10 +101,13 @@ export async function renderElemeTemplate(
   
   // 原价
   if (data.originalPrice && data.originalPrice > data.price) {
+    ctx.font = 'bold 48px sans-serif';
+    const currentPriceWidth = ctx.measureText(`¥${data.price.toFixed(2)}`).width;
+    
     ctx.fillStyle = '#999999';
     ctx.font = '18px sans-serif';
     const priceText = `¥${data.originalPrice.toFixed(2)}`;
-    ctx.fillText(priceText, 20 + ctx.measureText(`¥${data.price.toFixed(2)}`).width + 12, 545);
+    ctx.fillText(priceText, 20 + currentPriceWidth + 12, 545);
   }
   
   // 月售数量

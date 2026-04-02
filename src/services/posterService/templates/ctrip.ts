@@ -97,8 +97,30 @@ export async function renderCtripTemplate(
   drawHeavyText(ctx, truncateText(ctx, data.name || '精选旅行', w - 64), 32, 400, '#1a1a1a', 28);
   
   // 价格
-  drawHeavyText(ctx, `¥${data.price.toFixed(2)}`, 32, 455, '#FF7D13', 46);
-  drawNormalText(ctx, '起', 32 + ctx.measureText(`¥${data.price.toFixed(2)}`).width + 10, 455, '#999999', 18);
+  const currentPriceText = `¥${data.price.toFixed(2)}`;
+  drawHeavyText(ctx, currentPriceText, 32, 455, '#FF7D13', 46);
+  
+  ctx.font = 'bold 46px sans-serif';
+  const currentPriceWidth = ctx.measureText(currentPriceText).width;
+  
+  // 原价
+  if (data.originalPrice && data.originalPrice > data.price) {
+    ctx.fillStyle = '#999999';
+    ctx.font = '18px sans-serif';
+    const origPriceText = `原价 ¥${data.originalPrice.toFixed(2)}`;
+    ctx.fillText(origPriceText, 32 + currentPriceWidth + 15, 455);
+    
+    // 删除线
+    const origPriceWidth = ctx.measureText(origPriceText).width;
+    ctx.beginPath();
+    ctx.moveTo(32 + currentPriceWidth + 15, 450);
+    ctx.lineTo(32 + currentPriceWidth + 15 + origPriceWidth, 450);
+    ctx.strokeStyle = '#999999';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  } else {
+    drawNormalText(ctx, '起', 32 + currentPriceWidth + 10, 455, '#999999', 18);
+  }
   
   // 出发地标签
   if (data.description) {

@@ -112,10 +112,13 @@ export async function renderJdTemplate(
   drawHeavyText(ctx, `¥${data.price.toFixed(2)}`, priceX, priceY, '#e4393c', 52);
   
   if (data.originalPrice && data.originalPrice > data.price) {
+    ctx.font = 'bold 52px sans-serif';
+    const currentPriceWidth = ctx.measureText(`¥${data.price.toFixed(2)}`).width;
+    
     ctx.fillStyle = '#999999';
     ctx.font = '20px sans-serif';
     const origPrice = `¥${data.originalPrice.toFixed(2)}`;
-    ctx.fillText(origPrice, priceX + ctx.measureText(`¥${data.price.toFixed(2)}`).width + 12, priceY);
+    ctx.fillText(origPrice, priceX + currentPriceWidth + 12, priceY);
   }
 
   // 信任标签组

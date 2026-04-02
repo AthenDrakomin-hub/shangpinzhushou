@@ -110,9 +110,12 @@ export async function renderKuaishouTemplate(
   
   // 原价
   if (data.originalPrice && data.originalPrice > data.price) {
+    ctx.font = 'bold 52px sans-serif';
+    const currentPriceWidth = ctx.measureText(`¥${data.price.toFixed(2)}`).width;
+    
     ctx.fillStyle = '#999999';
     ctx.font = '18px sans-serif';
-    ctx.fillText(`原价¥${data.originalPrice.toFixed(2)}`, 40 + ctx.measureText(`¥${data.price.toFixed(2)}`).width + 15, 445);
+    ctx.fillText(`原价¥${data.originalPrice.toFixed(2)}`, 40 + currentPriceWidth + 15, 445);
   }
 
   // 购买按钮

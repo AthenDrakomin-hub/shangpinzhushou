@@ -67,7 +67,29 @@ export async function renderDefaultTemplate(
   drawHeavyText(ctx, truncateText(ctx, data.name || '精选好物', w - 180), 150, 70, '#1a1a2e', 26);
   
   // 价格
-  drawHeavyText(ctx, `¥${data.price.toFixed(2)}`, 50, 125, '#667eea', 40);
+  const currentPrice = `¥${data.price.toFixed(2)}`;
+  drawHeavyText(ctx, currentPrice, 50, 125, '#667eea', 40);
+
+  // 原价
+  if (data.originalPrice && data.originalPrice > data.price) {
+    ctx.font = 'bold 40px sans-serif';
+    const currentPriceWidth = ctx.measureText(currentPrice).width;
+    
+    ctx.fillStyle = '#999999';
+    ctx.font = '20px sans-serif';
+    const origPrice = `¥${data.originalPrice.toFixed(2)}`;
+    const startX = 50 + currentPriceWidth + 15;
+    ctx.fillText(origPrice, startX, 125);
+    
+    // 删除线
+    const origPriceWidth = ctx.measureText(origPrice).width;
+    ctx.beginPath();
+    ctx.moveTo(startX, 118);
+    ctx.lineTo(startX + origPriceWidth, 118);
+    ctx.strokeStyle = '#999999';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
 
   // 商品图片
   try {

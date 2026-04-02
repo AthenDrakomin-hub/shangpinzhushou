@@ -20,8 +20,10 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, Button, Badge, StatCard, PageHeader, Modal } from '../components/ui';
 
+import type { AuthUser } from '../services/authService';
+
 interface UserManagePageProps {
-  mode: 'pending' | 'employees';
+  user: AuthUser | null;
   showToast: (msg: string, type?: 'success' | 'error') => void;
 }
 
@@ -34,6 +36,7 @@ interface UserData {
   status?: 'active' | 'inactive' | 'pending';
   profit_share_rate?: number;
   created_at: string;
+  creator_name?: string; // 所属上级
 }
 
 const ROLE_CONFIG = {
@@ -51,7 +54,7 @@ const STATUS_CONFIG = {
   pending: { label: '待审核', color: 'warning' as const },
 };
 
-export default function UserManagePage({ mode, showToast }: UserManagePageProps) {
+export default function UserManagePage({ user, showToast }: UserManagePageProps) {
   const [users, setUsers] = useState<UserData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -61,53 +64,21 @@ export default function UserManagePage({ mode, showToast }: UserManagePageProps)
 
   useEffect(() => {
     loadUsers();
-  }, [mode]);
+  }, []);
 
   const loadUsers = async () => {
     setIsLoading(true);
     try {
       const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
-      const endpoint = mode === 'pending' 
-        ? '/api/admin/pending-users'
-        : '/api/merchant/employees';
-      
-      const response = await fetch(endpoint, {
+      const response = await fetch('/api/merchant/employees', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
-      
-      if (mode === 'pending') {
-        setUsers(data.users || []);
-      } else {
-        setUsers(data.employees || data || []);
-      }
+      setUsers(data.employees || data || []);
     } catch (error) {
       showToast('加载失败', 'error');
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleApprove = async (userId: string, approve: boolean) => {
-    try {
-      const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
-      const response = await fetch(`/api/admin/approve-user/${userId}`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ approve })
-      });
-      const data = await response.json();
-      if (data.success) {
-        showToast(approve ? '已通过审核' : '已拒绝');
-        loadUsers();
-      } else {
-        showToast(data.error || '操作失败', 'error');
-      }
-    } catch (error) {
-      showToast('操作失败', 'error');
     }
   };
 
@@ -132,6 +103,19 @@ export default function UserManagePage({ mode, showToast }: UserManagePageProps)
     }
   };
 
+  // 判断是否有权限编辑指定用户（同级及以上不可编辑）
+  const canEditUser = (targetRole?: string) => {
+    const myRole = user?.role || 'employee';
+    if (myRole === 'admin') return true;
+    if (myRole === 'manager') {
+      return targetRole !== 'manager' && targetRole !== 'admin';
+    }
+    if (myRole === 'supervisor') {
+      return targetRole !== 'manager' && targetRole !== 'admin' && targetRole !== 'supervisor';
+    }
+    return false;
+  };
+
   // 过滤用户
   const filteredUsers = users.filter(u => {
     if (filterRole !== 'all' && u.role !== filterRole) return false;
@@ -153,8 +137,8 @@ export default function UserManagePage({ mode, showToast }: UserManagePageProps)
     pending: users.filter(u => u.status === 'pending').length,
   };
 
-  const pageTitle = mode === 'pending' ? '待审核用户' : '员工管理';
-  const pageSubtitle = mode === 'pending' ? '审核新用户注册申请' : '管理商户员工账号';
+  const pageTitle = '员工管理';
+  const pageSubtitle = '管理商户员工账号及设置收益比例';
 
   return (
     <div className="space-y-6">
@@ -163,22 +147,20 @@ export default function UserManagePage({ mode, showToast }: UserManagePageProps)
         title={pageTitle}
         subtitle={pageSubtitle}
         action={
-          mode === 'employees' && (
-            <Button
-              variant="primary"
-              icon={<Plus className="w-4 h-4" />}
-              onClick={() => setShowCreate(true)}
-            >
-              添加员工
-            </Button>
-          )
+          <Button
+            variant="primary"
+            icon={<Plus className="w-4 h-4" />}
+            onClick={() => setShowCreate(true)}
+          >
+            添加账号
+          </Button>
         }
       />
 
       {/* 统计卡片 */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <StatCard
-          title={mode === 'pending' ? '待审核' : '总员工数'}
+          title="总员工数"
           value={stats.total}
           icon={<Users className="w-5 h-5" />}
           color="blue"
@@ -189,14 +171,6 @@ export default function UserManagePage({ mode, showToast }: UserManagePageProps)
           icon={<CheckCircle className="w-5 h-5" />}
           color="green"
         />
-        {mode === 'pending' && (
-          <StatCard
-            title="待处理"
-            value={stats.pending}
-            icon={<Clock className="w-5 h-5" />}
-            color="yellow"
-          />
-        )}
       </div>
 
       {/* 搜索和筛选 */}
@@ -216,17 +190,16 @@ export default function UserManagePage({ mode, showToast }: UserManagePageProps)
             </div>
 
             {/* 角色筛选 */}
-            {mode === 'employees' && (
-              <select
-                value={filterRole}
-                onChange={(e) => setFilterRole(e.target.value)}
-                className="px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              >
-                <option value="all">全部角色</option>
-                <option value="supervisor">主管</option>
-                <option value="employee">员工</option>
-              </select>
-            )}
+            <select
+              value={filterRole}
+              onChange={(e) => setFilterRole(e.target.value)}
+              className="px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            >
+              <option value="all">全部角色</option>
+              <option value="manager">经理</option>
+              <option value="supervisor">主管</option>
+              <option value="employee">员工</option>
+            </select>
           </div>
         </CardContent>
       </Card>
@@ -242,24 +215,23 @@ export default function UserManagePage({ mode, showToast }: UserManagePageProps)
             <div className="text-center py-12">
               <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
               <p className="text-gray-500 dark:text-gray-400">
-                {mode === 'pending' ? '暂无待审核用户' : '暂无员工'}
+                暂无员工
               </p>
-              {mode === 'employees' && (
-                <Button
-                  variant="primary"
-                  size="sm"
-                  className="mt-4"
-                  onClick={() => setShowCreate(true)}
-                >
-                  添加第一个员工
-                </Button>
-              )}
+              <Button
+                variant="primary"
+                size="sm"
+                className="mt-4"
+                onClick={() => setShowCreate(true)}
+              >
+                添加第一个员工
+              </Button>
             </div>
           ) : (
             <div className="divide-y divide-gray-100 dark:divide-gray-700">
               {filteredUsers.map((u) => {
                 const roleConfig = ROLE_CONFIG[u.role || 'employee'] || ROLE_CONFIG.employee;
                 const statusConfig = STATUS_CONFIG[u.status || 'active'] || STATUS_CONFIG.active;
+                const isEditable = canEditUser(u.role);
 
                 return (
                   <motion.div
@@ -275,42 +247,31 @@ export default function UserManagePage({ mode, showToast }: UserManagePageProps)
 
                     {/* 用户信息 */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 mb-1">
                         <h3 className="font-medium text-gray-900 dark:text-white">
                           {u.display_name || u.name || '未设置昵称'}
                         </h3>
                         <Badge variant={roleConfig.color}>{roleConfig.label}</Badge>
-                        {mode === 'employees' && (
-                          <Badge variant={statusConfig.color}>{statusConfig.label}</Badge>
+                        <Badge variant={statusConfig.color}>{statusConfig.label}</Badge>
+                        {u.creator_name && (
+                          <Badge variant="default" className="bg-gray-100 text-gray-600 border border-gray-200">
+                            所属: {u.creator_name}
+                          </Badge>
                         )}
                       </div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{u.email}</p>
-                      <p className="text-xs text-gray-400 dark:text-gray-500">
-                        注册于 {u.created_at ? new Date(u.created_at).toLocaleDateString() : '-'}
-                      </p>
+                      <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400 truncate">
+                        <span>{u.email}</span>
+                        {u.profit_share_rate !== undefined && (
+                          <span>分润比例: {u.profit_share_rate}%</span>
+                        )}
+                        <span className="text-xs text-gray-400 dark:text-gray-500">
+                          注册于 {u.created_at ? new Date(u.created_at).toLocaleDateString() : '-'}
+                        </span>
+                      </div>
                     </div>
 
                     {/* 操作按钮 */}
-                    {mode === 'pending' ? (
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="success"
-                          size="sm"
-                          icon={<CheckCircle className="w-4 h-4" />}
-                          onClick={() => handleApprove(u.id, true)}
-                        >
-                          通过
-                        </Button>
-                        <Button
-                          variant="danger"
-                          size="sm"
-                          icon={<XCircle className="w-4 h-4" />}
-                          onClick={() => handleApprove(u.id, false)}
-                        >
-                          拒绝
-                        </Button>
-                      </div>
-                    ) : (
+                    {isEditable && (
                       <div className="flex items-center gap-2">
                         <Button
                           variant="ghost"
@@ -344,6 +305,7 @@ export default function UserManagePage({ mode, showToast }: UserManagePageProps)
           loadUsers();
         }}
         showToast={showToast}
+        currentUserRole={user?.role || 'employee'}
       />
 
       {/* 编辑用户弹窗 */}
@@ -355,6 +317,7 @@ export default function UserManagePage({ mode, showToast }: UserManagePageProps)
           loadUsers();
         }}
         showToast={showToast}
+        currentUserRole={user?.role || 'employee'}
       />
     </div>
   );
@@ -366,11 +329,13 @@ function CreateEmployeeModal({
   onClose,
   onSuccess,
   showToast,
+  currentUserRole,
 }: {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
   showToast: (msg: string, type?: 'success' | 'error') => void;
+  currentUserRole: string;
 }) {
   const [form, setForm] = useState({
     email: '',
@@ -472,6 +437,9 @@ function CreateEmployeeModal({
           >
             <option value="employee">员工</option>
             <option value="supervisor">主管</option>
+            {(currentUserRole === 'manager' || currentUserRole === 'admin') && (
+              <option value="manager">经理</option>
+            )}
           </select>
         </div>
 
@@ -494,11 +462,13 @@ function EditUserModal({
   onClose,
   onSuccess,
   showToast,
+  currentUserRole,
 }: {
   user: UserData | null;
   onClose: () => void;
   onSuccess: () => void;
   showToast: (msg: string, type?: 'success' | 'error') => void;
+  currentUserRole: string;
 }) {
   const [form, setForm] = useState({
     display_name: user?.display_name || user?.name || '',
@@ -589,6 +559,9 @@ function EditUserModal({
           >
             <option value="employee">员工</option>
             <option value="supervisor">主管</option>
+            {(currentUserRole === 'manager' || currentUserRole === 'admin') && (
+              <option value="manager">经理</option>
+            )}
           </select>
         </div>
 

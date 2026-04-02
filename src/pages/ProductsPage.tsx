@@ -23,6 +23,7 @@ interface ProductsPageProps {
   handleBack: () => void;
   setCurrentView: (view: string) => void;
   showToast: (msg: string, type?: 'success' | 'error') => void;
+  setSharingProduct: (product: any) => void;
 }
 
 interface Product {
@@ -47,14 +48,14 @@ const PRODUCT_CATEGORIES = [
   { id: 'other', name: '其他', icon: '✨' },
 ];
 
-export default function ProductsPage({ user, handleBack, setCurrentView, showToast }: ProductsPageProps) {
+export default function ProductsPage({ user, handleBack, setCurrentView, showToast, setSharingProduct }: ProductsPageProps) {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
   const [filterCategory, setFilterCategory] = useState('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [sharingProduct, setSharingProduct] = useState<Product | null>(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   useEffect(() => {
     fetchProducts();
@@ -83,14 +84,19 @@ export default function ProductsPage({ user, handleBack, setCurrentView, showToa
     
     try {
       const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
-      await fetch(`/api/products/${productId}`, {
+      const response = await fetch(`/api/products/${productId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      showToast('商品已删除');
-      fetchProducts();
+      if (response.ok) {
+        showToast('商品已删除');
+        fetchProducts();
+      } else {
+        const data = await response.json();
+        showToast(data.error || '删除失败', 'error');
+      }
     } catch (error) {
-      showToast('删除失败', 'error');
+      showToast('网络错误，删除失败', 'error');
     }
   };
 
@@ -289,7 +295,7 @@ export default function ProductsPage({ user, handleBack, setCurrentView, showToa
                       variant="ghost"
                       size="sm"
                       icon={<Edit className="w-4 h-4" />}
-                      onClick={() => showToast('编辑功能开发中')}
+                      onClick={() => setEditingProduct(product)}
                     />
                     <Button
                       variant="ghost"
@@ -316,7 +322,144 @@ export default function ProductsPage({ user, handleBack, setCurrentView, showToa
         }}
         onNavigate={setCurrentView}
       />
+
+      {/* 编辑商品弹窗 */}
+      <EditProductModal
+        product={editingProduct}
+        onClose={() => setEditingProduct(null)}
+        onSave={() => {
+          setEditingProduct(null);
+          fetchProducts();
+        }}
+        showToast={showToast}
+        user={user}
+      />
     </div>
+  );
+}
+
+// 编辑商品弹窗组件
+function EditProductModal({ 
+  product, 
+  onClose, 
+  onSave, 
+  showToast,
+  user 
+}: { 
+  product: Product | null; 
+  onClose: () => void; 
+  onSave: () => void;
+  showToast: (msg: string, type?: 'success' | 'error') => void;
+  user: AuthUser | null;
+}) {
+  const [form, setForm] = useState({
+    name: product?.name || '',
+    price: product?.price?.toString() || '',
+    description: product?.description || '',
+    category: product?.category || 'other',
+    imageUrl: product?.image || '',
+    templateId: product?.template_id || 'default',
+  });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (product) {
+      setForm({
+        name: product.name || '',
+        price: product.price?.toString() || '',
+        description: product.description || '',
+        category: product.category || 'other',
+        imageUrl: product.image || '',
+        templateId: product.template_id || 'default',
+      });
+    }
+  }, [product]);
+
+  const handleSave = async () => {
+    if (!form.name || !form.price) {
+      showToast('请填写商品名称和价格', 'error');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
+      const response = await fetch(`/api/products/${product?.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: form.name,
+          price: parseFloat(form.price),
+          description: form.description,
+          category: form.category,
+          image: form.imageUrl,
+          template_id: form.templateId,
+        }),
+      });
+
+      if (response.ok) {
+        showToast('商品已更新');
+        onSave();
+      } else {
+        const data = await response.json();
+        showToast(data.error || '更新失败', 'error');
+      }
+    } catch (error) {
+      showToast('更新失败', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!product) return null;
+
+  return (
+    <Modal isOpen={!!product} onClose={onClose} title="编辑商品">
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">商品名称</label>
+          <input
+            type="text"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">价格 (元)</label>
+          <input
+            type="number"
+            step="0.01"
+            value={form.price}
+            onChange={(e) => setForm({ ...form, price: e.target.value })}
+            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">商品描述</label>
+          <textarea
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            rows={3}
+            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+          />
+        </div>
+
+        <div className="flex gap-3 pt-4">
+          <Button variant="secondary" className="flex-1" onClick={onClose}>
+            取消
+          </Button>
+          <Button variant="primary" className="flex-1" loading={saving} onClick={handleSave}>
+            保存
+          </Button>
+        </div>
+      </div>
+    </Modal>
   );
 }
 

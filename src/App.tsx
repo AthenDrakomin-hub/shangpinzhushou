@@ -42,7 +42,7 @@ import H5ProductPage from './pages/H5ProductPage';
 import EmailVerificationBanner from './components/EmailVerificationBanner';
 import AppLayout from './components/ui/AppLayout';
 
-type View = 'landing' | 'dashboard' | 'products' | 'product_create' | 'orders' | 'product_checkout' | 'h5_product' | 'payment_result' | 'wallet' | 'earnings' | 'withdraw' | 'withdrawals' | 'forgot_password' | 'reset_password' | 'admin_pending_users' | 'merchant_employees' | 'merchant_withdrawals' | 'settings';
+type View = 'landing' | 'dashboard' | 'products' | 'product_create' | 'orders' | 'product_checkout' | 'h5_product' | 'payment_result' | 'wallet' | 'earnings' | 'withdraw' | 'withdrawals' | 'forgot_password' | 'reset_password' | 'merchant_employees' | 'merchant_withdrawals' | 'settings';
 
 // ==================== Main App Component ====================
 import ShareProductModal from './components/ShareProductModal';
@@ -268,7 +268,7 @@ export default function App() {
   }
 
   // 判断是否是登录后的页面
-  const isAuthenticatedPages: View[] = ['dashboard', 'products', 'product_create', 'orders', 'wallet', 'earnings', 'withdraw', 'withdrawals', 'admin_pending_users', 'merchant_employees', 'merchant_withdrawals', 'settings'];
+  const isAuthenticatedPages: View[] = ['dashboard', 'products', 'product_create', 'orders', 'wallet', 'earnings', 'withdraw', 'withdrawals', 'merchant_employees', 'merchant_withdrawals', 'settings'];
 
   return (
     <div className="min-h-screen bg-[#F2F3F5] font-sans selection:bg-blue-500/30 overflow-x-hidden">
@@ -297,15 +297,14 @@ export default function App() {
           )}
           
           {currentView === 'dashboard' && <DashboardPage key="dashboard" user={user} onNavigate={(view) => setCurrentView(view as View)} />}
-          {currentView === 'products' && <ProductsPage key="products" handleBack={handleBack} setCurrentView={(view) => setCurrentView(view as View)} showToast={showToast} user={user} />}
+          {currentView === 'products' && <ProductsPage key="products" handleBack={handleBack} setCurrentView={(view) => setCurrentView(view as View)} showToast={showToast} user={user} setSharingProduct={setSharingProduct} />}
           {currentView === 'product_create' && <ProductCreatePage key="product_create" handleBack={handleBack} setCurrentView={(view) => setCurrentView(view as View)} showToast={showToast} user={user} setSharingProduct={setSharingProduct} />}
           {currentView === 'orders' && <OrdersPage key="orders" handleBack={handleBack} showToast={showToast} user={user} />}
           {currentView === 'wallet' && <StaffWallet key="wallet" handleBack={handleBack} setCurrentView={(view) => setCurrentView(view as View)} showToast={showToast} user={user} />}
           {currentView === 'earnings' && <EarningsPage key="earnings" handleBack={handleBack} setCurrentView={(view) => setCurrentView(view as View)} showToast={showToast} user={user} />}
           {currentView === 'withdraw' && <WithdrawPage key="withdraw" handleBack={handleBack} setCurrentView={(view) => setCurrentView(view as View)} showToast={showToast} user={user} />}
           {currentView === 'withdrawals' && <WithdrawalManagePage key="withdrawals" mode="user" user={user} onNavigate={setCurrentView as (view: string) => void} showToast={showToast} />}
-          {currentView === 'admin_pending_users' && <UserManagePage key="admin_pending_users" mode="pending" showToast={showToast} />}
-          {currentView === 'merchant_employees' && <UserManagePage key="merchant_employees" mode="employees" showToast={showToast} />}
+          {currentView === 'merchant_employees' && <UserManagePage key="merchant_employees" user={user} showToast={showToast} />}
           {currentView === 'merchant_withdrawals' && <WithdrawalManagePage key="merchant_withdrawals" mode="merchant" user={user} onNavigate={setCurrentView as (view: string) => void} showToast={showToast} />}
           {currentView === 'settings' && <SettingsPage key="settings" user={user} showToast={showToast} onLogout={handleLogout} />}
         </AppLayout>

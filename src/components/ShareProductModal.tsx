@@ -37,8 +37,25 @@ export default function ShareProductModal({
 
   const copyShareLink = () => {
     if (!product) return;
-    navigator.clipboard.writeText(getShareLink());
-    showToast('链接已复制到剪贴板');
+    const link = getShareLink();
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(link);
+      showToast('链接已复制到剪贴板');
+    } else {
+      // Fallback for non-HTTPS environments
+      const textArea = document.createElement("textarea");
+      textArea.value = link;
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        showToast('链接已复制到剪贴板');
+      } catch (err) {
+        showToast('复制失败，请手动复制', 'error');
+      }
+      document.body.removeChild(textArea);
+    }
   };
 
   const handleGenerate = async () => {
