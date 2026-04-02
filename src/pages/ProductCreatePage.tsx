@@ -2,108 +2,32 @@
  * 商品创建页面
  * 使用新布局和UI组件
  */
-import { useState, useRef } from 'react';
-import { motion } from 'motion/react';
-import {
-  Image as ImageIcon,
-  X,
-  Plus,
-  ShoppingBag,
-  UtensilsCrossed,
-  Plane,
-  Car,
-  Hotel,
-} from 'lucide-react';
-import { Card, CardContent, Button, Input, PageHeader } from '../components/ui';
-import type { AuthUser } from '../services/authService';
+import React, { useState, useRef } from 'react';
+import { Plus, X, ImageIcon } from 'lucide-react';
+import Button from '../components/ui/Button';
+import Input from '../components/ui/Input';
+import Card, { CardContent } from '../components/ui/Card';
+import PageHeader from '../components/ui/PageHeader';
+import { AuthUser } from '../types';
+import { motion } from 'framer-motion';
 
 interface ProductCreatePageProps {
   user: AuthUser | null;
   handleBack: () => void;
   setCurrentView: (view: string) => void;
   showToast: (msg: string, type?: 'success' | 'error') => void;
+  setSharingProduct?: (product: any) => void;
 }
 
-interface Template {
-  id: string;
-  name: string;
-  slogan: string;
-  icon: React.ReactNode;
-  bgColor: string;
-}
-
-const TEMPLATES: Template[] = [
-  {
-    id: 'meituan',
-    name: '美团外卖',
-    slogan: 'Hi~ 你和我的距离只差一顿外卖~',
-    icon: <UtensilsCrossed className="w-5 h-5 text-white" />,
-    bgColor: 'bg-[#FFD000]',
-  },
-  {
-    id: 'pinduoduo',
-    name: '拼多多',
-    slogan: '帮我付一下这件商品吧~',
-    icon: <ShoppingBag className="w-5 h-5 text-white" />,
-    bgColor: 'bg-[#E02E24]',
-  },
-  {
-    id: 'ctrip-flight',
-    name: '携程机票',
-    slogan: '亲爱的朋友，帮我完成这趟旅程吧~',
-    icon: <Plane className="w-5 h-5 text-white" />,
-    bgColor: 'bg-[#0086F6]',
-  },
-  {
-    id: 'didi',
-    name: '滴滴出行',
-    slogan: '帮我付个车费，让我平安到达目的地~',
-    icon: <Car className="w-5 h-5 text-white" />,
-    bgColor: 'bg-[#FF8903]',
-  },
-  {
-    id: 'jd',
-    name: '京东购物',
-    slogan: '我在京东挑了样好东西，请你帮我付款吧~',
-    icon: <ShoppingBag className="w-5 h-5 text-white" />,
-    bgColor: 'bg-[#F2270C]',
-  },
-  {
-    id: 'ctrip-hotel',
-    name: '携程酒店',
-    slogan: '订好了酒店，你来买单吧~',
-    icon: <Hotel className="w-5 h-5 text-white" />,
-    bgColor: 'bg-[#0086F6]',
-  },
-];
-
-const PRODUCT_CATEGORIES = [
-  { id: 'digital', name: '数码电子', icon: '📱' },
-  { id: 'clothing', name: '服装鞋帽', icon: '👕' },
-  { id: 'food', name: '食品饮料', icon: '🍰' },
-  { id: 'home', name: '家居用品', icon: '🏠' },
-  { id: 'beauty', name: '美妆护肤', icon: '💄' },
-  { id: 'sports', name: '运动户外', icon: '⚽' },
-  { id: 'books', name: '图书文具', icon: '📚' },
-  { id: 'services', name: '服务类', icon: '🛠️' },
-  { id: 'other', name: '其他', icon: '📦' },
-];
-
-const PAY_METHOD_CONFIG: Record<string, { label: string; icon: string; bgColor: string; available: boolean }> = {
-  wechat: { label: '微信支付', icon: '💚', bgColor: 'bg-green-100', available: true },
-  alipay: { label: '支付宝', icon: '💙', bgColor: 'bg-blue-100', available: true },
-  bank: { label: '银行卡', icon: '🏦', bgColor: 'bg-orange-100', available: false },
-};
-
-export default function ProductCreatePage({ user, handleBack, setCurrentView, showToast }: ProductCreatePageProps) {
+export default function ProductCreatePage({ user, handleBack, setCurrentView, showToast, setSharingProduct }: ProductCreatePageProps) {
   const [product, setProduct] = useState({
     name: '',
     price: '',
     description: '',
     imageUrl: '',
-    category: '',
+    category: 'other',
     templateId: 'default',
-    supportedPayMethods: ['wechat'] as string[],
+    supportedPayMethods: ['wechat', 'alipay', 'bank'],
   });
   const [isLoading, setIsLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -174,6 +98,10 @@ export default function ProductCreatePage({ user, handleBack, setCurrentView, sh
       if (response.ok) {
         showToast('商品创建成功');
         setCurrentView('products');
+        // 触发分享弹窗，注意从 data 直接取返回的商品对象
+        if (setSharingProduct && data) {
+          setSharingProduct(data);
+        }
       } else {
         showToast(data.error || '创建失败', 'error');
       }
@@ -304,170 +232,9 @@ export default function ProductCreatePage({ user, handleBack, setCurrentView, sh
                 className="w-full px-4 py-2.5 rounded-lg border transition-all duration-200 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
               />
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                商品分类
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                {PRODUCT_CATEGORIES.map((cat) => (
-                  <button
-                    key={cat.id}
-                    onClick={() => setProduct({ ...product, category: cat.id })}
-                    className={`py-2.5 rounded-lg text-center transition-all ${
-                      product.category === cat.id
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600'
-                    }`}
-                  >
-                    <span className="text-base">{cat.icon}</span>
-                    <p className="text-xs mt-0.5 font-medium">{cat.name}</p>
-                  </button>
-                ))}
-              </div>
-            </div>
           </CardContent>
         </Card>
       </div>
-
-      {/* 分享模板选择 */}
-      <Card>
-        <CardContent className="p-6">
-          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">分享模板风格</h3>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">选择分享卡片的视觉风格</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-            {/* 默认模板 */}
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setProduct({ ...product, templateId: 'default' })}
-              className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
-                product.templateId === 'default'
-                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                  : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
-              }`}
-            >
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white">
-                <ShoppingBag className="w-5 h-5" />
-              </div>
-              <div className="flex-1 text-left">
-                <p className="font-semibold text-sm text-gray-900 dark:text-white">默认风格</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">简洁现代的商品展示</p>
-              </div>
-              <div
-                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                  product.templateId === 'default' ? 'border-blue-600 bg-blue-600' : 'border-gray-300 dark:border-gray-600'
-                }`}
-              >
-                {product.templateId === 'default' && (
-                  <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                )}
-              </div>
-            </motion.button>
-
-            {/* 品牌模板 */}
-            {TEMPLATES.map((template) => (
-              <motion.button
-                key={template.id}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setProduct({ ...product, templateId: template.id })}
-                className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
-                  product.templateId === template.id
-                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                    : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
-                }`}
-              >
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white ${template.bgColor}`}>
-                  {template.icon}
-                </div>
-                <div className="flex-1 text-left">
-                  <p className="font-semibold text-sm text-gray-900 dark:text-white">{template.name}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{template.slogan}</p>
-                </div>
-                <div
-                  className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                    product.templateId === template.id ? 'border-blue-600 bg-blue-600' : 'border-gray-300 dark:border-gray-600'
-                  }`}
-                >
-                  {product.templateId === template.id && (
-                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </div>
-              </motion.button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 下单方式选择 */}
-      <Card>
-        <CardContent className="p-6">
-          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">支持的下单方式 *</h3>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">选择客户可以使用的下单方式</p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {Object.entries(PAY_METHOD_CONFIG).map(([key, config]) => {
-              const isSelected = product.supportedPayMethods.includes(key);
-              return (
-                <motion.button
-                  key={key}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => {
-                    if (isSelected) {
-                      if (product.supportedPayMethods.length > 1) {
-                        setProduct({
-                          ...product,
-                          supportedPayMethods: product.supportedPayMethods.filter((m) => m !== key),
-                        });
-                      }
-                    } else {
-                      setProduct({
-                        ...product,
-                        supportedPayMethods: [...product.supportedPayMethods, key],
-                      });
-                    }
-                  }}
-                  className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
-                    isSelected
-                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                      : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
-                  }`}
-                >
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${config.bgColor}`}>
-                    {config.icon}
-                  </div>
-                  <div className="flex-1 text-left">
-                    <p className={`font-semibold text-sm ${isSelected ? 'text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-400'}`}>
-                      {config.label}
-                    </p>
-                    {!config.available && <p className="text-xs text-orange-500">即将支持</p>}
-                  </div>
-                  <div
-                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-                      isSelected ? 'border-blue-600 bg-blue-600' : 'border-gray-300 dark:border-gray-600'
-                    }`}
-                  >
-                    {isSelected && (
-                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
-                  </div>
-                </motion.button>
-              );
-            })}
-          </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-3 flex items-center gap-1">
-            <span className="text-orange-500">💡</span>
-            提示：请先在"设置"中配置相应的支付渠道
-          </p>
-        </CardContent>
-      </Card>
 
       {/* 提交按钮 */}
       <div className="flex justify-end gap-3">

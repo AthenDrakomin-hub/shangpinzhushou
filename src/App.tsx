@@ -38,12 +38,15 @@ import EarningsPage from './pages/EarningsPage';
 import WithdrawPage from './pages/WithdrawPage';
 import PaymentResultPage from './pages/PaymentResultPage';
 import ProductCheckoutPage from './pages/ProductCheckoutPage';
+import H5ProductPage from './pages/H5ProductPage';
 import EmailVerificationBanner from './components/EmailVerificationBanner';
 import AppLayout from './components/ui/AppLayout';
 
-type View = 'landing' | 'dashboard' | 'products' | 'product_create' | 'orders' | 'product_checkout' | 'payment_result' | 'wallet' | 'earnings' | 'withdraw' | 'withdrawals' | 'forgot_password' | 'reset_password' | 'admin_pending_users' | 'merchant_employees' | 'merchant_withdrawals' | 'settings';
+type View = 'landing' | 'dashboard' | 'products' | 'product_create' | 'orders' | 'product_checkout' | 'h5_product' | 'payment_result' | 'wallet' | 'earnings' | 'withdraw' | 'withdrawals' | 'forgot_password' | 'reset_password' | 'admin_pending_users' | 'merchant_employees' | 'merchant_withdrawals' | 'settings';
 
 // ==================== Main App Component ====================
+import ShareProductModal from './components/ShareProductModal';
+
 export default function App() {
   const [currentView, setCurrentView] = useState<View>('landing');
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -55,6 +58,7 @@ export default function App() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [checkoutProductId, setCheckoutProductId] = useState<string | null>(null);
   const [paymentResultOrderId, setPaymentResultOrderId] = useState<string | null>(null);
+  const [sharingProduct, setSharingProduct] = useState<any>(null);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
@@ -64,10 +68,20 @@ export default function App() {
   // Handle checkout route
   useEffect(() => {
     const path = window.location.pathname;
-    const checkoutMatch = path.match(/^\/checkout\/([a-f0-9-]+)$/);
+    
+    // 匹配 H5 页面路由
+    const h5Match = path.match(/^\/h5\/([a-zA-Z0-9_-]+)$/);
+    if (h5Match) {
+      setCheckoutProductId(h5Match[1]);
+      setCurrentView('h5_product');
+      return;
+    }
+    
+    const checkoutMatch = path.match(/^\/checkout\/([a-zA-Z0-9_-]+)$/);
     if (checkoutMatch) {
       setCheckoutProductId(checkoutMatch[1]);
       setCurrentView('product_checkout');
+      return;
     }
     
     // Handle payment result route
@@ -263,6 +277,7 @@ export default function App() {
       {currentView === 'forgot_password' && <ForgotPasswordPage key="forgot_password" handleBack={handleBack} showToast={showToast} />}
       {currentView === 'reset_password' && <ResetPasswordPage key="reset_password" handleBack={handleBack} showToast={showToast} onSuccess={() => setCurrentView('landing')} />}
       {currentView === 'product_checkout' && checkoutProductId && <ProductCheckoutPage key="product_checkout" productId={checkoutProductId} handleBack={() => window.history.back()} showToast={showToast} />}
+      {currentView === 'h5_product' && checkoutProductId && <H5ProductPage key="h5_product" productId={checkoutProductId} onClose={() => window.history.back()} />}
       {currentView === 'payment_result' && paymentResultOrderId && <PaymentResultPage key="payment_result" orderId={paymentResultOrderId} />}
 
       {/* 登录后的页面 - 使用 AppLayout 包裹 */}
@@ -283,7 +298,7 @@ export default function App() {
           
           {currentView === 'dashboard' && <DashboardPage key="dashboard" user={user} onNavigate={(view) => setCurrentView(view as View)} />}
           {currentView === 'products' && <ProductsPage key="products" handleBack={handleBack} setCurrentView={(view) => setCurrentView(view as View)} showToast={showToast} user={user} />}
-          {currentView === 'product_create' && <ProductCreatePage key="product_create" handleBack={handleBack} setCurrentView={(view) => setCurrentView(view as View)} showToast={showToast} user={user} />}
+          {currentView === 'product_create' && <ProductCreatePage key="product_create" handleBack={handleBack} setCurrentView={(view) => setCurrentView(view as View)} showToast={showToast} user={user} setSharingProduct={setSharingProduct} />}
           {currentView === 'orders' && <OrdersPage key="orders" handleBack={handleBack} showToast={showToast} user={user} />}
           {currentView === 'wallet' && <StaffWallet key="wallet" handleBack={handleBack} setCurrentView={(view) => setCurrentView(view as View)} showToast={showToast} user={user} />}
           {currentView === 'earnings' && <EarningsPage key="earnings" handleBack={handleBack} setCurrentView={(view) => setCurrentView(view as View)} showToast={showToast} user={user} />}
@@ -295,6 +310,13 @@ export default function App() {
           {currentView === 'settings' && <SettingsPage key="settings" user={user} showToast={showToast} onLogout={handleLogout} />}
         </AppLayout>
       )}
+
+      {/* 分享海报弹窗（全局可用） */}
+      <ShareProductModal 
+        product={sharingProduct} 
+        onClose={() => setSharingProduct(null)} 
+        showToast={showToast} 
+      />
 
       {/* 已删除第二个 AnimatePresence 以解决 React 19 兼容性问题 */}
         {toast && (

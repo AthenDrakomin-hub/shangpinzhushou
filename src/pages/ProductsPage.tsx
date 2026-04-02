@@ -40,11 +40,11 @@ interface Product {
 }
 
 const PRODUCT_CATEGORIES = [
-  { id: 'digital', name: '虚拟商品', icon: '📱' },
-  { id: 'physical', name: '实物商品', icon: '📦' },
-  { id: 'service', name: '服务类', icon: '🛠️' },
-  { id: 'food', name: '食品饮料', icon: '🍔' },
-  { id: 'other', name: '其他', icon: '📋' },
+  { id: 'daifu', name: '代付', icon: '💳' },
+  { id: 'meituan', name: '美团', icon: '🛵' },
+  { id: 'eleme', name: '饿了么', icon: '🍱' },
+  { id: 'jd', name: '京东', icon: '📦' },
+  { id: 'other', name: '其他', icon: '✨' },
 ];
 
 export default function ProductsPage({ user, handleBack, setCurrentView, showToast }: ProductsPageProps) {
@@ -54,7 +54,7 @@ export default function ProductsPage({ user, handleBack, setCurrentView, showToa
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
   const [filterCategory, setFilterCategory] = useState('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [sharingProduct, setSharingProduct] = useState<Product | null>(null);
 
   useEffect(() => {
     fetchProducts();
@@ -117,7 +117,7 @@ export default function ProductsPage({ user, handleBack, setCurrentView, showToa
   };
 
   const copyShareLink = (productId: string) => {
-    const link = `${window.location.origin}/checkout/${productId}`;
+    const link = `${window.location.origin}/h5/${productId}`;
     navigator.clipboard.writeText(link);
     showToast('链接已复制到剪贴板');
   };
@@ -277,7 +277,7 @@ export default function ProductsPage({ user, handleBack, setCurrentView, showToa
                       variant="ghost"
                       size="sm"
                       icon={<Share2 className="w-4 h-4" />}
-                      onClick={() => copyShareLink(product.id)}
+                      onClick={() => setSharingProduct(product)}
                     />
                     <Button
                       variant="ghost"
@@ -289,7 +289,7 @@ export default function ProductsPage({ user, handleBack, setCurrentView, showToa
                       variant="ghost"
                       size="sm"
                       icon={<Edit className="w-4 h-4" />}
-                      onClick={() => setEditingProduct(product)}
+                      onClick={() => showToast('编辑功能开发中')}
                     />
                     <Button
                       variant="ghost"
@@ -306,18 +306,6 @@ export default function ProductsPage({ user, handleBack, setCurrentView, showToa
         </CardContent>
       </Card>
 
-      {/* 编辑商品弹窗 */}
-      <EditProductModal
-        product={editingProduct}
-        onClose={() => setEditingProduct(null)}
-        onSave={() => {
-          setEditingProduct(null);
-          fetchProducts();
-        }}
-        showToast={showToast}
-        user={user}
-      />
-
       {/* 创建商品弹窗 */}
       <CreateProductModal
         isOpen={showCreateModal}
@@ -329,142 +317,6 @@ export default function ProductsPage({ user, handleBack, setCurrentView, showToa
         onNavigate={setCurrentView}
       />
     </div>
-  );
-}
-
-// 编辑商品弹窗组件
-function EditProductModal({ 
-  product, 
-  onClose, 
-  onSave, 
-  showToast,
-  user 
-}: { 
-  product: Product | null; 
-  onClose: () => void; 
-  onSave: () => void;
-  showToast: (msg: string, type?: 'success' | 'error') => void;
-  user: AuthUser | null;
-}) {
-  const [form, setForm] = useState({
-    name: product?.name || '',
-    price: product?.price?.toString() || '',
-    description: product?.description || '',
-    category: product?.category || 'other',
-    imageUrl: product?.image || '',
-    templateId: product?.template_id || 'default',
-  });
-  const [saving, setSaving] = useState(false);
-
-  const handleSave = async () => {
-    if (!form.name || !form.price) {
-      showToast('请填写商品名称和价格', 'error');
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
-      const response = await fetch(`/api/products/${product?.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          name: form.name,
-          price: parseFloat(form.price),
-          description: form.description,
-          category: form.category,
-          image: form.imageUrl,
-          template_id: form.templateId,
-        }),
-      });
-
-      if (response.ok) {
-        showToast('商品已更新');
-        onSave();
-      } else {
-        const data = await response.json();
-        showToast(data.error || '更新失败', 'error');
-      }
-    } catch (error) {
-      showToast('更新失败', 'error');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (!product) return null;
-
-  return (
-    <Modal isOpen={!!product} onClose={onClose} title="编辑商品">
-      <div className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">商品名称</label>
-          <input
-            type="text"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">价格 (元)</label>
-          <input
-            type="number"
-            step="0.01"
-            value={form.price}
-            onChange={(e) => setForm({ ...form, price: e.target.value })}
-            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">分类</label>
-          <select
-            value={form.category}
-            onChange={(e) => setForm({ ...form, category: e.target.value })}
-            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-          >
-            {PRODUCT_CATEGORIES.map(cat => (
-              <option key={cat.id} value={cat.id}>{cat.icon} {cat.name}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">商品图片</label>
-          <input
-            type="text"
-            value={form.imageUrl}
-            onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
-            placeholder="输入图片URL"
-            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">描述</label>
-          <textarea
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-            rows={3}
-            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white resize-none"
-          />
-        </div>
-
-        <div className="flex gap-3 pt-4">
-          <Button variant="secondary" className="flex-1" onClick={onClose}>
-            取消
-          </Button>
-          <Button variant="primary" className="flex-1" loading={saving} onClick={handleSave}>
-            保存
-          </Button>
-        </div>
-      </div>
-    </Modal>
   );
 }
 

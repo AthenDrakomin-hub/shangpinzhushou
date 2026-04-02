@@ -156,8 +156,8 @@ export default function LoginPage({ handleLogin, isAuthLoading, authError, onFor
 
         {/* 底部信息 */}
         <div className="text-center mt-6 space-y-2">
-          <p className="text-gray-500 dark:text-gray-400 text-sm">
-            注：企业内容商品分享管理系统，请遵守合法合规的前提下使用
+          <p className="text-gray-500 dark:text-gray-400 text-xs">
+            注：企业内部商品分享管理系统，请在遵守合法合规的前提下使用
           </p>
           <p className="text-gray-400 dark:text-gray-500 text-xs">
             v{version}

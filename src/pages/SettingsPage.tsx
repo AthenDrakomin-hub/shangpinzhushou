@@ -18,6 +18,9 @@ import {
   LogOut,
   Eye,
   EyeOff,
+  CreditCard,
+  Save,
+  ShieldCheck
 } from 'lucide-react';
 import { Card, CardHeader, CardContent, Button, Badge, PageHeader, Modal } from '../components/ui';
 import type { AuthUser } from '../services/authService';
@@ -39,6 +42,8 @@ interface SettingItem {
 
 export default function SettingsPage({ user, showToast, onLogout }: SettingsPageProps) {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showSecurityModal, setShowSecurityModal] = useState(false);
+  const [showPaymentConfigModal, setShowPaymentConfigModal] = useState(false);
   const [showAboutModal, setShowAboutModal] = useState(false);
   const [notifications, setNotifications] = useState(true);
   const [isDark, setIsDark] = useState(false);
@@ -93,26 +98,24 @@ export default function SettingsPage({ user, showToast, onLogout }: SettingsPage
       onClick: () => setShowPasswordModal(true),
     },
     {
-      id: 'notifications',
-      icon: <Bell className="w-5 h-5" />,
-      title: '消息通知',
-      description: '管理推送通知设置',
-      action: (
-        <button
-          onClick={() => setNotifications(!notifications)}
-          className={`relative w-12 h-6 rounded-full transition-colors ${
-            notifications ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
-          }`}
-        >
-          <motion.div
-            className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow"
-            animate={{ x: notifications ? 24 : 0 }}
-            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-          />
-        </button>
-      ),
+      id: 'security_question',
+      icon: <ShieldCheck className="w-5 h-5" />,
+      title: '密保问题',
+      description: '设置或修改密保问题，用于找回密码',
+      onClick: () => setShowSecurityModal(true),
     },
   ];
+
+  // 只有经理可以看到的支付配置
+  if (user?.role === 'manager' || user?.role === 'admin') {
+    accountSettings.push({
+      id: 'payment_config',
+      icon: <CreditCard className="w-5 h-5" />,
+      title: '支付通道配置',
+      description: '设置收款账户、通道参数等',
+      onClick: () => setShowPaymentConfigModal(true),
+    });
+  }
 
   const appSettings: SettingItem[] = [
     {
@@ -292,6 +295,22 @@ export default function SettingsPage({ user, showToast, onLogout }: SettingsPage
         showToast={showToast}
       />
 
+      {/* 密保问题弹窗 */}
+      <SecurityQuestionModal
+        isOpen={showSecurityModal}
+        onClose={() => setShowSecurityModal(false)}
+        showToast={showToast}
+      />
+
+      {/* 支付配置弹窗 */}
+      {showPaymentConfigModal && (
+        <PaymentConfigModal
+          isOpen={showPaymentConfigModal}
+          onClose={() => setShowPaymentConfigModal(false)}
+          showToast={showToast}
+        />
+      )}
+
       {/* 关于弹窗 */}
       <AboutModal
         isOpen={showAboutModal}
@@ -424,6 +443,267 @@ function PasswordModal({
           </Button>
         </div>
       </div>
+    </Modal>
+  );
+}
+
+// 密保问题弹窗
+function SecurityQuestionModal({
+  isOpen,
+  onClose,
+  showToast
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  showToast: (msg: string, type?: 'success' | 'error') => void;
+}) {
+  const [question, setQuestion] = useState('');
+  const [answer, setAnswer] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const QUESTIONS = [
+    '你出生的城市是哪里？',
+    '你小学班主任的名字是什么？',
+    '你最好的朋友叫什么名字？',
+    '你第一只宠物的名字是什么？',
+    '你最喜欢的电影是什么？'
+  ];
+
+  const handleSubmit = async () => {
+    if (!question || !answer || !password) {
+      showToast('请填写所有必填项', 'error');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/auth/security-question', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          question,
+          answer,
+          password
+        }),
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        showToast('密保问题设置成功');
+        onClose();
+        setQuestion('');
+        setAnswer('');
+        setPassword('');
+      } else {
+        showToast(data.error || '设置失败', 'error');
+      }
+    } catch (error) {
+      showToast('设置失败，请重试', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="设置密保问题">
+      <div className="space-y-4">
+        <p className="text-xs text-gray-500 mb-4">
+          密保问题将用于找回登录密码，请务必牢记您的答案。
+        </p>
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">选择密保问题</label>
+          <select
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+          >
+            <option value="" disabled>请选择一个问题</option>
+            {QUESTIONS.map((q, idx) => (
+              <option key={idx} value={q}>{q}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">密保答案</label>
+          <input
+            type="text"
+            value={answer}
+            onChange={(e) => setAnswer(e.target.value)}
+            placeholder="请输入答案"
+            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">当前登录密码</label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="验证您的身份"
+            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+          />
+        </div>
+
+        <div className="flex gap-3 pt-4">
+          <Button variant="secondary" className="flex-1" onClick={onClose}>取消</Button>
+          <Button variant="primary" className="flex-1" loading={isLoading} onClick={handleSubmit}>保存设置</Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+// 支付配置弹窗
+function PaymentConfigModal({
+  isOpen,
+  onClose,
+  showToast
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  showToast: (msg: string, type?: 'success' | 'error') => void;
+}) {
+  const [config, setConfig] = useState({
+    superpayMerchantOn: '',
+    superpayMerchantKey: '',
+    jiujiuMchId: '',
+    jiujiuSecretKey: ''
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(true);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchConfig();
+    }
+  }, [isOpen]);
+
+  const fetchConfig = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/admin/payment-config', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setConfig({
+          superpayMerchantOn: data.superpayMerchantOn || '',
+          superpayMerchantKey: data.superpayMerchantKey || '',
+          jiujiuMchId: data.jiujiuMchId || '',
+          jiujiuSecretKey: data.jiujiuSecretKey || ''
+        });
+      }
+    } catch (error) {
+      showToast('获取配置失败', 'error');
+    } finally {
+      setIsFetching(false);
+    }
+  };
+
+  const handleSave = async () => {
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/admin/payment-config', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(config)
+      });
+      const data = await response.json();
+      if (response.ok) {
+        showToast('支付配置保存成功并已生效');
+        onClose();
+      } else {
+        showToast(data.error || '保存失败', 'error');
+      }
+    } catch (error) {
+      showToast('保存失败', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="支付通道配置">
+      {isFetching ? (
+        <div className="flex justify-center py-8">
+          <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+            <h3 className="font-medium text-blue-900 mb-1">SuperPay 支付宝配置</h3>
+            <p className="text-xs text-blue-700 mb-4">如果不填写则不启用支付宝通道</p>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">商户编号 (Merchant ON)</label>
+                <input
+                  type="text"
+                  value={config.superpayMerchantOn}
+                  onChange={e => setConfig({...config, superpayMerchantOn: e.target.value})}
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  placeholder="例如: 2410311234"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">商户密钥 (Merchant Key)</label>
+                <input
+                  type="text"
+                  value={config.superpayMerchantKey}
+                  onChange={e => setConfig({...config, superpayMerchantKey: e.target.value})}
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  placeholder="API Key"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-green-50 p-4 rounded-lg border border-green-100">
+            <h3 className="font-medium text-green-900 mb-1">九久支付 微信配置</h3>
+            <p className="text-xs text-green-700 mb-4">如果不填写则不启用微信通道</p>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">商户 ID (Mch ID)</label>
+                <input
+                  type="text"
+                  value={config.jiujiuMchId}
+                  onChange={e => setConfig({...config, jiujiuMchId: e.target.value})}
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  placeholder="例如: 82431"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-700 mb-1">通讯密钥 (Secret Key)</label>
+                <input
+                  type="text"
+                  value={config.jiujiuSecretKey}
+                  onChange={e => setConfig({...config, jiujiuSecretKey: e.target.value})}
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  placeholder="API Key"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <Button variant="secondary" className="flex-1" onClick={onClose}>取消</Button>
+            <Button variant="primary" className="flex-1" loading={isLoading} onClick={handleSave} icon={<Save className="w-4 h-4" />}>
+              保存配置
+            </Button>
+          </div>
+        </div>
+      )}
     </Modal>
   );
 }

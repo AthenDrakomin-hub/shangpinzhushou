@@ -116,6 +116,8 @@ async function initDatabase() {
           secret_key VARCHAR(100),
           whitelist_ip TEXT,
           earnings_rate DECIMAL(5,4) DEFAULT 0.1,
+          security_question VARCHAR(255),
+          security_answer VARCHAR(255),
           created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
           updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
         )
@@ -428,7 +430,78 @@ app.get('/api/auth/me', authMiddleware, async (req: AuthRequest, res: Response) 
   }
 });
 
-// 修改密码
+// 获取密保问题
+app.post('/api/auth/get-security-question', async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: '请提供邮箱' });
+
+    const result = await pool.query('SELECT security_question FROM public.users WHERE email = $1', [email]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: '用户不存在' });
+    }
+
+    const question = result.rows[0].security_question;
+    if (!question) {
+      return res.status(400).json({ error: '该账号未设置密保问题，请联系管理员重置密码' });
+    }
+
+    res.json({ question });
+  } catch (error) {
+    res.status(500).json({ error: '获取密保问题失败' });
+  }
+});
+
+// 通过密保重置密码
+app.post('/api/auth/reset-password-by-security', async (req: Request, res: Response) => {
+  try {
+    const { email, answer, newPassword } = req.body;
+    if (!email || !answer || !newPassword) {
+      return res.status(400).json({ error: '信息不完整' });
+    }
+
+    const result = await pool.query('SELECT id, security_answer FROM public.users WHERE email = $1', [email]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: '用户不存在' });
+    }
+
+    if (result.rows[0].security_answer !== answer) {
+      return res.status(400).json({ error: '密保问题答案错误' });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await pool.query('UPDATE public.users SET encrypted_password = $1, updated_at = NOW() WHERE id = $2', [hashedPassword, result.rows[0].id]);
+
+    res.json({ message: '密码重置成功，请重新登录' });
+  } catch (error) {
+    res.status(500).json({ error: '密码重置失败' });
+  }
+});
+app.post('/api/auth/security-question', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { question, answer, password } = req.body;
+
+    if (!question || !answer || !password) {
+      return res.status(400).json({ error: '请填写密保问题、答案和当前密码' });
+    }
+
+    const isValid = await bcrypt.compare(password, req.user.encrypted_password);
+    if (!isValid) {
+      return res.status(400).json({ error: '当前密码错误' });
+    }
+
+    await pool.query(`
+      UPDATE public.users 
+      SET security_question = $1, security_answer = $2, updated_at = NOW() 
+      WHERE id = $3
+    `, [question, answer, req.user.id]);
+
+    res.json({ message: '密保问题设置成功' });
+  } catch (error) {
+    console.error('Set security question error:', error);
+    res.status(500).json({ error: '密保问题设置失败' });
+  }
+});
 app.post('/api/auth/change-password', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { oldPassword, newPassword } = req.body;
@@ -866,78 +939,6 @@ app.get('/api/dashboard/stats', authMiddleware, async (req: AuthRequest, res: Re
   }
 });
 
-// ==================== SuperPay API 工具函数 ====================
-
-// MD5 哈希实现
-function md5(str: string): string {
-  return crypto.createHash('md5').update(str).digest('hex').toUpperCase();
-}
-
-// 生成 SuperPay 签名
-function generateSuperPaySign(data: Record<string, any>, key: string): string {
-  const filteredData: Record<string, any> = {};
-  for (const [field, value] of Object.entries(data)) {
-    if (value !== '' && value !== null && value !== undefined && field !== 'sign') {
-      filteredData[field] = value;
-    }
-  }
-  const sortedKeys = Object.keys(filteredData).sort();
-  const stringA = sortedKeys.map(k => `${k}=${filteredData[k]}`).join('&');
-  const stringSignTemp = stringA + (stringA ? '&' : '') + `key=${key}`;
-  return md5(stringSignTemp);
-}
-
-// 调用 SuperPay 创建订单
-async function createSuperPayOrder(params: {
-  merchantOn: string;
-  merchantKey: string;
-  amount: string;
-  orderSn: string;
-  channelCode?: string;
-  notifyUrl: string;
-  returnUrl?: string;
-  uid?: string;
-}): Promise<{ success: boolean; jumpUrl?: string; error?: string }> {
-  const data: Record<string, any> = {
-    merchant_on: params.merchantOn,
-    amount: params.amount,
-    order_sn: params.orderSn,
-    notify_url: params.notifyUrl,
-    return_url: params.returnUrl || '',
-    uid: params.uid || `U${Date.now()}`, // 用户标识，必填
-  };
-  
-  // 只有传了 channelCode 才添加
-  if (params.channelCode) {
-    data.channel_code = params.channelCode;
-  }
-  
-  data.sign = generateSuperPaySign(data, params.merchantKey);
-  
-  console.log('SuperPay Request:', JSON.stringify(data));
-  
-  try {
-    const response = await fetch(`${config.superpayBaseUrl}/api/collecting/pay`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'merchant_on': params.merchantOn,
-      },
-      body: JSON.stringify(data),
-    });
-    
-    const result = await response.json();
-    console.log('SuperPay Response:', JSON.stringify(result));
-    if (result.success && result.items?.jump_url) {
-      return { success: true, jumpUrl: result.items.jump_url };
-    }
-    return { success: false, error: result.error_message || '创建支付订单失败' };
-  } catch (error) {
-    console.error('SuperPay API Error:', error);
-    return { success: false, error: '支付服务暂不可用' };
-  }
-}
-
 // 创建订单（H5页面调用）
 app.post('/api/orders', async (req: Request, res: Response) => {
   try {
@@ -972,6 +973,7 @@ app.post('/api/orders', async (req: Request, res: Response) => {
     
     if (isSuperPay) {
       // ========== 使用 SuperPay（支付宝收款）==========
+      const { createSuperPayOrder } = await import('./src/services/superPay.js');
       const merchantOn = config.superpayMerchantOn;
       const merchantKey = config.superpayMerchantKey;
       
@@ -1001,7 +1003,7 @@ app.post('/api/orders', async (req: Request, res: Response) => {
         notifyUrl,
         channelCode,
         returnUrl,
-      });
+      }, config.superpayBaseUrl);
       
       if (!payResult.success) {
         console.error('[SuperPay] 创建订单失败:', payResult.error);
@@ -1018,12 +1020,13 @@ app.post('/api/orders', async (req: Request, res: Response) => {
       console.log('[订单创建] 使用九久支付微信');
       
       const returnUrl = `${projectDomain}/payment/result?orderId=${orderId}`;
+      const wechatNotifyUrl = `${projectDomain}/api/orders/wechat/callback`;
       
       const payResult = await createWechatOrder({
         orderId,
-        amount: product.price,
+        amount: Number(product.price), // 确保传递数值类型
         productName: product.name,
-        notifyUrl,
+        notifyUrl: wechatNotifyUrl,
         callbackUrl: returnUrl,
       });
       
@@ -1039,11 +1042,14 @@ app.post('/api/orders', async (req: Request, res: Response) => {
       return res.status(400).json({ error: '不支持的支付方式' });
     }
 
+    const finalBuyerName = buyerName || '匿名买家';
+    const finalBuyerPhone = buyerPhone || '';
+
     // 创建本地订单记录（注意：服务器表有 order_id 字段）
     await pool.query(`
       INSERT INTO public.orders (id, order_id, user_id, product_id, product_name, amount, status, buyer_name, buyer_phone, pay_type, pay_url, expired_at)
       VALUES ($1, $1, $2, $3, $4, $5, 'pending', $6, $7, $8, $9, NOW())
-    `, [orderId, product.user_id, productId, product.name, product.price, buyerName, buyerPhone, payType, payUrl]);
+    `, [orderId, product.user_id, productId, product.name, product.price, finalBuyerName, finalBuyerPhone, payType, payUrl]);
 
     res.status(201).json({
       orderId,
@@ -1056,13 +1062,40 @@ app.post('/api/orders', async (req: Request, res: Response) => {
   }
 });
 
-// 支付回调（SuperPay回调）
+// 订单回调
 app.post('/api/orders/callback', async (req: Request, res: Response) => {
   try {
+    const params = req.method === 'POST' ? req.body : req.query;
+    console.log('SuperPay Callback:', JSON.stringify(params));
+
+    const { generateSuperPaySign } = await import('./src/services/superPay.js');
+
+    // 获取动态全局支付配置（从经理账号读取）
+    const configResult = await pool.query(`
+      SELECT superpay_merchant_key FROM public.users WHERE role = 'manager' LIMIT 1
+    `);
+    const dynamicKey = configResult.rows[0]?.superpay_merchant_key || config.superpayMerchantKey;
+
+    // 验证签名
+    const sign = params.sign;
+    if (!sign) {
+      console.error('No signature provided in callback');
+      return res.status(400).send('fail');
+    }
+
+    if (!dynamicKey) {
+      console.error('SuperPay merchant key not configured');
+      return res.status(500).send('fail');
+    }
+
+    const calculatedSign = generateSuperPaySign(params, dynamicKey);
+    if (calculatedSign !== sign) {
+      console.error('SuperPay signature verification failed');
+      return res.status(400).send('fail');
+    }
+
     // SuperPay 回调参数
-    const { order_sn, state, amount, payment_date } = req.body;
-    
-    console.log('SuperPay Callback:', JSON.stringify(req.body));
+    const { order_sn, state, amount, payment_date } = params;
     
     // 根据 order_sn (商户单号) 查询订单
     const orderResult = await pool.query('SELECT * FROM public.orders WHERE id = $1', [order_sn]);
@@ -1074,8 +1107,16 @@ app.post('/api/orders/callback', async (req: Request, res: Response) => {
 
     const order = orderResult.rows[0];
 
+    // 幂等性校验：如果订单已被处理，直接返回成功，防止重复加钱
+    if (order.status === 'paid' || order.status === 'failed') {
+      console.log('Order already processed:', order_sn, 'Current status:', order.status);
+      return res.send('success');
+    }
+
     // state: 0-待支付, 1-已失败, 2-已超时, 3-已支付
     if (state === 3) {
+      await pool.query('BEGIN');
+      
       // 支付成功
       await pool.query(`
         UPDATE public.orders SET 
@@ -1091,15 +1132,39 @@ app.post('/api/orders/callback', async (req: Request, res: Response) => {
         UPDATE products SET sales = sales + 1 WHERE id = $1
       `, [order.product_id]);
 
-      // 更新钱包余额
-      await pool.query(`
-        UPDATE public.wallets SET 
-          balance = balance + $1,
-          total_earnings = total_earnings + $1,
-          updated_at = NOW()
-        WHERE user_id = $2
-      `, [amount || order.amount, order.user_id]);
+      // 处理员工收益分成
+      const employeeResult = await pool.query(`
+        SELECT earnings_rate FROM public.users WHERE id = $1
+      `, [order.user_id]);
       
+      let rate = 0;
+      if (employeeResult.rows.length > 0 && employeeResult.rows[0].earnings_rate) {
+        rate = parseFloat(employeeResult.rows[0].earnings_rate);
+      }
+      
+      // 如果员工有分成比例，并且大于 0
+      if (rate > 0 && rate <= 100) {
+        const profit = parseFloat(amount || order.amount) * (rate / 100);
+        await pool.query(`
+          UPDATE public.wallets SET 
+            balance = balance + $1,
+            total_earnings = total_earnings + $1,
+            updated_at = NOW()
+          WHERE user_id = $2
+        `, [profit, order.user_id]);
+        console.log(`[收益分成] 员工 ${order.user_id} 获得分成 ${profit} (比例: ${rate}%)`);
+      } else {
+        // 没有分成比例，全额入账
+        await pool.query(`
+          UPDATE public.wallets SET 
+            balance = balance + $1,
+            total_earnings = total_earnings + $1,
+            updated_at = NOW()
+          WHERE user_id = $2
+        `, [amount || order.amount, order.user_id]);
+      }
+
+      await pool.query('COMMIT');
       console.log('Order paid successfully:', order_sn);
     } else if (state === 1 || state === 2) {
       // 失败或超时
@@ -1111,6 +1176,91 @@ app.post('/api/orders/callback', async (req: Request, res: Response) => {
     res.send('success');
   } catch (error) {
     console.error('Order callback error:', error);
+    res.status(500).send('fail');
+  }
+});
+
+// 微信支付（九久支付）回调
+app.post('/api/orders/wechat/callback', async (req: Request, res: Response) => {
+  try {
+    const params = req.method === 'POST' ? req.body : req.query;
+    console.log('JiuJiu Pay Callback:', JSON.stringify(params));
+
+    const { verifyCallbackSign } = await import('./src/services/wechatPay.js');
+    
+    // 提取签名
+    const sign = params.sign;
+    if (!sign) {
+      console.error('No signature provided in callback');
+      return res.status(400).send('fail');
+    }
+
+    // 剔除 sign 字段后验签
+    const signParams = { ...params };
+    delete signParams.sign;
+    
+    if (!verifyCallbackSign(signParams, sign)) {
+      console.error('JiuJiu Pay signature verification failed');
+      return res.status(400).send('fail');
+    }
+
+    // 获取订单号
+    const orderId = params.outTradeNo || params.order_sn || params.out_trade_no;
+    if (!orderId) {
+      console.error('No order ID found in callback');
+      return res.status(400).send('fail');
+    }
+
+    // 判断状态
+    const status = params.status || params.tradeStatus || params.trade_status || params.state;
+    // 九久支付通常回调就代表成功，如果有明确的状态字段，可以进一步判断
+    const isSuccess = status ? (String(status).toUpperCase() === 'SUCCESS' || String(status) === '1' || String(status) === '3') : true;
+
+    const orderResult = await pool.query('SELECT * FROM public.orders WHERE id = $1', [orderId]);
+    if (orderResult.rows.length === 0) {
+      console.error('Wechat Order not found:', orderId);
+      return res.status(404).send('fail');
+    }
+
+    const order = orderResult.rows[0];
+
+    // 幂等性校验
+    if (order.status === 'paid' || order.status === 'failed') {
+      console.log('Wechat Order already processed:', orderId, 'Current status:', order.status);
+      return res.send('success');
+    }
+
+    if (isSuccess) {
+      await pool.query(`
+        UPDATE public.orders SET 
+          status = 'paid', 
+          pay_url = NULL,
+          paid_at = NOW(),
+          updated_at = NOW()
+        WHERE id = $1
+      `, [orderId]);
+
+      await pool.query(`
+        UPDATE products SET sales = sales + 1 WHERE id = $1
+      `, [order.product_id]);
+
+      await pool.query(`
+        UPDATE public.wallets SET 
+          balance = balance + $1,
+          total_earnings = total_earnings + $1,
+          updated_at = NOW()
+        WHERE user_id = $2
+      `, [order.amount, order.user_id]);
+
+      console.log('Wechat Order paid successfully:', orderId);
+    } else {
+      await pool.query(`UPDATE public.orders SET status = 'failed', updated_at = NOW() WHERE id = $1`, [orderId]);
+      console.log('Wechat Order failed:', orderId);
+    }
+
+    res.send('success');
+  } catch (error) {
+    console.error('Wechat Order callback error:', error);
     res.status(500).send('fail');
   }
 });
@@ -1236,13 +1386,19 @@ app.post('/api/withdrawals', authMiddleware, async (req: AuthRequest, res: Respo
     // 冻结余额并创建提现记录
     await pool.query('BEGIN');
 
-    await pool.query(`
+    const updateResult = await pool.query(`
       UPDATE public.wallets SET 
         balance = balance - $1,
         frozen_balance = frozen_balance + $1,
         updated_at = NOW()
-      WHERE user_id = $2
+      WHERE user_id = $2 AND balance >= $1
+      RETURNING id
     `, [amount, req.user.id]);
+
+    if (updateResult.rowCount === 0) {
+      await pool.query('ROLLBACK');
+      return res.status(400).json({ error: '余额不足或发生并发冲突' });
+    }
 
     const result = await pool.query(`
       INSERT INTO public.withdrawals (id, user_id, amount, status, payment_method, payment_account, payment_name, bank_code, bank_name)
@@ -1272,6 +1428,11 @@ app.put('/api/withdrawals/:id', authMiddleware, adminMiddleware, async (req: Aut
     }
 
     const withdrawal = existingResult.rows[0];
+
+    // 幂等性校验：如果提现记录不再是 pending，说明已被处理，直接返回错误
+    if (withdrawal.status !== 'pending') {
+      return res.status(400).json({ error: '该提现记录已被处理，请勿重复操作' });
+    }
 
     await pool.query('BEGIN');
 
@@ -1454,7 +1615,7 @@ app.get('/api/merchant/employees', authMiddleware, adminMiddleware, async (req: 
   try {
     // 获取当前商户创建的所有员工
     const result = await pool.query(`
-      SELECT id, email, display_name as name, role, status, created_at, updated_at
+      SELECT id, email, display_name as name, role, status, created_at, updated_at, earnings_rate as profit_share_rate
       FROM public.users 
       WHERE created_by = $1 OR id = $1
       ORDER BY created_at DESC
@@ -1497,50 +1658,46 @@ app.delete('/api/merchant/employees/:id', authMiddleware, adminMiddleware, async
 
 // ---------- 设置 API ----------
 // 获取商户设置
-app.get('/api/settings', authMiddleware, async (req: AuthRequest, res: Response) => {
+app.get('/api/admin/payment-config', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const result = await pool.query(`
-      SELECT merchant_on, secret_key, whitelist_ip, earnings_rate, superpay_merchant_on, superpay_merchant_key FROM public.users WHERE id = $1
-    `, [req.user.id]);
-
-    const walletResult = await pool.query('SELECT balance, total_earnings FROM public.wallets WHERE user_id = $1', [req.user.id]);
-    const wallet = walletResult.rows[0] || { balance: 0, total_earnings: 0 };
+      SELECT superpay_merchant_on, superpay_merchant_key FROM public.users WHERE role = 'manager' LIMIT 1
+    `);
 
     res.json({
-      merchantOn: result.rows[0].merchant_on,
-      secretKey: result.rows[0].secret_key,
-      whitelistIp: result.rows[0].whitelist_ip,
-      earningsRate: result.rows[0].earnings_rate,
-      superpayMerchantOn: result.rows[0].superpay_merchant_on,
-      superpayMerchantKey: result.rows[0].superpay_merchant_key,
-      balance: wallet.balance,
-      receiptBalance: wallet.total_earnings,
+      superpayMerchantOn: result.rows[0]?.superpay_merchant_on || '',
+      superpayMerchantKey: result.rows[0]?.superpay_merchant_key || '',
+      jiujiuMchId: '', // 预留
+      jiujiuSecretKey: '' // 预留
     });
   } catch (error) {
-    console.error('Get settings error:', error);
-    res.status(500).json({ error: '获取设置失败' });
+    console.error('Get payment config error:', error);
+    res.status(500).json({ error: '获取支付配置失败' });
   }
 });
 
 // 更新商户设置
-app.put('/api/settings', authMiddleware, async (req: AuthRequest, res: Response) => {
+app.put('/api/admin/payment-config', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const { whitelistIp, earningsRate, superpayMerchantOn, superpayMerchantKey } = req.body;
+    const { superpayMerchantOn, superpayMerchantKey } = req.body;
 
+    // 将支付配置保存到经理账户上（全局配置）
     await pool.query(`
       UPDATE public.users SET 
-        whitelist_ip = COALESCE($1, whitelist_ip),
-        earnings_rate = COALESCE($2, earnings_rate),
-        superpay_merchant_on = COALESCE($3, superpay_merchant_on),
-        superpay_merchant_key = COALESCE($4, superpay_merchant_key),
+        superpay_merchant_on = $1,
+        superpay_merchant_key = $2,
         updated_at = NOW()
-      WHERE id = $5
-    `, [whitelistIp, earningsRate, superpayMerchantOn, superpayMerchantKey, req.user.id]);
+      WHERE role = 'manager'
+    `, [superpayMerchantOn, superpayMerchantKey]);
 
-    res.json({ message: '设置已更新' });
+    // 同步更新运行时配置，使其立即生效
+    if (superpayMerchantOn) config.superpayMerchantOn = superpayMerchantOn;
+    if (superpayMerchantKey) config.superpayMerchantKey = superpayMerchantKey;
+
+    res.json({ message: '配置已更新并生效' });
   } catch (error) {
-    console.error('Update settings error:', error);
-    res.status(500).json({ error: '更新设置失败' });
+    console.error('Update payment config error:', error);
+    res.status(500).json({ error: '更新支付配置失败' });
   }
 });
 
@@ -1559,7 +1716,7 @@ app.post('/api/settings/regenerate-key', authMiddleware, async (req: AuthRequest
 });
 
 // 测试 SuperPay 配置
-app.post('/api/settings/test-superpay', authMiddleware, async (req: AuthRequest, res: Response) => {
+app.post('/api/settings/test-superpay', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { merchantOn, merchantKey } = req.body;
 
@@ -1567,15 +1724,24 @@ app.post('/api/settings/test-superpay', authMiddleware, async (req: AuthRequest,
       return res.status(400).json({ error: '请提供商户号和密钥' });
     }
 
+    const { generateSuperPaySign } = await import('./src/services/superPay.js');
     // 生成签名 - 需要包含 merchant_on 参数
     const sign = generateSuperPaySign({ merchant_on: merchantOn }, merchantKey);
 
-    // 尝试调用渠道编码接口测试配置
-    const response = await fetch(`${config.superpayBaseUrl}/api/collecting/channelCode?merchant_on=${merchantOn}&sign=${sign}`, {
-      method: 'GET',
+    const response = await fetch(`${config.superpayBaseUrl}/api/collecting/pay`, {
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'merchant_on': merchantOn,
       },
+      body: JSON.stringify({
+        merchant_on: merchantOn,
+        amount: '1.00',
+        order_sn: `TEST${Date.now()}`,
+        notify_url: 'http://test.com/notify',
+        uid: 'test_uid',
+        sign
+      }),
     });
 
     const result = await response.json();
@@ -1610,6 +1776,8 @@ app.get('/api/superpay/channels', authMiddleware, async (req: AuthRequest, res: 
       return res.status(400).json({ error: '请先配置 SuperPay 商户信息' });
     }
 
+    const { generateSuperPaySign } = await import('./src/services/superPay.js');
+    
     // 尝试两种方式查询渠道编码
     // 方式1: 不带参数查询（只传签名）
     const sign = generateSuperPaySign({}, user.superpay_merchant_key);
@@ -1731,7 +1899,7 @@ if (!fs.existsSync(path.join(distPath, 'index.html'))) {
 
 app.use(express.static(distPath, { maxAge: config.nodeEnv === 'production' ? '1d' : '0' }));
 
-// SPA 回退
+// SPA 回退 (处理 /, /h5/*, /checkout/*, /payment/result 等前端路由)
 app.get('*', (req: Request, res: Response, next: NextFunction) => {
   // 跳过 API 路由
   if (req.path.startsWith('/api/')) {
@@ -1762,6 +1930,10 @@ async function start() {
     console.log('Starting server...');
     console.log('Working directory:', __dirname);
     console.log('ENCRYPTION_KEY:', config.encryptionKey ? 'set' : 'not set');
+
+    if (config.nodeEnv === 'production' && config.jwtSecret === 'dev-secret-key') {
+      throw new Error('FATAL: JWT_SECRET is not set in production. Using default secret is extremely dangerous!');
+    }
 
     // 初始化数据库
     await initDatabase();
