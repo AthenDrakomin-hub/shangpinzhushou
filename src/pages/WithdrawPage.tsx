@@ -26,10 +26,11 @@ interface WalletData {
   total_earnings?: string;
 }
 
-const PAYMENT_METHODS = [
-  { id: 'wechat', name: '微信', icon: '💚', placeholder: '请输入微信账号' },
-  { id: 'alipay', name: '支付宝', icon: '💙', placeholder: '请输入支付宝账号' },
-  { id: 'bank', name: '银行卡', icon: '🏦', placeholder: '请输入银行卡号' },
+const USDT_NETWORKS = [
+  { id: 'TRC20', name: 'TRC20 (波场)', icon: '🟢' },
+  { id: 'ERC20', name: 'ERC20 (以太坊)', icon: '🔵' },
+  { id: 'BSC', name: 'BSC (币安智能链)', icon: '🟡' },
+  { id: 'Polygon', name: 'Polygon (马蹄链)', icon: '🟣' },
 ];
 
 export default function WithdrawPage({ user, handleBack, setCurrentView, showToast }: WithdrawPageProps) {
@@ -38,11 +39,9 @@ export default function WithdrawPage({ user, handleBack, setCurrentView, showToa
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     amount: '',
-    paymentMethod: 'wechat' as 'wechat' | 'alipay' | 'bank',
+    paymentMethod: 'USDT',
+    usdtNetwork: 'TRC20',
     paymentAccount: '',
-    paymentName: '',
-    bankCode: '',
-    bankName: '',
   });
 
   useEffect(() => {
@@ -78,11 +77,7 @@ export default function WithdrawPage({ user, handleBack, setCurrentView, showToa
       return;
     }
     if (!formData.paymentAccount) {
-      showToast('请填写收款账号', 'error');
-      return;
-    }
-    if (!formData.paymentName) {
-      showToast('请填写收款人姓名', 'error');
+      showToast('请填写 USDT 收款地址', 'error');
       return;
     }
     if (wallet && parseFloat(formData.amount) > parseFloat(wallet.balance)) {
@@ -214,23 +209,23 @@ export default function WithdrawPage({ user, handleBack, setCurrentView, showToa
               {/* 收款方式 */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  收款方式
+                  USDT 网络类型
                 </label>
-                <div className="grid grid-cols-3 gap-3">
-                  {PAYMENT_METHODS.map((method) => (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {USDT_NETWORKS.map((network) => (
                     <motion.button
-                      key={method.id}
+                      key={network.id}
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      onClick={() => setFormData({ ...formData, paymentMethod: method.id as 'wechat' | 'alipay' | 'bank' })}
-                      className={`py-3 px-4 rounded-xl font-medium text-sm border-2 transition-all ${
-                        formData.paymentMethod === method.id
+                      onClick={() => setFormData({ ...formData, usdtNetwork: network.id })}
+                      className={`py-3 px-2 rounded-xl font-medium text-sm border-2 transition-all ${
+                        formData.usdtNetwork === network.id
                           ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
                           : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600'
                       }`}
                     >
-                      <span className="mr-1">{method.icon}</span>
-                      {method.name}
+                      <span className="mr-1">{network.icon}</span>
+                      {network.id}
                     </motion.button>
                   ))}
                 </div>
@@ -239,27 +234,11 @@ export default function WithdrawPage({ user, handleBack, setCurrentView, showToa
               {/* 收款信息 */}
               <div className="space-y-4">
                 <Input
-                  label={formData.paymentMethod === 'bank' ? '银行卡号' : '收款账号'}
+                  label="USDT 收款地址"
                   value={formData.paymentAccount}
                   onChange={(e) => setFormData({ ...formData, paymentAccount: e.target.value })}
-                  placeholder={PAYMENT_METHODS.find((m) => m.id === formData.paymentMethod)?.placeholder}
+                  placeholder={`请输入 ${formData.usdtNetwork} 网络的 USDT 地址`}
                 />
-
-                <Input
-                  label="收款人姓名"
-                  value={formData.paymentName}
-                  onChange={(e) => setFormData({ ...formData, paymentName: e.target.value })}
-                  placeholder="请输入真实姓名"
-                />
-
-                {formData.paymentMethod === 'bank' && (
-                  <Input
-                    label="开户银行"
-                    value={formData.bankName}
-                    onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
-                    placeholder="如：中国工商银行"
-                  />
-                )}
               </div>
 
               {/* 提交按钮 */}

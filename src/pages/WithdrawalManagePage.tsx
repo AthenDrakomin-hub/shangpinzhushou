@@ -40,6 +40,7 @@ interface Withdrawal {
   amount: number;
   status: 'pending' | 'approved' | 'success' | 'failed' | 'rejected' | 'processing';
   payment_method: string;
+  usdt_network?: string;
   payment_account: string;
   payment_name: string;
   reject_reason?: string;
@@ -316,9 +317,9 @@ export default function WithdrawalManagePage({ mode, user, onNavigate: _onNaviga
                           ¥{w.amount.toFixed(2)}
                         </p>
                         <div className="flex items-center gap-2 mt-1 text-xs text-gray-500 dark:text-gray-400">
-                          <span>{PAYMENT_METHOD_LABELS[w.payment_method] || w.payment_method}</span>
+                          <span>{w.payment_method} ({w.usdt_network || 'TRC20'})</span>
                           <span>·</span>
-                          <span>{w.payment_account}</span>
+                          <span className="font-mono">{w.payment_account}</span>
                         </div>
                         {w.user_name && (
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">

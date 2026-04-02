@@ -314,6 +314,7 @@ export default function App() {
       {/* 分享海报弹窗（全局可用） */}
       <ShareProductModal 
         product={sharingProduct} 
+        user={user}
         onClose={() => setSharingProduct(null)} 
         showToast={showToast} 
       />
