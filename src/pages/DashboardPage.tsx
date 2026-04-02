@@ -120,7 +120,7 @@ const QUICK_ACTIONS: QuickAction[] = [
     label: '我的钱包',
     icon: <Wallet className="w-5 h-5 text-purple-600 dark:text-purple-400" />,
     iconBg: 'bg-purple-100 dark:bg-purple-900/30',
-    roles: ['manager', 'admin', 'supervisor', 'employee', 'staff'],
+    roles: ['employee', 'staff'],
   },
   {
     id: 'merchant_employees',

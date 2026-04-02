@@ -32,6 +32,7 @@ interface UserData {
   name?: string;
   role?: 'manager' | 'supervisor' | 'employee';
   status?: 'active' | 'inactive' | 'pending';
+  profit_share_rate?: number;
   created_at: string;
 }
 
@@ -503,7 +504,10 @@ function EditUserModal({
     display_name: user?.display_name || user?.name || '',
     role: (user?.role || 'employee') as 'manager' | 'supervisor' | 'employee',
     status: (user?.status || 'active') as 'active' | 'inactive' | 'pending',
+    profit_share_rate: user?.profit_share_rate || 0,
+    password: '',
   });
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -512,6 +516,8 @@ function EditUserModal({
         display_name: user.display_name || user.name || '',
         role: user.role || 'employee',
         status: user.status || 'active',
+        profit_share_rate: user.profit_share_rate || 0,
+        password: '',
       });
     }
   }, [user]);
@@ -594,8 +600,45 @@ function EditUserModal({
             className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
           >
             <option value="active">正常</option>
-            <option value="inactive">禁用</option>
+            <option value="inactive">禁用(冻结)</option>
           </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            收益分配比例 (%) <span className="text-gray-400 font-normal ml-2">该员工分享商品成单后可获得的提成比例</span>
+          </label>
+          <input
+            type="number"
+            min="0"
+            max="100"
+            step="0.1"
+            value={form.profit_share_rate}
+            onChange={(e) => setForm({ ...form, profit_share_rate: parseFloat(e.target.value) || 0 })}
+            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            重置密码 <span className="text-gray-400 font-normal ml-2">如果不修改密码请留空</span>
+          </label>
+          <div className="relative">
+            <input
+              type={showPassword ? 'text' : 'password'}
+              value={form.password}
+              onChange={(e) => setForm({ ...form, password: e.target.value })}
+              placeholder="新密码（至少6个字符）"
+              className="w-full px-4 py-2 pr-10 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+            >
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
         </div>
 
         <div className="flex gap-3 pt-4">
@@ -603,7 +646,7 @@ function EditUserModal({
             取消
           </Button>
           <Button variant="primary" className="flex-1" loading={isLoading} onClick={handleSubmit}>
-            保存
+            保存修改
           </Button>
         </div>
       </div>

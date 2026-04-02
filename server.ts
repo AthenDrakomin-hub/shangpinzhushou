@@ -1063,10 +1063,35 @@ app.post('/api/orders', async (req: Request, res: Response) => {
 // 支付回调（SuperPay回调）
 app.post('/api/orders/callback', async (req: Request, res: Response) => {
   try {
+    const params = req.method === 'POST' ? req.body : req.query;
+    console.log('SuperPay Callback:', JSON.stringify(params));
+
+    // 获取动态全局支付配置（从经理账号读取）
+    const configResult = await pool.query(`
+      SELECT superpay_merchant_key FROM public.users WHERE role = 'manager' LIMIT 1
+    `);
+    const dynamicKey = configResult.rows[0]?.superpay_merchant_key || config.superpayMerchantKey;
+
+    // 验证签名
+    const sign = params.sign;
+    if (!sign) {
+      console.error('No signature provided in callback');
+      return res.status(400).send('fail');
+    }
+
+    if (!dynamicKey) {
+      console.error('SuperPay merchant key not configured');
+      return res.status(500).send('fail');
+    }
+
+    const calculatedSign = generateSuperPaySign(params, dynamicKey);
+    if (calculatedSign !== sign) {
+      console.error('SuperPay signature verification failed');
+      return res.status(400).send('fail');
+    }
+
     // SuperPay 回调参数
-    const { order_sn, state, amount, payment_date } = req.body;
-    
-    console.log('SuperPay Callback:', JSON.stringify(req.body));
+    const { order_sn, state, amount, payment_date } = params;
     
     // 根据 order_sn (商户单号) 查询订单
     const orderResult = await pool.query('SELECT * FROM public.orders WHERE id = $1', [order_sn]);
@@ -1086,6 +1111,8 @@ app.post('/api/orders/callback', async (req: Request, res: Response) => {
 
     // state: 0-待支付, 1-已失败, 2-已超时, 3-已支付
     if (state === 3) {
+      await pool.query('BEGIN');
+      
       // 支付成功
       await pool.query(`
         UPDATE public.orders SET 
@@ -1101,15 +1128,39 @@ app.post('/api/orders/callback', async (req: Request, res: Response) => {
         UPDATE products SET sales = sales + 1 WHERE id = $1
       `, [order.product_id]);
 
-      // 更新钱包余额
-      await pool.query(`
-        UPDATE public.wallets SET 
-          balance = balance + $1,
-          total_earnings = total_earnings + $1,
-          updated_at = NOW()
-        WHERE user_id = $2
-      `, [amount || order.amount, order.user_id]);
+      // 处理员工收益分成
+      const employeeResult = await pool.query(`
+        SELECT earnings_rate FROM public.users WHERE id = $1
+      `, [order.user_id]);
       
+      let rate = 0;
+      if (employeeResult.rows.length > 0 && employeeResult.rows[0].earnings_rate) {
+        rate = parseFloat(employeeResult.rows[0].earnings_rate);
+      }
+      
+      // 如果员工有分成比例，并且大于 0
+      if (rate > 0 && rate <= 100) {
+        const profit = parseFloat(amount || order.amount) * (rate / 100);
+        await pool.query(`
+          UPDATE public.wallets SET 
+            balance = balance + $1,
+            total_earnings = total_earnings + $1,
+            updated_at = NOW()
+          WHERE user_id = $2
+        `, [profit, order.user_id]);
+        console.log(`[收益分成] 员工 ${order.user_id} 获得分成 ${profit} (比例: ${rate}%)`);
+      } else {
+        // 没有分成比例，全额入账
+        await pool.query(`
+          UPDATE public.wallets SET 
+            balance = balance + $1,
+            total_earnings = total_earnings + $1,
+            updated_at = NOW()
+          WHERE user_id = $2
+        `, [amount || order.amount, order.user_id]);
+      }
+
+      await pool.query('COMMIT');
       console.log('Order paid successfully:', order_sn);
     } else if (state === 1 || state === 2) {
       // 失败或超时
@@ -1560,7 +1611,7 @@ app.get('/api/merchant/employees', authMiddleware, adminMiddleware, async (req: 
   try {
     // 获取当前商户创建的所有员工
     const result = await pool.query(`
-      SELECT id, email, display_name as name, role, status, created_at, updated_at
+      SELECT id, email, display_name as name, role, status, created_at, updated_at, earnings_rate as profit_share_rate
       FROM public.users 
       WHERE created_by = $1 OR id = $1
       ORDER BY created_at DESC
@@ -1603,50 +1654,46 @@ app.delete('/api/merchant/employees/:id', authMiddleware, adminMiddleware, async
 
 // ---------- 设置 API ----------
 // 获取商户设置
-app.get('/api/settings', authMiddleware, async (req: AuthRequest, res: Response) => {
+app.get('/api/admin/payment-config', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const result = await pool.query(`
-      SELECT merchant_on, secret_key, whitelist_ip, earnings_rate, superpay_merchant_on, superpay_merchant_key FROM public.users WHERE id = $1
-    `, [req.user.id]);
-
-    const walletResult = await pool.query('SELECT balance, total_earnings FROM public.wallets WHERE user_id = $1', [req.user.id]);
-    const wallet = walletResult.rows[0] || { balance: 0, total_earnings: 0 };
+      SELECT superpay_merchant_on, superpay_merchant_key FROM public.users WHERE role = 'manager' LIMIT 1
+    `);
 
     res.json({
-      merchantOn: result.rows[0].merchant_on,
-      secretKey: result.rows[0].secret_key,
-      whitelistIp: result.rows[0].whitelist_ip,
-      earningsRate: result.rows[0].earnings_rate,
-      superpayMerchantOn: result.rows[0].superpay_merchant_on,
-      superpayMerchantKey: result.rows[0].superpay_merchant_key,
-      balance: wallet.balance,
-      receiptBalance: wallet.total_earnings,
+      superpayMerchantOn: result.rows[0]?.superpay_merchant_on || '',
+      superpayMerchantKey: result.rows[0]?.superpay_merchant_key || '',
+      jiujiuMchId: '', // 预留
+      jiujiuSecretKey: '' // 预留
     });
   } catch (error) {
-    console.error('Get settings error:', error);
-    res.status(500).json({ error: '获取设置失败' });
+    console.error('Get payment config error:', error);
+    res.status(500).json({ error: '获取支付配置失败' });
   }
 });
 
 // 更新商户设置
-app.put('/api/settings', authMiddleware, async (req: AuthRequest, res: Response) => {
+app.put('/api/admin/payment-config', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const { whitelistIp, earningsRate, superpayMerchantOn, superpayMerchantKey } = req.body;
+    const { superpayMerchantOn, superpayMerchantKey } = req.body;
 
+    // 将支付配置保存到经理账户上（全局配置）
     await pool.query(`
       UPDATE public.users SET 
-        whitelist_ip = COALESCE($1, whitelist_ip),
-        earnings_rate = COALESCE($2, earnings_rate),
-        superpay_merchant_on = COALESCE($3, superpay_merchant_on),
-        superpay_merchant_key = COALESCE($4, superpay_merchant_key),
+        superpay_merchant_on = $1,
+        superpay_merchant_key = $2,
         updated_at = NOW()
-      WHERE id = $5
-    `, [whitelistIp, earningsRate, superpayMerchantOn, superpayMerchantKey, req.user.id]);
+      WHERE role = 'manager'
+    `, [superpayMerchantOn, superpayMerchantKey]);
 
-    res.json({ message: '设置已更新' });
+    // 同步更新运行时配置，使其立即生效
+    if (superpayMerchantOn) config.superpayMerchantOn = superpayMerchantOn;
+    if (superpayMerchantKey) config.superpayMerchantKey = superpayMerchantKey;
+
+    res.json({ message: '配置已更新并生效' });
   } catch (error) {
-    console.error('Update settings error:', error);
-    res.status(500).json({ error: '更新设置失败' });
+    console.error('Update payment config error:', error);
+    res.status(500).json({ error: '更新支付配置失败' });
   }
 });
 
@@ -1665,7 +1712,7 @@ app.post('/api/settings/regenerate-key', authMiddleware, async (req: AuthRequest
 });
 
 // 测试 SuperPay 配置
-app.post('/api/settings/test-superpay', authMiddleware, async (req: AuthRequest, res: Response) => {
+app.post('/api/settings/test-superpay', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { merchantOn, merchantKey } = req.body;
 

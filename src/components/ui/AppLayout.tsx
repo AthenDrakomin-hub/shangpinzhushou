@@ -104,6 +104,11 @@ export default function AppLayout({
   const filteredNavItems = NAV_ITEMS.filter((item) => {
     const role = user?.role || 'employee';
     
+    // 只有员工可以看到我的钱包
+    if (item.id === 'wallet' && role !== 'employee') {
+      return false;
+    }
+    
     // 经理和主管可以看到员工管理和提现管理
     if ((item.id === 'merchant_employees' || item.id === 'merchant_withdrawals') && 
         role !== 'manager' && role !== 'admin' && role !== 'supervisor') {
