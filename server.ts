@@ -1040,11 +1040,14 @@ app.post('/api/orders', async (req: Request, res: Response) => {
       return res.status(400).json({ error: '不支持的支付方式' });
     }
 
+    const finalBuyerName = buyerName || '匿名买家';
+    const finalBuyerPhone = buyerPhone || '';
+
     // 创建本地订单记录（注意：服务器表有 order_id 字段）
     await pool.query(`
       INSERT INTO public.orders (id, order_id, user_id, product_id, product_name, amount, status, buyer_name, buyer_phone, pay_type, pay_url, expired_at)
       VALUES ($1, $1, $2, $3, $4, $5, 'pending', $6, $7, $8, $9, NOW())
-    `, [orderId, product.user_id, productId, product.name, product.price, buyerName, buyerPhone, payType, payUrl]);
+    `, [orderId, product.user_id, productId, product.name, product.price, finalBuyerName, finalBuyerPhone, payType, payUrl]);
 
     res.status(201).json({
       orderId,

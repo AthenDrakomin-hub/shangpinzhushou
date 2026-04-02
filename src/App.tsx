@@ -45,6 +45,8 @@ import AppLayout from './components/ui/AppLayout';
 type View = 'landing' | 'dashboard' | 'products' | 'product_create' | 'orders' | 'product_checkout' | 'h5_product' | 'payment_result' | 'wallet' | 'earnings' | 'withdraw' | 'withdrawals' | 'forgot_password' | 'reset_password' | 'admin_pending_users' | 'merchant_employees' | 'merchant_withdrawals' | 'settings';
 
 // ==================== Main App Component ====================
+import ShareProductModal from './components/ShareProductModal';
+
 export default function App() {
   const [currentView, setCurrentView] = useState<View>('landing');
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -56,6 +58,7 @@ export default function App() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [checkoutProductId, setCheckoutProductId] = useState<string | null>(null);
   const [paymentResultOrderId, setPaymentResultOrderId] = useState<string | null>(null);
+  const [sharingProduct, setSharingProduct] = useState<any>(null);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
@@ -295,7 +298,7 @@ export default function App() {
           
           {currentView === 'dashboard' && <DashboardPage key="dashboard" user={user} onNavigate={(view) => setCurrentView(view as View)} />}
           {currentView === 'products' && <ProductsPage key="products" handleBack={handleBack} setCurrentView={(view) => setCurrentView(view as View)} showToast={showToast} user={user} />}
-          {currentView === 'product_create' && <ProductCreatePage key="product_create" handleBack={handleBack} setCurrentView={(view) => setCurrentView(view as View)} showToast={showToast} user={user} />}
+          {currentView === 'product_create' && <ProductCreatePage key="product_create" handleBack={handleBack} setCurrentView={(view) => setCurrentView(view as View)} showToast={showToast} user={user} setSharingProduct={setSharingProduct} />}
           {currentView === 'orders' && <OrdersPage key="orders" handleBack={handleBack} showToast={showToast} user={user} />}
           {currentView === 'wallet' && <StaffWallet key="wallet" handleBack={handleBack} setCurrentView={(view) => setCurrentView(view as View)} showToast={showToast} user={user} />}
           {currentView === 'earnings' && <EarningsPage key="earnings" handleBack={handleBack} setCurrentView={(view) => setCurrentView(view as View)} showToast={showToast} user={user} />}
@@ -307,6 +310,13 @@ export default function App() {
           {currentView === 'settings' && <SettingsPage key="settings" user={user} showToast={showToast} onLogout={handleLogout} />}
         </AppLayout>
       )}
+
+      {/* 分享海报弹窗（全局可用） */}
+      <ShareProductModal 
+        product={sharingProduct} 
+        onClose={() => setSharingProduct(null)} 
+        showToast={showToast} 
+      />
 
       {/* 已删除第二个 AnimatePresence 以解决 React 19 兼容性问题 */}
         {toast && (
