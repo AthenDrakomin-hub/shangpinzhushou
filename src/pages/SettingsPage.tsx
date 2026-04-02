@@ -41,12 +41,15 @@ interface SettingItem {
 }
 
 export default function SettingsPage({ user, showToast, onLogout }: SettingsPageProps) {
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showSecurityModal, setShowSecurityModal] = useState(false);
   const [showPaymentConfigModal, setShowPaymentConfigModal] = useState(false);
   const [showAboutModal, setShowAboutModal] = useState(false);
   const [notifications, setNotifications] = useState(true);
   const [isDark, setIsDark] = useState(false);
+  const [language, setLanguage] = useState('zh-CN');
 
   // 获取当前主题
   useEffect(() => {
@@ -88,7 +91,7 @@ export default function SettingsPage({ user, showToast, onLogout }: SettingsPage
       icon: <User className="w-5 h-5" />,
       title: '个人资料',
       description: '修改头像、昵称等个人信息',
-      onClick: () => showToast('个人资料功能开发中'),
+      onClick: () => setShowProfileModal(true),
     },
     {
       id: 'password',
@@ -104,18 +107,20 @@ export default function SettingsPage({ user, showToast, onLogout }: SettingsPage
       description: '设置或修改密保问题，用于找回密码',
       onClick: () => setShowSecurityModal(true),
     },
-  ];
-
-  // 只有经理可以看到的支付配置
-  if (user?.role === 'manager' || user?.role === 'admin') {
-    accountSettings.push({
+    {
       id: 'payment_config',
       icon: <CreditCard className="w-5 h-5" />,
       title: '支付通道配置',
       description: '设置收款账户、通道参数等',
-      onClick: () => setShowPaymentConfigModal(true),
-    });
-  }
+      onClick: () => {
+        if (user?.role === 'manager' || user?.role === 'admin') {
+          setShowPaymentConfigModal(true);
+        } else {
+          showToast('权限不足，请提升至经理权限', 'error');
+        }
+      },
+    }
+  ];
 
   const appSettings: SettingItem[] = [
     {
@@ -148,8 +153,20 @@ export default function SettingsPage({ user, showToast, onLogout }: SettingsPage
       id: 'language',
       icon: <Globe className="w-5 h-5" />,
       title: '语言设置',
-      description: '当前: 简体中文',
-      onClick: () => showToast('语言设置功能开发中'),
+      description: `当前: ${language === 'zh-CN' ? '简体中文' : 'English'}`,
+      action: (
+        <select
+          value={language}
+          onChange={(e) => {
+            setLanguage(e.target.value);
+            showToast('语言已切换，刷新后生效');
+          }}
+          className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2 dark:text-white"
+        >
+          <option value="zh-CN">简体中文</option>
+          <option value="en-US">English</option>
+        </select>
+      )
     },
   ];
 
@@ -159,7 +176,7 @@ export default function SettingsPage({ user, showToast, onLogout }: SettingsPage
       icon: <HelpCircle className="w-5 h-5" />,
       title: '帮助中心',
       description: '常见问题和使用指南',
-      onClick: () => showToast('帮助中心开发中'),
+      onClick: () => setShowHelpModal(true),
     },
     {
       id: 'about',
@@ -316,7 +333,126 @@ export default function SettingsPage({ user, showToast, onLogout }: SettingsPage
         isOpen={showAboutModal}
         onClose={() => setShowAboutModal(false)}
       />
+
+      {/* 帮助中心弹窗 */}
+      <HelpModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
+
+      {/* 个人资料弹窗 */}
+      <ProfileModal isOpen={showProfileModal} onClose={() => setShowProfileModal(false)} user={user} showToast={showToast} />
     </div>
+  );
+}
+
+// 帮助中心弹窗
+function HelpModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="帮助中心" size="lg">
+      <div className="space-y-6 py-2 max-h-[60vh] overflow-y-auto pr-2">
+        <div>
+          <h3 className="font-bold text-gray-900 dark:text-white mb-2">Q: 如何创建商品海报？</h3>
+          <p className="text-gray-600 dark:text-gray-400 text-sm">
+            在「商品管理」页面，点击商品列表右侧的「分享」按钮，选择您喜欢的模板，然后点击「生成海报」。生成后可以长按保存图片或直接分享给客户。
+          </p>
+        </div>
+        <div>
+          <h3 className="font-bold text-gray-900 dark:text-white mb-2">Q: 什么是三级分润系统？</h3>
+          <p className="text-gray-600 dark:text-gray-400 text-sm">
+            系统支持 经理 - 主管 - 员工 的三级分润体系。经理可以设置主管的分成比例，主管可以设置员工的分成比例。当员工分享商品产生订单时，收益会根据设置的比例自动分配到对应层级的钱包中。
+          </p>
+        </div>
+        <div>
+          <h3 className="font-bold text-gray-900 dark:text-white mb-2">Q: 如何配置支付通道？</h3>
+          <p className="text-gray-600 dark:text-gray-400 text-sm">
+            只有经理/管理员可以在「系统设置」-「支付通道配置」中填写 SuperPay 支付参数（商户号和密钥）。配置完成后，所有的商品支付都将通过该通道进行结算。
+          </p>
+        </div>
+        <div>
+          <h3 className="font-bold text-gray-900 dark:text-white mb-2">Q: 提现流程是怎样的？</h3>
+          <p className="text-gray-600 dark:text-gray-400 text-sm">
+            员工在「我的钱包」中申请提现，目前仅支持 USDT (TRC20) 提现。提交后，上级主管或经理在「提现管理」页面审核并进行打款。
+          </p>
+        </div>
+      </div>
+      <div className="mt-6 flex justify-end">
+        <Button variant="primary" onClick={onClose}>
+          我知道了
+        </Button>
+      </div>
+    </Modal>
+  );
+}
+
+// 个人资料弹窗
+function ProfileModal({ isOpen, onClose, user, showToast }: { isOpen: boolean; onClose: () => void; user: AuthUser | null; showToast: (msg: string, type?: 'success' | 'error') => void }) {
+  const [name, setName] = useState(user?.displayName || '');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (user?.displayName) {
+      setName(user.displayName);
+    }
+  }, [user]);
+
+  const handleSave = async () => {
+    if (!name.trim()) {
+      showToast('昵称不能为空', 'error');
+      return;
+    }
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
+      const res = await fetch(`/api/merchant/employees/${user?.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ display_name: name })
+      });
+      if (res.ok) {
+        showToast('资料已更新，刷新页面后生效');
+        onClose();
+      } else {
+        showToast('更新失败', 'error');
+      }
+    } catch (e) {
+      showToast('网络错误', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="个人资料">
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">邮箱</label>
+          <input
+            type="email"
+            value={user?.email || ''}
+            disabled
+            className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">昵称</label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+          />
+        </div>
+      </div>
+      <div className="mt-6 flex gap-3">
+        <Button variant="secondary" className="flex-1" onClick={onClose}>
+          取消
+        </Button>
+        <Button variant="primary" className="flex-1" loading={loading} onClick={handleSave}>
+          保存
+        </Button>
+      </div>
+    </Modal>
   );
 }
 
@@ -722,7 +858,7 @@ function AboutModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
         <div className="text-left space-y-3 text-sm text-gray-600 dark:text-gray-400">
           <p>商品页助手是一个面向个人商户/小微商家的商品展示页生成工具，帮助用户快速创建商品分享页面。</p>
           <p className="text-xs text-gray-400 dark:text-gray-500">
-            © 2024 GoodsPage. All rights reserved.
+            © 2026 GoodsPage. All rights reserved.
           </p>
         </div>
 

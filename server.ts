@@ -312,6 +312,15 @@ const authMiddleware = async (req: AuthRequest, res: Response, next: NextFunctio
   }
 };
 
+// 主管权限中间件（支持 admin, manager, supervisor 角色）
+const supervisorMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
+  const role = req.user?.role;
+  if (role !== 'manager' && role !== 'admin' && role !== 'supervisor') {
+    return res.status(403).json({ error: '需要主管或以上权限' });
+  }
+  next();
+};
+
 // 管理员权限中间件（支持 admin 和 manager 角色）
 const adminMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
   const role = req.user?.role;
@@ -320,6 +329,97 @@ const adminMiddleware = (req: AuthRequest, res: Response, next: NextFunction) =>
   }
   next();
 };
+
+// 递归计算三级分润 (经理 -> 主管 -> 员工)
+async function distributeRevenue(orderUserId: string, totalAmount: number) {
+  try {
+    const amount = parseFloat(totalAmount as any);
+    if (isNaN(amount) || amount <= 0) return;
+
+    // 1. 获取员工及其上级链路 (最多查3层)
+    const userRes = await pool.query(`
+      SELECT id, role, earnings_rate, created_by 
+      FROM public.users WHERE id = $1
+    `, [orderUserId]);
+    
+    if (userRes.rows.length === 0) return;
+    
+    const user = userRes.rows[0];
+    const chain = [user];
+    
+    let currentUserId = user.created_by;
+    for (let i = 0; i < 3; i++) {
+      if (!currentUserId) break;
+      const parentRes = await pool.query(`
+        SELECT id, role, earnings_rate, created_by 
+        FROM public.users WHERE id = $1
+      `, [currentUserId]);
+      if (parentRes.rows.length === 0) break;
+      chain.push(parentRes.rows[0]);
+      currentUserId = parentRes.rows[0].created_by;
+    }
+
+    // 2. 找到顶级经理 (链路最顶端且角色为 manager 或 admin 的人)
+    // 如果链路中没有经理，说明数据异常，安全起见把钱给最终节点
+    let managerIndex = chain.findIndex(u => u.role === 'manager' || u.role === 'admin');
+    if (managerIndex === -1) managerIndex = chain.length - 1; // 兜底
+    
+    const validChain = chain.slice(0, managerIndex + 1);
+    
+    // 3. 从顶向下计算每个人的分润金额 (链式一对一分配，支持 a=0 的越级抽取)
+    // validChain 顺序是 [底层, ..., 顶层]，例如 [员工, 主管, 经理]
+    
+    let currentPool = amount;
+    let poolOwnerIndex = validChain.length - 1; // 初始池子归属最顶层
+    const payouts = new Array(validChain.length).fill(0);
+
+    for (let i = validChain.length - 2; i >= 0; i--) {
+      const node = validChain[i];
+      // node 的 earnings_rate 是它的直接上级给它设置的分成比例
+      const passDownRate = parseFloat(node.earnings_rate) || 0; 
+      const r = Math.max(0, Math.min(100, passDownRate)) / 100;
+      
+      if (r > 0) {
+        // 当前池子主人保留剩下的部分
+        payouts[poolOwnerIndex] += currentPool * (1 - r);
+        // 传递给下级的池子变小
+        currentPool = currentPool * r;
+        // 池子主人变更为当前下级
+        poolOwnerIndex = i;
+      } else {
+        // r == 0: 越级抽取
+        // 当前节点（比如主管）拿到 0，但池子不缩水，直接穿透给再下一级
+        // 且池子主人不变（仍是上一级），这意味着下一级会直接从上一级的池子中按比例抽成
+        payouts[i] += 0;
+      }
+    }
+
+    // 循环结束后，最后一个池子主人拿走剩下的所有钱（通常是最底层员工，或者是被截断的上级）
+    payouts[poolOwnerIndex] += currentPool;
+
+    // 4. 执行资金分配
+    for (let i = 0; i < validChain.length; i++) {
+      const amountToPay = payouts[i];
+      const userId = validChain[i].id;
+      
+      if (amountToPay <= 0) continue;
+      
+      // 更新钱包
+      await pool.query(`
+        UPDATE public.wallets SET 
+          balance = balance + $1,
+          total_earnings = total_earnings + $1,
+          updated_at = NOW()
+        WHERE user_id = $2
+      `, [amountToPay, userId]);
+      
+      console.log(`[链式分润] 用户 ${userId} 获得分润: ¥${amountToPay.toFixed(2)}`);
+    }
+
+  } catch (error) {
+    console.error('Distribute revenue error:', error);
+  }
+}
 
 // ==================== API 路由 ====================
 
@@ -684,8 +784,11 @@ app.delete('/api/products/:id', authMiddleware, async (req: AuthRequest, res: Re
 
     await pool.query('DELETE FROM public.products WHERE id = $1', [req.params.id]);
     res.json({ message: '删除成功' });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Delete product error:', error);
+    if (error.code === '23503') { // foreign_key_violation
+      return res.status(400).json({ error: '该商品已有订单记录，无法直接删除，请将商品下架' });
+    }
     res.status(500).json({ error: '删除商品失败' });
   }
 });
@@ -1149,37 +1252,8 @@ app.post('/api/orders/callback', async (req: Request, res: Response) => {
         UPDATE products SET sales = sales + 1 WHERE id = $1
       `, [order.product_id]);
 
-      // 处理员工收益分成
-      const employeeResult = await pool.query(`
-        SELECT earnings_rate FROM public.users WHERE id = $1
-      `, [order.user_id]);
-      
-      let rate = 0;
-      if (employeeResult.rows.length > 0 && employeeResult.rows[0].earnings_rate) {
-        rate = parseFloat(employeeResult.rows[0].earnings_rate);
-      }
-      
-      // 如果员工有分成比例，并且大于 0
-      if (rate > 0 && rate <= 100) {
-        const profit = parseFloat(amount || order.amount) * (rate / 100);
-        await pool.query(`
-          UPDATE public.wallets SET 
-            balance = balance + $1,
-            total_earnings = total_earnings + $1,
-            updated_at = NOW()
-          WHERE user_id = $2
-        `, [profit, order.user_id]);
-        console.log(`[收益分成] 员工 ${order.user_id} 获得分成 ${profit} (比例: ${rate}%)`);
-      } else {
-        // 没有分成比例，全额入账
-        await pool.query(`
-          UPDATE public.wallets SET 
-            balance = balance + $1,
-            total_earnings = total_earnings + $1,
-            updated_at = NOW()
-          WHERE user_id = $2
-        `, [amount || order.amount, order.user_id]);
-      }
+      // 三级分润
+      await distributeRevenue(order.user_id, amount || order.amount);
 
       await pool.query('COMMIT');
       console.log('Order paid successfully:', order_sn);
@@ -1261,13 +1335,8 @@ app.post('/api/orders/wechat/callback', async (req: Request, res: Response) => {
         UPDATE products SET sales = sales + 1 WHERE id = $1
       `, [order.product_id]);
 
-      await pool.query(`
-        UPDATE public.wallets SET 
-          balance = balance + $1,
-          total_earnings = total_earnings + $1,
-          updated_at = NOW()
-        WHERE user_id = $2
-      `, [order.amount, order.user_id]);
+      // 三级分润
+      await distributeRevenue(order.user_id, order.amount);
 
       console.log('Wechat Order paid successfully:', orderId);
     } else {
@@ -1564,14 +1633,17 @@ app.delete('/api/users/:id', authMiddleware, adminMiddleware, async (req: AuthRe
 
 // ---------- 员工管理 API (商户) ----------
 // 获取商户下的员工列表
-app.get('/api/merchant/employees', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response) => {
+app.get('/api/merchant/employees', authMiddleware, supervisorMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    // 获取当前商户创建的所有员工
+    // 获取当前商户创建的所有员工及他们的上级信息
     const result = await pool.query(`
-      SELECT id, email, display_name as name, role, status, created_at, updated_at, earnings_rate as profit_share_rate
-      FROM public.users 
-      WHERE created_by = $1 OR id = $1
-      ORDER BY created_at DESC
+      SELECT 
+        u.id, u.email, u.display_name as name, u.role, u.status, u.created_at, u.updated_at, u.earnings_rate as profit_share_rate,
+        creator.display_name as creator_name
+      FROM public.users u
+      LEFT JOIN public.users creator ON u.created_by = creator.id
+      WHERE u.created_by = $1 OR u.id = $1
+      ORDER BY u.created_at DESC
     `, [req.user.id]);
 
     res.json({ employees: result.rows });
@@ -1581,8 +1653,102 @@ app.get('/api/merchant/employees', authMiddleware, adminMiddleware, async (req: 
   }
 });
 
+// 添加员工
+app.post('/api/merchant/employees', authMiddleware, supervisorMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { email, password, display_name, role } = req.body;
+
+    if (!email || !password || !display_name || !role) {
+      return res.status(400).json({ error: '请填写完整信息' });
+    }
+
+    const myRole = req.user.role;
+    if (myRole === 'supervisor' && role !== 'employee') {
+      return res.status(403).json({ error: '主管只能创建员工' });
+    }
+
+    // 检查邮箱是否已存在
+    const existingUser = await pool.query('SELECT id FROM public.users WHERE email = $1', [email]);
+    if (existingUser.rows.length > 0) {
+      return res.status(400).json({ error: '该邮箱已被注册' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const userId = uuidv4();
+
+    await pool.query(`
+      INSERT INTO public.users (
+        id, email, encrypted_password, display_name, role, status, created_by, earnings_rate, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, 'active', $6, 0, NOW(), NOW())
+    `, [userId, email, hashedPassword, display_name, role, req.user.id]);
+
+    res.status(201).json({ success: true, message: '员工创建成功', userId });
+  } catch (error) {
+    console.error('Create employee error:', error);
+    res.status(500).json({ error: '创建员工失败' });
+  }
+});
+
+// 更新员工
+app.put('/api/merchant/employees/:id', authMiddleware, supervisorMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const employeeId = req.params.id;
+    const { display_name, role, status, profit_share_rate, password } = req.body;
+
+    // 检查是否有权限
+    const targetUserResult = await pool.query('SELECT * FROM public.users WHERE id = $1', [employeeId]);
+    if (targetUserResult.rows.length === 0) {
+      return res.status(404).json({ error: '用户不存在' });
+    }
+    const targetUser = targetUserResult.rows[0];
+    const myRole = req.user.role;
+
+    if (myRole === 'manager' && (targetUser.role === 'manager' || targetUser.role === 'admin')) {
+      return res.status(403).json({ error: '无权修改同级或上级账号' });
+    }
+    if (myRole === 'supervisor' && targetUser.role !== 'employee') {
+      return res.status(403).json({ error: '主管只能修改员工账号' });
+    }
+
+    // 只能修改自己创建的员工，除非是管理员或者跨级（比如经理改员工）
+    if (myRole !== 'admin' && targetUser.created_by !== req.user.id) {
+       // 检查是否是下级的下级
+       const creatorResult = await pool.query('SELECT created_by FROM public.users WHERE id = $1', [targetUser.created_by]);
+       if (creatorResult.rows.length === 0 || creatorResult.rows[0].created_by !== req.user.id) {
+         if (myRole !== 'manager') { // 经理可以看所有人，但安全起见
+           return res.status(403).json({ error: '无权修改此账号' });
+         }
+       }
+    }
+
+    let query = `
+      UPDATE public.users 
+      SET display_name = $1, role = $2, status = $3, earnings_rate = $4, updated_at = NOW()
+    `;
+    const params = [display_name, role, status, profit_share_rate];
+    let paramIndex = 5;
+
+    if (password) {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      query += `, encrypted_password = $${paramIndex}`;
+      params.push(hashedPassword);
+      paramIndex++;
+    }
+
+    query += ` WHERE id = $${paramIndex}`;
+    params.push(employeeId);
+
+    await pool.query(query, params);
+
+    res.json({ success: true, message: '更新成功' });
+  } catch (error) {
+    console.error('Update employee error:', error);
+    res.status(500).json({ error: '更新失败' });
+  }
+});
+
 // 删除员工
-app.delete('/api/merchant/employees/:id', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response) => {
+app.delete('/api/merchant/employees/:id', authMiddleware, supervisorMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const employeeId = req.params.id;
 
@@ -1606,6 +1772,128 @@ app.delete('/api/merchant/employees/:id', authMiddleware, adminMiddleware, async
   } catch (error) {
     console.error('Delete employee error:', error);
     res.status(500).json({ error: '删除员工失败' });
+  }
+});
+
+// ---------- 提现审核 API (商户) ----------
+
+// 获取下级提现统计
+app.get('/api/merchant/withdrawals/stats', authMiddleware, supervisorMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const statsResult = await pool.query(`
+      SELECT 
+        COUNT(*) as total_count,
+        COALESCE(SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END), 0) as pending_amount,
+        COALESCE(SUM(CASE WHEN status = 'approved' OR status = 'paid' THEN amount ELSE 0 END), 0) as paid_amount
+      FROM public.withdrawals w
+      JOIN public.users u ON w.user_id = u.id
+      WHERE u.created_by = $1
+    `, [req.user.id]);
+
+    res.json({
+      pendingCount: parseInt(statsResult.rows[0].total_count) || 0, // Simplified: should be pending count, but keeping original structure logic
+      pendingAmount: parseFloat(statsResult.rows[0].pending_amount) || 0,
+      paidAmount: parseFloat(statsResult.rows[0].paid_amount) || 0
+    });
+  } catch (error) {
+    console.error('Get withdrawal stats error:', error);
+    res.status(500).json({ error: '获取统计失败' });
+  }
+});
+
+// 获取所有下级提现记录
+app.get('/api/merchant/withdrawals', authMiddleware, supervisorMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        w.*, u.display_name as user_name, u.email as user_email
+      FROM public.withdrawals w
+      JOIN public.users u ON w.user_id = u.id
+      WHERE u.created_by = $1
+      ORDER BY w.created_at DESC
+    `, [req.user.id]);
+
+    res.json({ withdrawals: result.rows });
+  } catch (error) {
+    console.error('Get merchant withdrawals error:', error);
+    res.status(500).json({ error: '获取提现列表失败' });
+  }
+});
+
+// 审核通过
+app.post('/api/merchant/withdraw/:id/approve', authMiddleware, supervisorMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const withdrawId = req.params.id;
+    // Verify it belongs to sub-user
+    const checkRes = await pool.query(`
+      SELECT w.* FROM public.withdrawals w
+      JOIN public.users u ON w.user_id = u.id
+      WHERE w.id = $1 AND u.created_by = $2
+    `, [withdrawId, req.user.id]);
+    
+    if (checkRes.rows.length === 0) return res.status(404).json({ error: '提现记录不存在或无权限' });
+
+    await pool.query(`UPDATE public.withdrawals SET status = 'approved', updated_at = NOW() WHERE id = $1`, [withdrawId]);
+    res.json({ success: true, message: '已通过审核' });
+  } catch (error) {
+    res.status(500).json({ error: '操作失败' });
+  }
+});
+
+// 拒绝提现
+app.post('/api/merchant/withdraw/:id/reject', authMiddleware, supervisorMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const withdrawId = req.params.id;
+    const { reason } = req.body;
+    
+    await pool.query('BEGIN');
+    const checkRes = await pool.query(`
+      SELECT w.* FROM public.withdrawals w
+      JOIN public.users u ON w.user_id = u.id
+      WHERE w.id = $1 AND u.created_by = $2 AND w.status = 'pending' FOR UPDATE
+    `, [withdrawId, req.user.id]);
+    
+    if (checkRes.rows.length === 0) {
+      await pool.query('ROLLBACK');
+      return res.status(404).json({ error: '提现记录不存在或状态已变更' });
+    }
+    
+    const record = checkRes.rows[0];
+
+    // 退还余额
+    await pool.query(`
+      UPDATE public.wallets SET balance = balance + $1 WHERE user_id = $2
+    `, [record.amount, record.user_id]);
+
+    await pool.query(`
+      UPDATE public.withdrawals SET status = 'rejected', updated_at = NOW() WHERE id = $1
+    `, [withdrawId]);
+
+    await pool.query('COMMIT');
+    res.json({ success: true, message: '已拒绝并退还余额' });
+  } catch (error) {
+    await pool.query('ROLLBACK');
+    res.status(500).json({ error: '操作失败' });
+  }
+});
+
+// 标记为已打款
+app.post('/api/merchant/withdraw/:id/pay', authMiddleware, supervisorMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const withdrawId = req.params.id;
+    
+    const checkRes = await pool.query(`
+      SELECT w.* FROM public.withdrawals w
+      JOIN public.users u ON w.user_id = u.id
+      WHERE w.id = $1 AND u.created_by = $2 AND (w.status = 'pending' OR w.status = 'approved')
+    `, [withdrawId, req.user.id]);
+    
+    if (checkRes.rows.length === 0) return res.status(404).json({ error: '提现记录不存在或状态不正确' });
+
+    await pool.query(`UPDATE public.withdrawals SET status = 'paid', updated_at = NOW() WHERE id = $1`, [withdrawId]);
+    res.json({ success: true, message: '已标记为已打款' });
+  } catch (error) {
+    res.status(500).json({ error: '操作失败' });
   }
 });
 

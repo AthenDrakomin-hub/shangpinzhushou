@@ -49,7 +49,6 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'wallet', label: '我的钱包', icon: <Wallet className="w-5 h-5" /> },
   { id: 'merchant_employees', label: '员工管理', icon: <Users className="w-5 h-5" /> },
   { id: 'merchant_withdrawals', label: '提现管理', icon: <Wallet className="w-5 h-5" /> },
-  { id: 'admin_pending_users', label: '用户审核', icon: <Users className="w-5 h-5" /> },
   { id: 'settings', label: '系统设置', icon: <Settings className="w-5 h-5" /> },
 ];
 
@@ -115,11 +114,6 @@ export default function AppLayout({
       return false;
     }
     
-    // 只有经理可以看到用户审核
-    if (item.id === 'admin_pending_users' && role !== 'manager' && role !== 'admin') {
-      return false;
-    }
-    
     // 只有经理可以看到系统设置
     if (item.id === 'settings' && role !== 'manager' && role !== 'admin') {
       return false;
@@ -181,8 +175,8 @@ export default function AppLayout({
                 exit={{ opacity: 0 }}
                 className="flex items-center gap-2"
               >
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                  <Package className="w-4 h-4 text-white" />
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
+                  <img src="/logo.svg" alt="Logo" className="w-full h-full object-cover" />
                 </div>
                 <span className="font-bold text-gray-900 dark:text-white">商品页助手</span>
               </motion.div>
