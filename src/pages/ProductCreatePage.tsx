@@ -98,9 +98,9 @@ export default function ProductCreatePage({ user, handleBack, setCurrentView, sh
       if (response.ok) {
         showToast('商品创建成功');
         setCurrentView('products');
-        // 如果外层传入了 setSharingProduct，则触发分享弹窗
-        if (setSharingProduct && data.product) {
-          setSharingProduct(data.product);
+        // 触发分享弹窗，注意从 data 直接取返回的商品对象
+        if (setSharingProduct && data) {
+          setSharingProduct(data);
         }
       } else {
         showToast(data.error || '创建失败', 'error');

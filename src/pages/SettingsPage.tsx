@@ -20,6 +20,7 @@ import {
   EyeOff,
   CreditCard,
   Save,
+  ShieldCheck
 } from 'lucide-react';
 import { Card, CardHeader, CardContent, Button, Badge, PageHeader, Modal } from '../components/ui';
 import type { AuthUser } from '../services/authService';
@@ -41,6 +42,7 @@ interface SettingItem {
 
 export default function SettingsPage({ user, showToast, onLogout }: SettingsPageProps) {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showSecurityModal, setShowSecurityModal] = useState(false);
   const [showPaymentConfigModal, setShowPaymentConfigModal] = useState(false);
   const [showAboutModal, setShowAboutModal] = useState(false);
   const [notifications, setNotifications] = useState(true);
@@ -94,6 +96,13 @@ export default function SettingsPage({ user, showToast, onLogout }: SettingsPage
       title: '修改密码',
       description: '更新登录密码',
       onClick: () => setShowPasswordModal(true),
+    },
+    {
+      id: 'security_question',
+      icon: <ShieldCheck className="w-5 h-5" />,
+      title: '密保问题',
+      description: '设置或修改密保问题，用于找回密码',
+      onClick: () => setShowSecurityModal(true),
     },
   ];
 
@@ -286,6 +295,13 @@ export default function SettingsPage({ user, showToast, onLogout }: SettingsPage
         showToast={showToast}
       />
 
+      {/* 密保问题弹窗 */}
+      <SecurityQuestionModal
+        isOpen={showSecurityModal}
+        onClose={() => setShowSecurityModal(false)}
+        showToast={showToast}
+      />
+
       {/* 支付配置弹窗 */}
       {showPaymentConfigModal && (
         <PaymentConfigModal
@@ -425,6 +441,120 @@ function PasswordModal({
           <Button variant="primary" className="flex-1" loading={isLoading} onClick={handleSubmit}>
             确认修改
           </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+// 密保问题弹窗
+function SecurityQuestionModal({
+  isOpen,
+  onClose,
+  showToast
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  showToast: (msg: string, type?: 'success' | 'error') => void;
+}) {
+  const [question, setQuestion] = useState('');
+  const [answer, setAnswer] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const QUESTIONS = [
+    '你出生的城市是哪里？',
+    '你小学班主任的名字是什么？',
+    '你最好的朋友叫什么名字？',
+    '你第一只宠物的名字是什么？',
+    '你最喜欢的电影是什么？'
+  ];
+
+  const handleSubmit = async () => {
+    if (!question || !answer || !password) {
+      showToast('请填写所有必填项', 'error');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/auth/security-question', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          question,
+          answer,
+          password
+        }),
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        showToast('密保问题设置成功');
+        onClose();
+        setQuestion('');
+        setAnswer('');
+        setPassword('');
+      } else {
+        showToast(data.error || '设置失败', 'error');
+      }
+    } catch (error) {
+      showToast('设置失败，请重试', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="设置密保问题">
+      <div className="space-y-4">
+        <p className="text-xs text-gray-500 mb-4">
+          密保问题将用于找回登录密码，请务必牢记您的答案。
+        </p>
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">选择密保问题</label>
+          <select
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+          >
+            <option value="" disabled>请选择一个问题</option>
+            {QUESTIONS.map((q, idx) => (
+              <option key={idx} value={q}>{q}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">密保答案</label>
+          <input
+            type="text"
+            value={answer}
+            onChange={(e) => setAnswer(e.target.value)}
+            placeholder="请输入答案"
+            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">当前登录密码</label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="验证您的身份"
+            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+          />
+        </div>
+
+        <div className="flex gap-3 pt-4">
+          <Button variant="secondary" className="flex-1" onClick={onClose}>取消</Button>
+          <Button variant="primary" className="flex-1" loading={isLoading} onClick={handleSubmit}>保存设置</Button>
         </div>
       </div>
     </Modal>

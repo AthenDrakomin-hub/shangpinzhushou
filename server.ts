@@ -116,6 +116,8 @@ async function initDatabase() {
           secret_key VARCHAR(100),
           whitelist_ip TEXT,
           earnings_rate DECIMAL(5,4) DEFAULT 0.1,
+          security_question VARCHAR(255),
+          security_answer VARCHAR(255),
           created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
           updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
         )
@@ -428,7 +430,78 @@ app.get('/api/auth/me', authMiddleware, async (req: AuthRequest, res: Response) 
   }
 });
 
-// 修改密码
+// 获取密保问题
+app.post('/api/auth/get-security-question', async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: '请提供邮箱' });
+
+    const result = await pool.query('SELECT security_question FROM public.users WHERE email = $1', [email]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: '用户不存在' });
+    }
+
+    const question = result.rows[0].security_question;
+    if (!question) {
+      return res.status(400).json({ error: '该账号未设置密保问题，请联系管理员重置密码' });
+    }
+
+    res.json({ question });
+  } catch (error) {
+    res.status(500).json({ error: '获取密保问题失败' });
+  }
+});
+
+// 通过密保重置密码
+app.post('/api/auth/reset-password-by-security', async (req: Request, res: Response) => {
+  try {
+    const { email, answer, newPassword } = req.body;
+    if (!email || !answer || !newPassword) {
+      return res.status(400).json({ error: '信息不完整' });
+    }
+
+    const result = await pool.query('SELECT id, security_answer FROM public.users WHERE email = $1', [email]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: '用户不存在' });
+    }
+
+    if (result.rows[0].security_answer !== answer) {
+      return res.status(400).json({ error: '密保问题答案错误' });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await pool.query('UPDATE public.users SET encrypted_password = $1, updated_at = NOW() WHERE id = $2', [hashedPassword, result.rows[0].id]);
+
+    res.json({ message: '密码重置成功，请重新登录' });
+  } catch (error) {
+    res.status(500).json({ error: '密码重置失败' });
+  }
+});
+app.post('/api/auth/security-question', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { question, answer, password } = req.body;
+
+    if (!question || !answer || !password) {
+      return res.status(400).json({ error: '请填写密保问题、答案和当前密码' });
+    }
+
+    const isValid = await bcrypt.compare(password, req.user.encrypted_password);
+    if (!isValid) {
+      return res.status(400).json({ error: '当前密码错误' });
+    }
+
+    await pool.query(`
+      UPDATE public.users 
+      SET security_question = $1, security_answer = $2, updated_at = NOW() 
+      WHERE id = $3
+    `, [question, answer, req.user.id]);
+
+    res.json({ message: '密保问题设置成功' });
+  } catch (error) {
+    console.error('Set security question error:', error);
+    res.status(500).json({ error: '密保问题设置失败' });
+  }
+});
 app.post('/api/auth/change-password', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { oldPassword, newPassword } = req.body;
@@ -866,78 +939,6 @@ app.get('/api/dashboard/stats', authMiddleware, async (req: AuthRequest, res: Re
   }
 });
 
-// ==================== SuperPay API 工具函数 ====================
-
-// MD5 哈希实现
-function md5(str: string): string {
-  return crypto.createHash('md5').update(str).digest('hex').toUpperCase();
-}
-
-// 生成 SuperPay 签名
-function generateSuperPaySign(data: Record<string, any>, key: string): string {
-  const filteredData: Record<string, any> = {};
-  for (const [field, value] of Object.entries(data)) {
-    if (value !== '' && value !== null && value !== undefined && field !== 'sign') {
-      filteredData[field] = value;
-    }
-  }
-  const sortedKeys = Object.keys(filteredData).sort();
-  const stringA = sortedKeys.map(k => `${k}=${filteredData[k]}`).join('&');
-  const stringSignTemp = stringA + (stringA ? '&' : '') + `key=${key}`;
-  return md5(stringSignTemp);
-}
-
-// 调用 SuperPay 创建订单
-async function createSuperPayOrder(params: {
-  merchantOn: string;
-  merchantKey: string;
-  amount: string;
-  orderSn: string;
-  channelCode?: string;
-  notifyUrl: string;
-  returnUrl?: string;
-  uid?: string;
-}): Promise<{ success: boolean; jumpUrl?: string; error?: string }> {
-  const data: Record<string, any> = {
-    merchant_on: params.merchantOn,
-    amount: params.amount,
-    order_sn: params.orderSn,
-    notify_url: params.notifyUrl,
-    return_url: params.returnUrl || '',
-    uid: params.uid || `U${Date.now()}`, // 用户标识，必填
-  };
-  
-  // 只有传了 channelCode 才添加
-  if (params.channelCode) {
-    data.channel_code = params.channelCode;
-  }
-  
-  data.sign = generateSuperPaySign(data, params.merchantKey);
-  
-  console.log('SuperPay Request:', JSON.stringify(data));
-  
-  try {
-    const response = await fetch(`${config.superpayBaseUrl}/api/collecting/pay`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'merchant_on': params.merchantOn,
-      },
-      body: JSON.stringify(data),
-    });
-    
-    const result = await response.json();
-    console.log('SuperPay Response:', JSON.stringify(result));
-    if (result.success && result.items?.jump_url) {
-      return { success: true, jumpUrl: result.items.jump_url };
-    }
-    return { success: false, error: result.error_message || '创建支付订单失败' };
-  } catch (error) {
-    console.error('SuperPay API Error:', error);
-    return { success: false, error: '支付服务暂不可用' };
-  }
-}
-
 // 创建订单（H5页面调用）
 app.post('/api/orders', async (req: Request, res: Response) => {
   try {
@@ -972,6 +973,7 @@ app.post('/api/orders', async (req: Request, res: Response) => {
     
     if (isSuperPay) {
       // ========== 使用 SuperPay（支付宝收款）==========
+      const { createSuperPayOrder } = await import('./src/services/superPay.js');
       const merchantOn = config.superpayMerchantOn;
       const merchantKey = config.superpayMerchantKey;
       
@@ -1001,7 +1003,7 @@ app.post('/api/orders', async (req: Request, res: Response) => {
         notifyUrl,
         channelCode,
         returnUrl,
-      });
+      }, config.superpayBaseUrl);
       
       if (!payResult.success) {
         console.error('[SuperPay] 创建订单失败:', payResult.error);
@@ -1060,11 +1062,13 @@ app.post('/api/orders', async (req: Request, res: Response) => {
   }
 });
 
-// 支付回调（SuperPay回调）
+// 订单回调
 app.post('/api/orders/callback', async (req: Request, res: Response) => {
   try {
     const params = req.method === 'POST' ? req.body : req.query;
     console.log('SuperPay Callback:', JSON.stringify(params));
+
+    const { generateSuperPaySign } = await import('./src/services/superPay.js');
 
     // 获取动态全局支付配置（从经理账号读取）
     const configResult = await pool.query(`
@@ -1720,15 +1724,24 @@ app.post('/api/settings/test-superpay', authMiddleware, adminMiddleware, async (
       return res.status(400).json({ error: '请提供商户号和密钥' });
     }
 
+    const { generateSuperPaySign } = await import('./src/services/superPay.js');
     // 生成签名 - 需要包含 merchant_on 参数
     const sign = generateSuperPaySign({ merchant_on: merchantOn }, merchantKey);
 
-    // 尝试调用渠道编码接口测试配置
-    const response = await fetch(`${config.superpayBaseUrl}/api/collecting/channelCode?merchant_on=${merchantOn}&sign=${sign}`, {
-      method: 'GET',
+    const response = await fetch(`${config.superpayBaseUrl}/api/collecting/pay`, {
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'merchant_on': merchantOn,
       },
+      body: JSON.stringify({
+        merchant_on: merchantOn,
+        amount: '1.00',
+        order_sn: `TEST${Date.now()}`,
+        notify_url: 'http://test.com/notify',
+        uid: 'test_uid',
+        sign
+      }),
     });
 
     const result = await response.json();
@@ -1763,6 +1776,8 @@ app.get('/api/superpay/channels', authMiddleware, async (req: AuthRequest, res: 
       return res.status(400).json({ error: '请先配置 SuperPay 商户信息' });
     }
 
+    const { generateSuperPaySign } = await import('./src/services/superPay.js');
+    
     // 尝试两种方式查询渠道编码
     // 方式1: 不带参数查询（只传签名）
     const sign = generateSuperPaySign({}, user.superpay_merchant_key);

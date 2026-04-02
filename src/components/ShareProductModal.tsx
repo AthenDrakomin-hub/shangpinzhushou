@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Product } from '../types';
 import Button from './ui/Button';
 import Modal from './ui/Modal';
 
@@ -8,7 +7,7 @@ export default function ShareProductModal({
   onClose, 
   showToast 
 }: { 
-  product: Product | null; 
+  product: any; 
   onClose: () => void; 
   showToast: (msg: string, type?: 'success' | 'error') => void;
 }) {
