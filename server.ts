@@ -132,7 +132,8 @@ async function initDatabase() {
         await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS secret_key VARCHAR(100)`);
         await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS whitelist_ip TEXT`);
         await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS earnings_rate DECIMAL(5,4) DEFAULT 0.1`);
-        await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES public.users(id) ON DELETE SET NULL`);
+        // 修复 created_by 的类型以兼容原本的 id 类型
+        await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS created_by VARCHAR(255) REFERENCES public.users(id) ON DELETE SET NULL`);
         await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS superpay_merchant_on VARCHAR(100)`);
         await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS superpay_merchant_key VARCHAR(200)`);
       } catch (alterError) {
@@ -875,11 +876,14 @@ app.get('/api/dashboard/stats', authMiddleware, async (req: AuthRequest, res: Re
         FROM public.products p
         LEFT JOIN public.orders o ON o.product_id = p.id
       `;
+      
+      const queryParams: any[] = [];
       if (!isManagerRole) {
         topProductsQuery += ' WHERE p.user_id = $1';
+        queryParams.push(userId);
       }
       topProductsQuery += ' GROUP BY p.id, p.name, p.price, p.image ORDER BY sales DESC LIMIT 5';
-      topProductsResult = await pool.query(topProductsQuery, isManagerRole ? [] : [userId]);
+      topProductsResult = await pool.query(topProductsQuery, queryParams);
     } catch (e) {
       console.error('Top products query error:', e);
     }
@@ -1430,74 +1434,6 @@ app.post('/api/withdraw', authMiddleware, async (req: AuthRequest, res: Response
     await pool.query('ROLLBACK');
     console.error('Create withdrawal error:', error);
     res.status(500).json({ error: '申请提现失败' });
-  }
-});
-
-// 处理提现（管理员）
-app.put('/api/withdrawals/:id', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response) => {
-  try {
-    const { status, rejectReason, transactionId } = req.body;
-
-    const existingResult = await pool.query('SELECT * FROM public.withdrawals WHERE id = $1', [req.params.id]);
-    
-    if (existingResult.rows.length === 0) {
-      return res.status(404).json({ error: '提现记录不存在' });
-    }
-
-    const withdrawal = existingResult.rows[0];
-
-    // 幂等性校验：如果提现记录不再是 pending，说明已被处理，直接返回错误
-    if (withdrawal.status !== 'pending') {
-      return res.status(400).json({ error: '该提现记录已被处理，请勿重复操作' });
-    }
-
-    await pool.query('BEGIN');
-
-    if (status === 'success') {
-      // 转账成功，扣减冻结余额
-      await pool.query(`
-        UPDATE public.wallets SET 
-          frozen_balance = frozen_balance - $1,
-          total_withdrawn = total_withdrawn + $1,
-          updated_at = NOW()
-        WHERE user_id = $2
-      `, [withdrawal.amount, withdrawal.user_id]);
-
-      await pool.query(`
-        UPDATE public.withdrawals SET 
-          status = 'success', 
-          transaction_id = $1,
-          pay_time = NOW(),
-          updated_at = NOW()
-        WHERE id = $2
-      `, [transactionId, req.params.id]);
-    } else if (status === 'failed') {
-      // 转账失败，解冻余额
-      await pool.query(`
-        UPDATE public.wallets SET 
-          balance = balance + $1,
-          frozen_balance = frozen_balance - $1,
-          updated_at = NOW()
-        WHERE user_id = $2
-      `, [withdrawal.amount, withdrawal.user_id]);
-
-      await pool.query(`
-        UPDATE public.withdrawals SET 
-          status = 'failed', 
-          reject_reason = $1,
-          updated_at = NOW()
-        WHERE id = $2
-      `, [rejectReason, req.params.id]);
-    }
-
-    await pool.query('COMMIT');
-
-    const result = await pool.query('SELECT * FROM public.withdrawals WHERE id = $1', [req.params.id]);
-    res.json(result.rows[0]);
-  } catch (error) {
-    await pool.query('ROLLBACK');
-    console.error('Update withdrawal error:', error);
-    res.status(500).json({ error: '处理提现失败' });
   }
 });
 
