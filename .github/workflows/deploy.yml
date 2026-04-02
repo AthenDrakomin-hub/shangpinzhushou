@@ -23,8 +23,9 @@ jobs:
           script: |
             cd /root/payforme
             git pull origin main
-            npm install canvas sharp --ignore-scripts=false
             pnpm install
+            # 强制使用 npm 安装 canvas 和 sharp 以确保二进制文件正确构建
+            npm install canvas sharp --build-from-source
             pnpm build
             # 先杀掉旧进程，再启动，避免旧版本残余导致列缺失报错
             pm2 delete payforme || true
