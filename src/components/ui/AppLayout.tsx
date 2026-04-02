@@ -176,7 +176,7 @@ export default function AppLayout({
                 className="flex items-center gap-2"
               >
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
-                  <img src="/logo.svg" alt="Logo" className="w-full h-full object-cover" />
+                  <img src="/logo.png" alt="Logo" className="w-full h-full object-cover" />
                 </div>
                 <span className="font-bold text-gray-900 dark:text-white">商品页助手</span>
               </motion.div>

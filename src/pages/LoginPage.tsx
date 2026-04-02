@@ -70,9 +70,9 @@ export default function LoginPage({ handleLogin, isAuthLoading, authError, onFor
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.1 }}
-            className="inline-flex items-center justify-center w-20 h-20 rounded-2xl mb-4 overflow-hidden shadow-2xl"
+            className="inline-flex items-center justify-center w-20 h-20 rounded-2xl mb-4 overflow-hidden shadow-2xl bg-white/20 p-1"
           >
-            <img src="/logo.svg" alt="商品页助手 Logo" className="w-full h-full object-cover" />
+            <img src="/logo.png" alt="商品页助手 Logo" className="w-full h-full object-cover rounded-xl" />
           </motion.div>
           <h1 className="text-3xl font-bold text-white drop-shadow-md">商品页助手</h1>
           <p className="text-gray-200 text-sm mt-2 drop-shadow">登录您的账户继续使用</p>
