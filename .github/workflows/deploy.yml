@@ -23,12 +23,22 @@ jobs:
           script: |
             cd /root/payforme
             git pull origin main
-            pnpm install
-            # 安装系统依赖并强制使用 npm 安装 canvas 和 sharp
+            
+            # 安装系统依赖
             apt-get update && apt-get install -y build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev libvips-dev
-            rm -rf node_modules/.pnpm/canvas* node_modules/.pnpm/sharp* node_modules/canvas node_modules/sharp
-            npm install canvas sharp --build-from-source
-            pnpm build
+            
+            # 清理所有 node_modules 以防 npm 和 pnpm 混用导致的链接丢失
+            rm -rf node_modules pnpm-lock.yaml package-lock.json
+            
+            # 统一使用 npm 安装，避免 pnpm 对原生模块构建的限制
+            npm install
+            
+            # 确保 canvas 和 sharp 被正确编译
+            npm rebuild canvas sharp --build-from-source
+            
+            # 构建前端
+            npm run build
+            
             # 先杀掉旧进程，再启动，避免旧版本残余导致列缺失报错
             pm2 delete payforme || true
             pm2 start server.ts --name payforme --interpreter ./node_modules/.bin/tsx
