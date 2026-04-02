@@ -2,14 +2,11 @@
  * 商品创建页面
  * 使用新布局和UI组件
  */
-import React, { useState, useRef } from 'react';
-import { Plus, X, ImageIcon } from 'lucide-react';
-import Button from '../components/ui/Button';
-import Input from '../components/ui/Input';
-import Card, { CardContent } from '../components/ui/Card';
-import PageHeader from '../components/ui/PageHeader';
-import { AuthUser } from '../types';
+import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
+import { Plus, X, Image as ImageIcon } from 'lucide-react';
+import { Button, Input, Card, CardContent, PageHeader } from '../components/ui';
+import { AuthUser } from '../services/authService';
 
 interface ProductCreatePageProps {
   user: AuthUser | null;
@@ -23,11 +20,13 @@ export default function ProductCreatePage({ user, handleBack, setCurrentView, sh
   const [product, setProduct] = useState({
     name: '',
     price: '',
+    originalPrice: '',
     description: '',
     imageUrl: '',
     category: 'other',
     templateId: 'default',
     supportedPayMethods: ['wechat', 'alipay', 'bank'],
+    isShared: true,
   });
   const [isLoading, setIsLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -86,11 +85,13 @@ export default function ProductCreatePage({ user, handleBack, setCurrentView, sh
         body: JSON.stringify({
           name: product.name,
           price: product.price,
+          original_price: product.originalPrice || product.price,
           description: product.description,
           image: product.imageUrl,
           category: product.category,
           template_id: product.templateId,
           supported_pay_methods: product.supportedPayMethods.join(','),
+          is_shared: product.isShared,
         }),
       });
 
@@ -203,20 +204,39 @@ export default function ProductCreatePage({ user, handleBack, setCurrentView, sh
               placeholder="输入商品名称"
             />
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                商品价格 (元) *
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium">¥</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={product.price}
-                  onChange={(e) => setProduct({ ...product, price: e.target.value })}
-                  placeholder="0.00"
-                  className="w-full pl-8 pr-4 py-2.5 rounded-lg border transition-all duration-200 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  现价 (元) *
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium">¥</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={product.price}
+                    onChange={(e) => setProduct({ ...product, price: e.target.value })}
+                    placeholder="0.00"
+                    className="w-full pl-8 pr-4 py-2.5 rounded-lg border transition-all duration-200 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  原价 (元)
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium">¥</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={product.originalPrice}
+                    onChange={(e) => setProduct({ ...product, originalPrice: e.target.value })}
+                    placeholder="0.00"
+                    className="w-full pl-8 pr-4 py-2.5 rounded-lg border transition-all duration-200 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
               </div>
             </div>
 
@@ -231,6 +251,25 @@ export default function ProductCreatePage({ user, handleBack, setCurrentView, sh
                 rows={3}
                 className="w-full px-4 py-2.5 rounded-lg border transition-all duration-200 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
               />
+            </div>
+
+            {/* 共享设置 */}
+            <div className="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-800">
+              <div>
+                <h4 className="text-sm font-medium text-blue-900 dark:text-blue-100">支持共享该商品</h4>
+                <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                  开启后所有员工可见。其他员工分享产生的收益归分享者所有。
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={product.isShared}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setProduct({ ...product, isShared: e.target.checked })}
+                />
+                <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+              </label>
             </div>
           </CardContent>
         </Card>

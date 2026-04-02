@@ -270,6 +270,10 @@ export default function H5ProductPage({ productId = 'p1', onClose }: H5ProductPa
     setLoading(true);
     
     try {
+      // 从 URL 获取分享者 ID
+      const searchParams = new URLSearchParams(window.location.search);
+      const shareUid = searchParams.get('uid');
+
       // 调用真实的订单创建 API
       const response = await fetch('/api/orders', {
         method: 'POST',
@@ -277,6 +281,7 @@ export default function H5ProductPage({ productId = 'p1', onClose }: H5ProductPa
         body: JSON.stringify({
           productId: product.id,
           payType: selectedChannel.code,
+          shareUid,
           buyerName: '',
           buyerPhone: ''
         })

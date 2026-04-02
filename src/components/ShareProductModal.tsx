@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
-import Button from './ui/Button';
-import Modal from './ui/Modal';
+import { useState } from 'react';
+import { Button, Modal } from './ui';
 
 export default function ShareProductModal({ 
   product, 
+  user,
   onClose, 
   showToast 
 }: { 
   product: any; 
+  user?: any;
   onClose: () => void; 
   showToast: (msg: string, type?: 'success' | 'error') => void;
 }) {
@@ -26,10 +27,17 @@ export default function ShareProductModal({
     { id: 'kuaishou', name: '快手' },
   ];
 
+  const getShareLink = () => {
+    let link = `${window.location.origin}/h5/${product.id}?template=${template}`;
+    if (user?.id) {
+      link += `&uid=${user.id}`;
+    }
+    return link;
+  };
+
   const copyShareLink = () => {
     if (!product) return;
-    const link = `${window.location.origin}/h5/${product.id}?template=${template}`;
-    navigator.clipboard.writeText(link);
+    navigator.clipboard.writeText(getShareLink());
     showToast('链接已复制到剪贴板');
   };
 
@@ -41,7 +49,11 @@ export default function ShareProductModal({
       const response = await fetch('/api/poster/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ productId: product.id, template }),
+        body: JSON.stringify({ 
+          productId: product.id, 
+          template,
+          shareUid: user?.id
+        }),
       });
       if (response.ok) {
         const blob = await response.blob();
@@ -68,7 +80,7 @@ export default function ShareProductModal({
             <input
               type="text"
               readOnly
-              value={`${window.location.origin}/h5/${product.id}?template=${template}`}
+              value={getShareLink()}
               className="flex-1 px-4 py-2 border border-gray-200 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-500 text-sm"
             />
             <Button variant="secondary" onClick={copyShareLink}>复制</Button>

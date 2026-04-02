@@ -154,6 +154,7 @@ async function initDatabase() {
         stock INTEGER DEFAULT 0,
         template_id VARCHAR(50),
         status VARCHAR(20) DEFAULT 'active',
+        is_shared BOOLEAN DEFAULT false,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       )
@@ -202,6 +203,7 @@ async function initDatabase() {
         amount DECIMAL(12,2) NOT NULL,
         status VARCHAR(20) DEFAULT 'pending',
         payment_method VARCHAR(20) NOT NULL,
+        usdt_network VARCHAR(20),
         payment_account VARCHAR(100) NOT NULL,
         payment_name VARCHAR(50) NOT NULL,
         bank_code VARCHAR(20),
@@ -560,11 +562,11 @@ app.get('/api/products', authMiddleware, async (req: AuthRequest, res: Response)
     const result = await pool.query(`
       SELECT 
         id, user_id, name, image, price, original_price,
-        description, category, template_id, 
+        description, category, template_id, is_shared,
         supported_pay_methods,
         views, stock, sales, status, created_at, updated_at
       FROM public.products 
-      WHERE user_id = $1 OR $2 = 'manager'
+      WHERE user_id = $1 OR is_shared = true OR $2 IN ('manager', 'admin', 'supervisor')
       ORDER BY created_at DESC
     `, [req.user.id, req.user.role]);
 
@@ -581,7 +583,7 @@ app.get('/api/products/:id', async (req: Request, res: Response) => {
     const result = await pool.query(`
       SELECT 
         id, user_id, name, image, price, original_price,
-        description, category, template_id,
+        description, category, template_id, is_shared,
         supported_pay_methods,
         views, stock, sales, status, created_at, updated_at
       FROM public.products WHERE id = $1
@@ -601,7 +603,7 @@ app.get('/api/products/:id', async (req: Request, res: Response) => {
 // 创建商品
 app.post('/api/products', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const { name, price, original_price, description, image, stock, template_id, category, supported_pay_methods } = req.body;
+    const { name, price, original_price, description, image, stock, template_id, category, supported_pay_methods, is_shared } = req.body;
 
     if (!name || !price) {
       return res.status(400).json({ error: '商品名称和价格不能为空' });
@@ -610,13 +612,13 @@ app.post('/api/products', authMiddleware, async (req: AuthRequest, res: Response
     const id = `p${Date.now().toString().slice(-8)}`;
     
     const result = await pool.query(`
-      INSERT INTO public.products (id, user_id, name, price, original_price, description, image, stock, template_id, category, supported_pay_methods, status)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'active')
+      INSERT INTO public.products (id, user_id, name, price, original_price, description, image, stock, template_id, category, supported_pay_methods, status, is_shared)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'active', $12)
       RETURNING id, user_id, name, image, price, original_price,
-        description, category, template_id,
+        description, category, template_id, is_shared,
         supported_pay_methods,
         views, stock, sales, status, created_at
-    `, [id, req.user.id, name, price, original_price || price, description, image, stock || 0, template_id, category, supported_pay_methods]);
+    `, [id, req.user.id, name, price, original_price || price, description, image, stock || 0, template_id, category, supported_pay_methods, is_shared || false]);
 
     res.status(201).json(result.rows[0]);
   } catch (error) {
@@ -628,7 +630,7 @@ app.post('/api/products', authMiddleware, async (req: AuthRequest, res: Response
 // 更新商品
 app.put('/api/products/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const { name, price, original_price, description, image, stock, status } = req.body;
+    const { name, price, original_price, description, image, stock, status, is_shared } = req.body;
 
     const existingResult = await pool.query('SELECT * FROM public.products WHERE id = $1', [req.params.id]);
     
@@ -650,13 +652,14 @@ app.put('/api/products/:id', authMiddleware, async (req: AuthRequest, res: Respo
         image = COALESCE($5, image),
         stock = COALESCE($6, stock),
         status = COALESCE($7, status),
+        is_shared = COALESCE($8, is_shared),
         updated_at = NOW()
-      WHERE id = $8
+      WHERE id = $9
       RETURNING id, user_id, name, image, price, original_price,
-        description, category, template_id,
+        description, category, template_id, is_shared,
         supported_pay_methods,
         views, stock, sales, status, created_at, updated_at
-    `, [name, price, original_price, description, image, stock, status, req.params.id]);
+    `, [name, price, original_price, description, image, stock, status, is_shared, req.params.id]);
 
     res.json(result.rows[0]);
   } catch (error) {
@@ -942,7 +945,7 @@ app.get('/api/dashboard/stats', authMiddleware, async (req: AuthRequest, res: Re
 // 创建订单（H5页面调用）
 app.post('/api/orders', async (req: Request, res: Response) => {
   try {
-    const { productId, payType, buyerName, buyerPhone } = req.body;
+    const { productId, payType, buyerName, buyerPhone, shareUid } = req.body;
 
     if (!productId || !payType) {
       return res.status(400).json({ error: '缺少必要参数' });
@@ -961,6 +964,16 @@ app.post('/api/orders', async (req: Request, res: Response) => {
     }
 
     const product = productResult.rows[0];
+    
+    // 如果传入了 shareUid，并且商品是共享的，则订单归属分享者
+    let orderUserId = product.user_id;
+    if (shareUid && product.is_shared) {
+      const shareUserCheck = await pool.query('SELECT id FROM users WHERE id = $1', [shareUid]);
+      if (shareUserCheck.rows.length > 0) {
+        orderUserId = shareUid;
+      }
+    }
+
     const orderId = `O${Date.now()}${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
     
     // 判断支付网关类型
@@ -1049,7 +1062,7 @@ app.post('/api/orders', async (req: Request, res: Response) => {
     await pool.query(`
       INSERT INTO public.orders (id, order_id, user_id, product_id, product_name, amount, status, buyer_name, buyer_phone, pay_type, pay_url, expired_at)
       VALUES ($1, $1, $2, $3, $4, $5, 'pending', $6, $7, $8, $9, NOW())
-    `, [orderId, product.user_id, productId, product.name, product.price, finalBuyerName, finalBuyerPhone, payType, payUrl]);
+    `, [orderId, orderUserId, productId, product.name, product.price, finalBuyerName, finalBuyerPhone, payType, payUrl]);
 
     res.status(201).json({
       orderId,
@@ -1365,12 +1378,16 @@ app.get('/api/withdrawals', authMiddleware, async (req: AuthRequest, res: Respon
 });
 
 // 申请提现
-app.post('/api/withdrawals', authMiddleware, async (req: AuthRequest, res: Response) => {
+app.post('/api/withdraw', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const { amount, paymentMethod, paymentAccount, paymentName, bankCode, bankName } = req.body;
+    const { amount, paymentMethod, paymentAccount, usdtNetwork } = req.body;
 
     if (!amount || amount <= 0) {
       return res.status(400).json({ error: '请输入有效金额' });
+    }
+
+    if (paymentMethod !== 'USDT') {
+      return res.status(400).json({ error: '目前仅支持 USDT 提现' });
     }
 
     // 检查余额
@@ -1401,14 +1418,14 @@ app.post('/api/withdrawals', authMiddleware, async (req: AuthRequest, res: Respo
     }
 
     const result = await pool.query(`
-      INSERT INTO public.withdrawals (id, user_id, amount, status, payment_method, payment_account, payment_name, bank_code, bank_name)
-      VALUES ($1, $2, $3, 'pending', $4, $5, $6, $7, $8)
+      INSERT INTO public.withdrawals (id, user_id, amount, status, payment_method, usdt_network, payment_account, payment_name)
+      VALUES ($1, $2, $3, 'pending', $4, $5, $6, $7)
       RETURNING *
-    `, [withdrawalId, req.user.id, amount, paymentMethod, paymentAccount, paymentName, bankCode, bankName]);
+    `, [withdrawalId, req.user.id, amount, paymentMethod, usdtNetwork, paymentAccount, 'USDT提现']);
 
     await pool.query('COMMIT');
 
-    res.status(201).json(result.rows[0]);
+    res.status(201).json({ success: true, data: result.rows[0] });
   } catch (error) {
     await pool.query('ROLLBACK');
     console.error('Create withdrawal error:', error);
@@ -1825,7 +1842,7 @@ app.get('/api/superpay/channels', authMiddleware, async (req: AuthRequest, res: 
 // 生成商品分享海报
 app.post('/api/poster/generate', async (req: Request, res: Response) => {
   try {
-    const { productId, template }: { productId: string; template?: PosterTemplate } = req.body;
+    const { productId, template, shareUid }: { productId: string; template?: PosterTemplate; shareUid?: string } = req.body;
 
     if (!productId) {
       return res.status(400).json({ error: '请提供商品 ID' });
@@ -1843,9 +1860,12 @@ app.post('/api/poster/generate', async (req: Request, res: Response) => {
     const product = result.rows[0];
     const usedTemplate = template || 'default';
 
-    // 生成商品页面 URL（使用项目域名，并带上模板参数）
+    // 生成商品页面 URL（使用项目域名，并带上模板参数和分享者ID）
     const domain = process.env.COZE_PROJECT_DOMAIN_DEFAULT || `http://localhost:${config.port}`;
-    const productUrl = `${domain}/h5/product/${productId}?template=${usedTemplate}`;
+    let productUrl = `${domain}/h5/${productId}?template=${usedTemplate}`;
+    if (shareUid) {
+      productUrl += `&uid=${shareUid}`;
+    }
 
     // 生成二维码 base64 图片
     const qrBase64 = await QRCode.toDataURL(productUrl, {
