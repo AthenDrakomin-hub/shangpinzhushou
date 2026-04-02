@@ -106,21 +106,21 @@ const QUICK_ACTIONS: QuickAction[] = [
     label: '商品管理',
     icon: <Package className="w-5 h-5 text-blue-600 dark:text-blue-400" />,
     iconBg: 'bg-blue-100 dark:bg-blue-900/30',
-    roles: ['manager', 'admin', 'supervisor', 'employee'],
+    roles: ['manager', 'admin', 'supervisor', 'employee', 'staff'],
   },
   {
     id: 'orders',
     label: '订单管理',
     icon: <ShoppingCart className="w-5 h-5 text-green-600 dark:text-green-400" />,
     iconBg: 'bg-green-100 dark:bg-green-900/30',
-    roles: ['manager', 'admin', 'supervisor', 'employee'],
+    roles: ['manager', 'admin', 'supervisor', 'employee', 'staff'],
   },
   {
     id: 'wallet',
     label: '我的钱包',
     icon: <Wallet className="w-5 h-5 text-purple-600 dark:text-purple-400" />,
     iconBg: 'bg-purple-100 dark:bg-purple-900/30',
-    roles: ['manager', 'admin', 'supervisor', 'employee'],
+    roles: ['manager', 'admin', 'supervisor', 'employee', 'staff'],
   },
   {
     id: 'merchant_employees',
@@ -137,6 +137,13 @@ const QUICK_ACTIONS: QuickAction[] = [
     roles: ['manager', 'admin', 'supervisor'],
   },
   {
+    id: 'admin_pending_users',
+    label: '用户审核',
+    icon: <Users className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />,
+    iconBg: 'bg-indigo-100 dark:bg-indigo-900/30',
+    roles: ['manager', 'admin'],
+  },
+  {
     id: 'settings',
     label: '系统设置',
     icon: <Settings className="w-5 h-5 text-gray-600 dark:text-gray-400" />,
@@ -148,7 +155,7 @@ const QUICK_ACTIONS: QuickAction[] = [
     label: '申请提现',
     icon: <FileText className="w-5 h-5 text-rose-600 dark:text-rose-400" />,
     iconBg: 'bg-rose-100 dark:bg-rose-900/30',
-    roles: ['employee'],
+    roles: ['employee', 'staff'],
   },
 ];
 

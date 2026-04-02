@@ -1834,7 +1834,7 @@ if (!fs.existsSync(path.join(distPath, 'index.html'))) {
 
 app.use(express.static(distPath, { maxAge: config.nodeEnv === 'production' ? '1d' : '0' }));
 
-// SPA 回退
+// SPA 回退 (处理 /, /h5/*, /checkout/*, /payment/result 等前端路由)
 app.get('*', (req: Request, res: Response, next: NextFunction) => {
   // 跳过 API 路由
   if (req.path.startsWith('/api/')) {

@@ -46,9 +46,11 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'dashboard', label: '仪表盘', icon: <Home className="w-5 h-5" /> },
   { id: 'products', label: '商品管理', icon: <Package className="w-5 h-5" /> },
   { id: 'orders', label: '订单管理', icon: <ShoppingCart className="w-5 h-5" /> },
-  { id: 'wallet', label: '钱包', icon: <Wallet className="w-5 h-5" /> },
-  { id: 'merchant_employees', label: '用户管理', icon: <Users className="w-5 h-5" /> },
-  { id: 'settings', label: '设置', icon: <Settings className="w-5 h-5" /> },
+  { id: 'wallet', label: '我的钱包', icon: <Wallet className="w-5 h-5" /> },
+  { id: 'merchant_employees', label: '员工管理', icon: <Users className="w-5 h-5" /> },
+  { id: 'merchant_withdrawals', label: '提现管理', icon: <Wallet className="w-5 h-5" /> },
+  { id: 'admin_pending_users', label: '用户审核', icon: <Users className="w-5 h-5" /> },
+  { id: 'settings', label: '系统设置', icon: <Settings className="w-5 h-5" /> },
 ];
 
 interface AppLayoutProps {
@@ -100,9 +102,24 @@ export default function AppLayout({
 
   // 根据角色过滤菜单
   const filteredNavItems = NAV_ITEMS.filter((item) => {
-    if (item.id === 'merchant_employees' && user?.role !== 'manager' && user?.role !== 'admin') {
+    const role = user?.role || 'employee';
+    
+    // 经理和主管可以看到员工管理和提现管理
+    if ((item.id === 'merchant_employees' || item.id === 'merchant_withdrawals') && 
+        role !== 'manager' && role !== 'admin' && role !== 'supervisor') {
       return false;
     }
+    
+    // 只有经理可以看到用户审核
+    if (item.id === 'admin_pending_users' && role !== 'manager' && role !== 'admin') {
+      return false;
+    }
+    
+    // 只有经理可以看到系统设置
+    if (item.id === 'settings' && role !== 'manager' && role !== 'admin') {
+      return false;
+    }
+    
     return true;
   });
 

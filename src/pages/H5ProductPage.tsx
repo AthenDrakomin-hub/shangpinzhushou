@@ -133,6 +133,9 @@ export default function H5ProductPage({ productId = 'p1', onClose }: H5ProductPa
   const [orderId, setOrderId] = useState<string>('');
   const [payUrl, setPayUrl] = useState<string>('');
   
+  const [buyerName, setBuyerName] = useState('');
+  const [buyerPhone, setBuyerPhone] = useState('');
+  
   // 从 URL 读取模板参数
   const getTemplateFromURL = (): string => {
     if (typeof window === 'undefined') return 'default';
@@ -277,8 +280,8 @@ export default function H5ProductPage({ productId = 'p1', onClose }: H5ProductPa
         body: JSON.stringify({
           productId: product.id,
           payType: selectedChannel.code,
-          buyerName: '',
-          buyerPhone: ''
+          buyerName: buyerName,
+          buyerPhone: buyerPhone
         })
       });
       
@@ -468,6 +471,33 @@ export default function H5ProductPage({ productId = 'p1', onClose }: H5ProductPa
             </p>
           </div>
         )}
+      </div>
+
+      {/* 买家信息填写 */}
+      <div className="bg-white px-4 py-4 mt-2">
+        <h3 className="font-semibold text-gray-900 mb-3">买家信息</h3>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-sm text-gray-600 mb-1">姓名 (选填)</label>
+            <input 
+              type="text" 
+              placeholder="请输入您的姓名" 
+              value={buyerName}
+              onChange={(e) => setBuyerName(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm text-gray-600 mb-1">联系电话 (选填)</label>
+            <input 
+              type="tel" 
+              placeholder="请输入您的手机号" 
+              value={buyerPhone}
+              onChange={(e) => setBuyerPhone(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-blue-500"
+            />
+          </div>
+        </div>
       </div>
 
       {/* 订单状态提示 */}

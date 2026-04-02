@@ -40,11 +40,11 @@ interface Product {
 }
 
 const PRODUCT_CATEGORIES = [
-  { id: 'digital', name: '虚拟商品', icon: '📱' },
-  { id: 'physical', name: '实物商品', icon: '📦' },
-  { id: 'service', name: '服务类', icon: '🛠️' },
-  { id: 'food', name: '食品饮料', icon: '🍔' },
-  { id: 'other', name: '其他', icon: '📋' },
+  { id: 'daifu', name: '代付', icon: '💳' },
+  { id: 'meituan', name: '美团', icon: '🛵' },
+  { id: 'eleme', name: '饿了么', icon: '🍱' },
+  { id: 'jd', name: '京东', icon: '📦' },
+  { id: 'other', name: '其他', icon: '✨' },
 ];
 
 export default function ProductsPage({ user, handleBack, setCurrentView, showToast }: ProductsPageProps) {
@@ -54,7 +54,7 @@ export default function ProductsPage({ user, handleBack, setCurrentView, showToa
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
   const [filterCategory, setFilterCategory] = useState('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [sharingProduct, setSharingProduct] = useState<Product | null>(null);
 
   useEffect(() => {
     fetchProducts();
@@ -117,7 +117,7 @@ export default function ProductsPage({ user, handleBack, setCurrentView, showToa
   };
 
   const copyShareLink = (productId: string) => {
-    const link = `${window.location.origin}/checkout/${productId}`;
+    const link = `${window.location.origin}/h5/${productId}`;
     navigator.clipboard.writeText(link);
     showToast('链接已复制到剪贴板');
   };
@@ -277,7 +277,7 @@ export default function ProductsPage({ user, handleBack, setCurrentView, showToa
                       variant="ghost"
                       size="sm"
                       icon={<Share2 className="w-4 h-4" />}
-                      onClick={() => copyShareLink(product.id)}
+                      onClick={() => setSharingProduct(product)}
                     />
                     <Button
                       variant="ghost"
@@ -289,7 +289,7 @@ export default function ProductsPage({ user, handleBack, setCurrentView, showToa
                       variant="ghost"
                       size="sm"
                       icon={<Edit className="w-4 h-4" />}
-                      onClick={() => setEditingProduct(product)}
+                      onClick={() => showToast('编辑功能开发中')}
                     />
                     <Button
                       variant="ghost"
@@ -306,16 +306,11 @@ export default function ProductsPage({ user, handleBack, setCurrentView, showToa
         </CardContent>
       </Card>
 
-      {/* 编辑商品弹窗 */}
-      <EditProductModal
-        product={editingProduct}
-        onClose={() => setEditingProduct(null)}
-        onSave={() => {
-          setEditingProduct(null);
-          fetchProducts();
-        }}
+      {/* 分享商品弹窗 */}
+      <ShareProductModal
+        product={sharingProduct}
+        onClose={() => setSharingProduct(null)}
         showToast={showToast}
-        user={user}
       />
 
       {/* 创建商品弹窗 */}
@@ -332,137 +327,114 @@ export default function ProductsPage({ user, handleBack, setCurrentView, showToa
   );
 }
 
-// 编辑商品弹窗组件
-function EditProductModal({ 
+// 分享商品弹窗组件
+function ShareProductModal({ 
   product, 
   onClose, 
-  onSave, 
-  showToast,
-  user 
+  showToast 
 }: { 
   product: Product | null; 
   onClose: () => void; 
-  onSave: () => void;
   showToast: (msg: string, type?: 'success' | 'error') => void;
-  user: AuthUser | null;
 }) {
-  const [form, setForm] = useState({
-    name: product?.name || '',
-    price: product?.price?.toString() || '',
-    description: product?.description || '',
-    category: product?.category || 'other',
-    imageUrl: product?.image || '',
-    templateId: product?.template_id || 'default',
-  });
-  const [saving, setSaving] = useState(false);
+  const [template, setTemplate] = useState(product?.template_id || 'default');
+  const [generating, setGenerating] = useState(false);
+  const [posterUrl, setPosterUrl] = useState('');
 
-  const handleSave = async () => {
-    if (!form.name || !form.price) {
-      showToast('请填写商品名称和价格', 'error');
-      return;
-    }
+  const TEMPLATES = [
+    { id: 'default', name: '默认' },
+    { id: 'daifu', name: '代付' },
+    { id: 'meituan', name: '美团' },
+    { id: 'eleme', name: '饿了么' },
+    { id: 'jd', name: '京东' },
+    { id: 'ctrip', name: '携程' },
+    { id: 'douyin', name: '抖音' },
+    { id: 'kuaishou', name: '快手' },
+  ];
 
-    setSaving(true);
+  const copyShareLink = () => {
+    if (!product) return;
+    const link = `${window.location.origin}/h5/${product.id}`;
+    navigator.clipboard.writeText(link);
+    showToast('链接已复制到剪贴板');
+  };
+
+  const handleGenerate = async () => {
+    if (!product) return;
+    setGenerating(true);
+    setPosterUrl('');
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
-      const response = await fetch(`/api/products/${product?.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          name: form.name,
-          price: parseFloat(form.price),
-          description: form.description,
-          category: form.category,
-          image: form.imageUrl,
-          template_id: form.templateId,
-        }),
+      const response = await fetch('/api/poster/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId: product.id, template }),
       });
-
       if (response.ok) {
-        showToast('商品已更新');
-        onSave();
+        const blob = await response.blob();
+        setPosterUrl(URL.createObjectURL(blob));
       } else {
         const data = await response.json();
-        showToast(data.error || '更新失败', 'error');
+        showToast(data.error || '生成失败', 'error');
       }
     } catch (error) {
-      showToast('更新失败', 'error');
+      showToast('生成失败，请重试', 'error');
     } finally {
-      setSaving(false);
+      setGenerating(false);
     }
   };
 
   if (!product) return null;
 
   return (
-    <Modal isOpen={!!product} onClose={onClose} title="编辑商品">
+    <Modal isOpen={!!product} onClose={onClose} title="分享商品">
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">商品名称</label>
-          <input
-            type="text"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-          />
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">商品链接</label>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              readOnly
+              value={`${window.location.origin}/h5/${product.id}`}
+              className="flex-1 px-4 py-2 border border-gray-200 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-500 text-sm"
+            />
+            <Button variant="secondary" onClick={copyShareLink}>复制</Button>
+          </div>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">价格 (元)</label>
-          <input
-            type="number"
-            step="0.01"
-            value={form.price}
-            onChange={(e) => setForm({ ...form, price: e.target.value })}
-            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">分类</label>
-          <select
-            value={form.category}
-            onChange={(e) => setForm({ ...form, category: e.target.value })}
-            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-          >
-            {PRODUCT_CATEGORIES.map(cat => (
-              <option key={cat.id} value={cat.id}>{cat.icon} {cat.name}</option>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">选择海报模板</label>
+          <div className="grid grid-cols-4 gap-2">
+            {TEMPLATES.map(t => (
+              <button
+                key={t.id}
+                onClick={() => setTemplate(t.id)}
+                className={`py-2 px-1 rounded-lg text-xs font-medium border-2 transition-all ${
+                  template === t.id 
+                    ? 'border-blue-500 bg-blue-50 text-blue-600' 
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                {t.name}
+              </button>
             ))}
-          </select>
+          </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">商品图片</label>
-          <input
-            type="text"
-            value={form.imageUrl}
-            onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
-            placeholder="输入图片URL"
-            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-          />
-        </div>
+        <Button 
+          variant="primary" 
+          className="w-full" 
+          loading={generating} 
+          onClick={handleGenerate}
+        >
+          {generating ? '生成中...' : '生成海报'}
+        </Button>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">描述</label>
-          <textarea
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-            rows={3}
-            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white resize-none"
-          />
-        </div>
-
-        <div className="flex gap-3 pt-4">
-          <Button variant="secondary" className="flex-1" onClick={onClose}>
-            取消
-          </Button>
-          <Button variant="primary" className="flex-1" loading={saving} onClick={handleSave}>
-            保存
-          </Button>
-        </div>
+        {posterUrl && (
+          <div className="mt-4 pt-4 border-t border-gray-100 flex flex-col items-center">
+            <p className="text-xs text-gray-500 mb-2">长按或右键保存海报</p>
+            <img src={posterUrl} alt="分享海报" className="w-48 rounded-xl shadow-lg border border-gray-100" />
+          </div>
+        )}
       </div>
     </Modal>
   );

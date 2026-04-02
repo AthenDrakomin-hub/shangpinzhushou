@@ -34,65 +34,68 @@ interface Template {
 
 const TEMPLATES: Template[] = [
   {
+    id: 'daifu',
+    name: '代付',
+    slogan: '帮我付一下这笔钱吧~',
+    icon: <ShoppingBag className="w-5 h-5 text-white" />,
+    bgColor: 'bg-[#FFD700]',
+  },
+  {
     id: 'meituan',
-    name: '美团外卖',
+    name: '美团',
     slogan: 'Hi~ 你和我的距离只差一顿外卖~',
     icon: <UtensilsCrossed className="w-5 h-5 text-white" />,
     bgColor: 'bg-[#FFD000]',
   },
   {
-    id: 'pinduoduo',
-    name: '拼多多',
-    slogan: '帮我付一下这件商品吧~',
-    icon: <ShoppingBag className="w-5 h-5 text-white" />,
-    bgColor: 'bg-[#E02E24]',
-  },
-  {
-    id: 'ctrip-flight',
-    name: '携程机票',
-    slogan: '亲爱的朋友，帮我完成这趟旅程吧~',
-    icon: <Plane className="w-5 h-5 text-white" />,
+    id: 'eleme',
+    name: '饿了么',
+    slogan: '饿了么代付，帮我点个外卖吧~',
+    icon: <UtensilsCrossed className="w-5 h-5 text-white" />,
     bgColor: 'bg-[#0086F6]',
   },
   {
-    id: 'didi',
-    name: '滴滴出行',
-    slogan: '帮我付个车费，让我平安到达目的地~',
-    icon: <Car className="w-5 h-5 text-white" />,
-    bgColor: 'bg-[#FF8903]',
-  },
-  {
     id: 'jd',
-    name: '京东购物',
+    name: '京东',
     slogan: '我在京东挑了样好东西，请你帮我付款吧~',
     icon: <ShoppingBag className="w-5 h-5 text-white" />,
     bgColor: 'bg-[#F2270C]',
   },
   {
-    id: 'ctrip-hotel',
-    name: '携程酒店',
-    slogan: '订好了酒店，你来买单吧~',
-    icon: <Hotel className="w-5 h-5 text-white" />,
+    id: 'ctrip',
+    name: '携程',
+    slogan: '亲爱的朋友，帮我完成这趟旅程吧~',
+    icon: <Plane className="w-5 h-5 text-white" />,
     bgColor: 'bg-[#0086F6]',
+  },
+  {
+    id: 'douyin',
+    name: '抖音',
+    slogan: '抖音代充，记录美好生活~',
+    icon: <ShoppingBag className="w-5 h-5 text-white" />,
+    bgColor: 'bg-[#000000]',
+  },
+  {
+    id: 'kuaishou',
+    name: '快手',
+    slogan: '快手代充，拥抱每一种生活~',
+    icon: <ShoppingBag className="w-5 h-5 text-white" />,
+    bgColor: 'bg-[#FF6600]',
   },
 ];
 
 const PRODUCT_CATEGORIES = [
-  { id: 'digital', name: '数码电子', icon: '📱' },
-  { id: 'clothing', name: '服装鞋帽', icon: '👕' },
-  { id: 'food', name: '食品饮料', icon: '🍰' },
-  { id: 'home', name: '家居用品', icon: '🏠' },
-  { id: 'beauty', name: '美妆护肤', icon: '💄' },
-  { id: 'sports', name: '运动户外', icon: '⚽' },
-  { id: 'books', name: '图书文具', icon: '📚' },
-  { id: 'services', name: '服务类', icon: '🛠️' },
-  { id: 'other', name: '其他', icon: '📦' },
+  { id: 'daifu', name: '代付', icon: '💳' },
+  { id: 'meituan', name: '美团', icon: '🛵' },
+  { id: 'eleme', name: '饿了么', icon: '🍱' },
+  { id: 'jd', name: '京东', icon: '📦' },
+  { id: 'other', name: '其他', icon: '✨' },
 ];
 
 const PAY_METHOD_CONFIG: Record<string, { label: string; icon: string; bgColor: string; available: boolean }> = {
-  wechat: { label: '微信支付', icon: '💚', bgColor: 'bg-green-100', available: true },
-  alipay: { label: '支付宝', icon: '💙', bgColor: 'bg-blue-100', available: true },
-  bank: { label: '银行卡', icon: '🏦', bgColor: 'bg-orange-100', available: false },
+  wechat: { label: '微信扫码', icon: '💚', bgColor: 'bg-green-100', available: true },
+  alipay: { label: '扫码支付', icon: '💙', bgColor: 'bg-blue-100', available: true },
+  bank: { label: '银行卡转账', icon: '🏦', bgColor: 'bg-orange-100', available: false },
 };
 
 export default function ProductCreatePage({ user, handleBack, setCurrentView, showToast }: ProductCreatePageProps) {
