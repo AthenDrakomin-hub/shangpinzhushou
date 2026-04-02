@@ -521,7 +521,7 @@ function PasswordModal({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="修改密码">
-      <div className="space-y-4">
+      <form onSubmit={(e) => { e.preventDefault(); handleSubmit(); }} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">当前密码</label>
           <div className="relative">
@@ -529,7 +529,9 @@ function PasswordModal({
               type={showCurrentPassword ? 'text' : 'password'}
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
+              placeholder="请输入当前密码"
               className="w-full px-4 py-2 pr-10 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              autoComplete="current-password"
             />
             <button
               type="button"
@@ -548,7 +550,9 @@ function PasswordModal({
               type={showNewPassword ? 'text' : 'password'}
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="至少6个字符"
               className="w-full px-4 py-2 pr-10 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              autoComplete="new-password"
             />
             <button
               type="button"
@@ -563,22 +567,24 @@ function PasswordModal({
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">确认新密码</label>
           <input
-            type="password"
+            type={showNewPassword ? 'text' : 'password'}
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
+            placeholder="请再次输入新密码"
             className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            autoComplete="new-password"
           />
         </div>
 
         <div className="flex gap-3 pt-4">
-          <Button variant="secondary" className="flex-1" onClick={onClose}>
+          <Button variant="secondary" className="flex-1" onClick={onClose} type="button">
             取消
           </Button>
-          <Button variant="primary" className="flex-1" loading={isLoading} onClick={handleSubmit}>
-            确认修改
+          <Button variant="primary" className="flex-1" loading={isLoading} type="submit">
+            保存修改
           </Button>
         </div>
-      </div>
+      </form>
     </Modal>
   );
 }

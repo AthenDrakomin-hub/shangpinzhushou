@@ -1,6 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap');
 @import "tailwindcss";
 
+/* 开启基于 class 的深色模式 */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* ==================== 主题配置 ==================== */
 @theme {
   /* 字体 */

@@ -507,6 +507,28 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
   }
 });
 
+// Helper: 获取当前用户可见的所有用户ID（用于数据隔离）
+async function getVisibleUserIds(userId: string, role: string): Promise<string[] | null> {
+  // admin 看全库，返回 null 代表无过滤限制
+  if (role === 'admin') return null;
+
+  if (role === 'manager' || role === 'supervisor') {
+    const visibleUsersRes = await pool.query(`
+      WITH RECURSIVE subordinates AS (
+        SELECT id FROM public.users WHERE id = $1
+        UNION
+        SELECT u.id FROM public.users u
+        INNER JOIN subordinates s ON u.created_by = s.id
+      )
+      SELECT id FROM subordinates;
+    `, [userId]);
+    return visibleUsersRes.rows.map(r => r.id);
+  }
+
+  // 员工只能看自己
+  return [userId];
+}
+
 // 获取当前用户信息
 app.get('/api/auth/me', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
@@ -660,16 +682,37 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
 // 获取商品列表
 app.get('/api/products', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const result = await pool.query(`
+    const visibleUserIds = await getVisibleUserIds(req.user.id, req.user.role);
+    
+    let query = `
       SELECT 
         id, user_id, name, image, price, original_price,
         description, category, template_id, is_shared,
         supported_pay_methods,
         views, stock, sales, status, created_at, updated_at
       FROM public.products 
-      WHERE user_id = $1 OR is_shared = true OR $2 IN ('manager', 'admin', 'supervisor')
-      ORDER BY created_at DESC
-    `, [req.user.id, req.user.role]);
+      WHERE is_shared = true
+    `;
+    let params: any[] = [];
+
+    if (visibleUserIds === null) {
+      // admin看全库
+      query = `
+        SELECT 
+          id, user_id, name, image, price, original_price,
+          description, category, template_id, is_shared,
+          supported_pay_methods,
+          views, stock, sales, status, created_at, updated_at
+        FROM public.products
+      `;
+    } else {
+      query += ` OR user_id = ANY($1)`;
+      params.push(visibleUserIds);
+    }
+    
+    query += ` ORDER BY created_at DESC`;
+
+    const result = await pool.query(query, params);
 
     res.json(result.rows);
   } catch (error) {
@@ -803,24 +846,11 @@ app.get('/api/orders', authMiddleware, async (req: AuthRequest, res: Response) =
     const { status, page = 1, limit = 20, search = '' } = req.query;
     const offset = (Number(page) - 1) * Number(limit);
 
-    // 确保管理员看所有订单，普通用户看自己的和下级的
-    let userFilter = `o.user_id = $1`;
-    let userParams: any[] = [req.user.id];
+    const visibleUserIds = await getVisibleUserIds(req.user.id, req.user.role);
 
-    if (req.user.role === 'manager' || req.user.role === 'admin') {
-      userFilter = `(o.user_id = $1 OR $2 = 'manager' OR $2 = 'admin')`;
-      userParams = [req.user.id, req.user.role];
-    } else if (req.user.role === 'supervisor') {
-      const visibleUsersRes = await pool.query(`
-        WITH RECURSIVE subordinates AS (
-          SELECT id FROM public.users WHERE id = $1
-          UNION
-          SELECT u.id FROM public.users u
-          INNER JOIN subordinates s ON u.created_by = s.id
-        )
-        SELECT id FROM subordinates;
-      `, [req.user.id]);
-      const visibleUserIds = visibleUsersRes.rows.map(r => r.id);
+    let userFilter = '1=1'; // admin
+    let userParams: any[] = [];
+    if (visibleUserIds !== null) {
       userFilter = `o.user_id = ANY($1)`;
       userParams = [visibleUserIds];
     }
@@ -979,33 +1009,28 @@ app.get('/api/dashboard/stats', authMiddleware, async (req: AuthRequest, res: Re
     const role = req.user.role;
     const userId = req.user.id;
 
-    // 获取可见的用户ID列表（包含自己和所有直接/间接下级）
-    // 为了简单，我们查三层：自己 -> 下级 -> 下级的下级
-    const visibleUsersRes = await pool.query(`
-      WITH RECURSIVE subordinates AS (
-        SELECT id FROM public.users WHERE id = $1
-        UNION
-        SELECT u.id FROM public.users u
-        INNER JOIN subordinates s ON u.created_by = s.id
-      )
-      SELECT id FROM subordinates;
-    `, [userId]);
-    const visibleUserIds = visibleUsersRes.rows.map(r => r.id);
+    // 获取可见的用户ID列表
+    const visibleUserIds = await getVisibleUserIds(userId, role);
 
-    // 商品数量 (自己创建的商品，如果是管理员也可以看所有人的，但这里按实际业务，商户看自己组织内的商品)
+    // 构造通用过滤条件
+    const userFilter = visibleUserIds === null ? '1=1' : `user_id = ANY($1)`;
+    const params = visibleUserIds === null ? [] : [visibleUserIds];
+    const orderFilter = visibleUserIds === null ? '1=1' : `o.user_id = ANY($1)`;
+
+    // 商品数量
     const productsResult = await pool.query(`
       SELECT COUNT(*) as count FROM public.products 
-      WHERE user_id = ANY($1)
-    `, [visibleUserIds]);
+      WHERE ${userFilter}
+    `, params);
 
     // 订单统计
     const ordersResult = await pool.query(`
       SELECT COUNT(*) as total,
              COUNT(*) FILTER (WHERE status = 'paid') as paid,
              COALESCE(SUM(amount) FILTER (WHERE status = 'paid'), 0) as revenue
-      FROM public.orders
-      WHERE user_id = ANY($1)
-    `, [visibleUserIds]);
+      FROM public.orders o
+      WHERE ${orderFilter}
+    `, params);
 
     // 钱包余额 (只看自己的)
     const walletResult = await pool.query(`
@@ -1020,23 +1045,23 @@ app.get('/api/dashboard/stats', authMiddleware, async (req: AuthRequest, res: Re
         DATE(created_at) as date,
         COALESCE(SUM(amount), 0) as sales,
         COUNT(*) as orders
-      FROM public.orders
+      FROM public.orders o
       WHERE status = 'paid'
         AND created_at >= NOW() - INTERVAL '7 days'
-        AND user_id = ANY($1)
+        AND ${orderFilter}
       GROUP BY DATE(created_at) 
       ORDER BY date
-    `, [visibleUserIds]);
+    `, params);
 
     // 最近订单
     const recentOrdersResult = await pool.query(`
-      SELECT o.id, p.name as product_name, o.amount, o.status, o.created_at, o.payer_info
+      SELECT o.id, o.order_id, p.name as product_name, o.amount, o.status, o.created_at, o.payer_info
       FROM public.orders o
       LEFT JOIN public.products p ON o.product_id = p.id
-      WHERE o.user_id = ANY($1)
+      WHERE ${orderFilter}
       ORDER BY o.created_at DESC 
       LIMIT 5
-    `, [visibleUserIds]);
+    `, params);
 
     // 热销商品（通过订单数计算销量）
     let topProductsResult = { rows: [] };
@@ -1047,17 +1072,23 @@ app.get('/api/dashboard/stats', authMiddleware, async (req: AuthRequest, res: Re
                COALESCE(SUM(CASE WHEN o.status = 'paid' THEN 1 ELSE 0 END), 0) as sales
         FROM public.products p
         LEFT JOIN public.orders o ON o.product_id = p.id
-        WHERE p.user_id = ANY($1)
+        WHERE p.${userFilter}
         GROUP BY p.id, p.name, p.price, p.image 
         ORDER BY sales DESC 
         LIMIT 5
-      `, [visibleUserIds]);
+      `, params);
     } catch (e) {
       console.error('Top products query error:', e);
     }
 
-    // 用户总数（组织内总人数，包含自己）
-    const usersCount = visibleUserIds.length;
+    // 用户总数（管理员看全库，经理看自己组织内）
+    let usersCount = 0;
+    if (visibleUserIds === null) {
+      const usersCountRes = await pool.query(`SELECT COUNT(*) FROM public.users`);
+      usersCount = parseInt(usersCountRes.rows[0].count);
+    } else {
+      usersCount = visibleUserIds.length;
+    }
 
     const wallet = walletResult.rows[0] || { balance: 0, total_earnings: 0 };
 
@@ -1696,16 +1727,30 @@ app.delete('/api/users/:id', authMiddleware, adminMiddleware, async (req: AuthRe
 // 获取商户下的员工列表
 app.get('/api/merchant/employees', authMiddleware, supervisorMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    // 获取当前商户创建的所有员工及他们的上级信息
-    const result = await pool.query(`
+    const visibleUserIds = await getVisibleUserIds(req.user.id, req.user.role);
+    
+    let query = `
       SELECT 
         u.id, u.email, u.display_name as name, u.role, u.status, u.created_at, u.updated_at, u.earnings_rate as profit_share_rate,
         creator.display_name as creator_name
       FROM public.users u
       LEFT JOIN public.users creator ON u.created_by = creator.id
-      WHERE u.created_by = $1 OR u.id = $1
-      ORDER BY u.created_at DESC
-    `, [req.user.id]);
+    `;
+    let params: any[] = [];
+
+    if (visibleUserIds === null) {
+      // admin看全库，但排除自己，因为这是“员工管理”列表
+      query += ` WHERE u.id != $1 `;
+      params.push(req.user.id);
+    } else {
+      // 其他角色看自己的下级树
+      query += ` WHERE u.id = ANY($1) AND u.id != $2 `;
+      params.push(visibleUserIds, req.user.id);
+    }
+    
+    query += ` ORDER BY u.created_at DESC`;
+
+    const result = await pool.query(query, params);
 
     res.json({ employees: result.rows });
   } catch (error) {

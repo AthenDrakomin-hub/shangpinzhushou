@@ -253,9 +253,9 @@ export default function DashboardPage({ user, onNavigate }: DashboardPageProps) 
 
   const orderColumns = [
     {
-      key: 'id',
+      key: 'orderId',
       title: '订单号',
-      render: (value: string) => <span className="font-mono text-xs">{value}</span>,
+      render: (value: string, row: any) => <span className="font-mono text-xs">{(value || row.id)?.slice(0, 12)}...</span>,
     },
     {
       key: 'productName',
