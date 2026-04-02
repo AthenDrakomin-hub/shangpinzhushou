@@ -141,13 +141,12 @@ export default function AppLayout({
           initial={false}
           animate={{
             width: sidebarCollapsed ? 72 : 260,
-            x: sidebarOpen ? 0 : -260,
           }}
           transition={{ type: 'spring', stiffness: 300, damping: 30 }}
           className={`
             fixed lg:static top-0 left-0 z-30 h-full
             bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700
-            flex flex-col shadow-sm lg:shadow-none
+            flex flex-col shadow-sm lg:shadow-none transition-transform duration-300
             ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
           `}
         >
