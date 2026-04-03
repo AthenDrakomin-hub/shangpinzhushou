@@ -1,4 +1,5 @@
 import { fetchApi } from '../utils/apiClient';
+import { UserRole } from '../types';
 // ==================== 认证服务（PostgreSQL + JWT）====================
 // 认证服务 - 直接使用后端 API
 
@@ -8,8 +9,8 @@ interface AuthUser {
   email: string | null;
   displayName: string | null;
   photoURL: string | null;
-  role: 'admin' | 'manager' | 'supervisor' | 'employee' | 'chief_engineer';
-  status: 'pending' | 'approved' | 'active' | 'inactive' | 'disabled';
+  role: string;
+  status: string;
   merchantId?: string;  // 员工所属商户ID
 }
 
@@ -184,29 +185,20 @@ export const isAdmin = async (email: string | null): Promise<boolean> => {
 /**
  * 检查用户角色
  */
-export const hasRole = (user: AuthUser | null, role: 'manager' | 'supervisor' | 'employee'): boolean => {
+export const hasRole = (user: AuthUser | null, role: string): boolean => {
   return user?.role === role;
 };
 
-/**
- * 检查是否为经理 - 支持 admin 和 manager 角色
- */
 export const isManager = (user: AuthUser | null): boolean => {
-  return user?.role === 'manager' || user?.role === 'admin';
+  return user?.role === UserRole.MANAGER || user?.role === UserRole.ADMIN || user?.role === UserRole.CHIEF_ENGINEER;
 };
 
-/**
- * 检查是否为主管
- */
 export const isSupervisor = (user: AuthUser | null): boolean => {
-  return user?.role === 'supervisor';
+  return user?.role === UserRole.SUPERVISOR || user?.role === UserRole.CHIEF_ENGINEER;
 };
 
-/**
- * 检查是否为员工
- */
 export const isEmployee = (user: AuthUser | null): boolean => {
-  return user?.role === 'employee' || user?.role === 'staff' as any;
+  return user?.role === UserRole.EMPLOYEE || user?.role === UserRole.STAFF;
 };
 
 /**
