@@ -19,7 +19,17 @@ const PaymentResultPage: React.FC<PaymentResultPageProps> = ({ orderId }) => {
 
   useEffect(() => {
     loadOrderInfo();
-  }, [orderId]);
+    let interval: NodeJS.Timeout;
+    // 如果还没支付成功，每隔 3 秒轮询一次
+    if (orderInfo?.status !== 'paid' && orderInfo?.status !== 'completed') {
+      interval = setInterval(() => {
+        loadOrderInfo();
+      }, 3000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [orderId, orderInfo?.status]);
 
   const loadOrderInfo = async () => {
     try {

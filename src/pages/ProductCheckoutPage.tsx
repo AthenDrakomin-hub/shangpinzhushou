@@ -67,6 +67,7 @@ const ProductCheckoutPage: React.FC<ProductCheckoutPageProps> = ({
   const [paying, setPaying] = useState(false);
   const [payResult, setPayResult] = useState<any>(null);
   const [showBankInfo, setShowBankInfo] = useState(false);
+  const [showWechatOverlay, setShowWechatOverlay] = useState(false);
   const [showUserAgreement, setShowUserAgreement] = useState(false);
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
   
@@ -180,9 +181,9 @@ const ProductCheckoutPage: React.FC<ProductCheckoutPageProps> = ({
 
     const isInWechat = isWechatBrowser();
     const isUsdtMethod = selectedMethod === 'usdt';
-    
-    if (isInWechat && isUsdtMethod) {
-      showToast('微信内不支持 USDT 支付，请在浏览器中打开', 'error');
+
+    if (isInWechat && selectedMethod !== 'bank') {
+      setShowWechatOverlay(true);
       return;
     }
 
@@ -763,6 +764,26 @@ const ProductCheckoutPage: React.FC<ProductCheckoutPageProps> = ({
             </button>
           </motion.div>
         </motion.div>
+      )}
+
+      {/* 微信内无法支付的提示遮罩 */}
+      {showWechatOverlay && (
+        <div 
+          className="fixed inset-0 z-[200] bg-black/80 flex flex-col items-end pr-6 pt-6"
+          onClick={() => setShowWechatOverlay(false)}
+        >
+          <div className="text-white text-right animate-bounce">
+            <svg className="w-12 h-12 inline-block mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+            </svg>
+          </div>
+          <div className="text-white text-right mt-4">
+            <p className="text-xl font-bold mb-2">微信内无法直接支付</p>
+            <p className="text-gray-300">请点击右上角 <span className="inline-block px-2 py-1 bg-gray-800 rounded">···</span></p>
+            <p className="text-gray-300 mt-2">选择 <span className="text-blue-400 font-bold">「在浏览器中打开」</span></p>
+            <p className="text-sm text-gray-400 mt-6">点击任意处关闭此提示</p>
+          </div>
+        </div>
       )}
     </motion.div>
   );

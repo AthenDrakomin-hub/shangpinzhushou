@@ -137,6 +137,8 @@ async function initDatabase() {
         await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS created_by VARCHAR(255) REFERENCES public.users(id) ON DELETE SET NULL`);
         await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS superpay_merchant_on VARCHAR(100)`);
         await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS superpay_merchant_key VARCHAR(200)`);
+        await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS jiujiu_mch_id VARCHAR(100)`);
+        await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS jiujiu_secret_key VARCHAR(200)`);
       } catch (alterError) {
         console.log('添加列警告:', (alterError as Error).message);
       }
@@ -2362,14 +2364,14 @@ app.post('/api/merchant/withdraw/:id/pay', authMiddleware, supervisorMiddleware,
 app.get('/api/admin/payment-config', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const result = await pool.query(`
-      SELECT superpay_merchant_on, superpay_merchant_key FROM public.users WHERE role = 'manager' LIMIT 1
+      SELECT superpay_merchant_on, superpay_merchant_key, jiujiu_mch_id, jiujiu_secret_key FROM public.users WHERE role = 'manager' LIMIT 1
     `);
 
     res.json({
       superpayMerchantOn: result.rows[0]?.superpay_merchant_on || '',
       superpayMerchantKey: result.rows[0]?.superpay_merchant_key || '',
-      jiujiuMchId: '', // 预留
-      jiujiuSecretKey: '' // 预留
+      jiujiuMchId: result.rows[0]?.jiujiu_mch_id || '',
+      jiujiuSecretKey: result.rows[0]?.jiujiu_secret_key || ''
     });
   } catch (error) {
     console.error('Get payment config error:', error);
@@ -2380,20 +2382,24 @@ app.get('/api/admin/payment-config', authMiddleware, adminMiddleware, async (req
 // 更新商户设置
 app.put('/api/admin/payment-config', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const { superpayMerchantOn, superpayMerchantKey } = req.body;
+    const { superpayMerchantOn, superpayMerchantKey, jiujiuMchId, jiujiuSecretKey } = req.body;
 
     // 将支付配置保存到经理账户上（全局配置）
     await pool.query(`
       UPDATE public.users SET 
         superpay_merchant_on = $1,
         superpay_merchant_key = $2,
+        jiujiu_mch_id = $3,
+        jiujiu_secret_key = $4,
         updated_at = NOW()
       WHERE role = 'manager'
-    `, [superpayMerchantOn, superpayMerchantKey]);
+    `, [superpayMerchantOn, superpayMerchantKey, jiujiuMchId, jiujiuSecretKey]);
 
     // 同步更新运行时配置，使其立即生效
     if (superpayMerchantOn) config.superpayMerchantOn = superpayMerchantOn;
     if (superpayMerchantKey) config.superpayMerchantKey = superpayMerchantKey;
+    if (jiujiuMchId) config.jiujiuMchId = jiujiuMchId;
+    if (jiujiuSecretKey) config.jiujiuAppSecret = jiujiuSecretKey;
 
     res.json({ message: '配置已更新并生效' });
   } catch (error) {
@@ -2464,6 +2470,58 @@ app.post('/api/settings/test-superpay', authMiddleware, adminMiddleware, async (
   } catch (error) {
     console.error('Test SuperPay error:', error);
     res.status(500).json({ error: '测试失败，请检查商户配置' });
+  }
+});
+
+// 测试九久支付配置
+app.post('/api/settings/test-jiujiu', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { mchId, secretKey } = req.body;
+
+    if (!mchId || !secretKey) {
+      return res.status(400).json({ error: '请提供商户ID和密钥' });
+    }
+
+    const { createWechatOrder } = await import('./src/services/wechatPay.js');
+    
+    // 临时覆盖全局配置进行测试
+    const originalMchId = config.jiujiuMchId;
+    const originalSecret = config.jiujiuAppSecret;
+    
+    config.jiujiuMchId = mchId;
+    config.jiujiuAppSecret = secretKey;
+
+    try {
+      const orderId = `TEST${Date.now()}`;
+      const projectDomain = process.env.COZE_PROJECT_DOMAIN_DEFAULT || `http://localhost:${config.port}`;
+      
+      const payResult = await createWechatOrder({
+        orderId,
+        amount: 1.00,
+        productName: '九久支付通道连通性测试',
+        notifyUrl: `${projectDomain}/api/orders/wechat/callback`,
+        callbackUrl: `${projectDomain}/payment/result?orderId=${orderId}`,
+      });
+
+      if (payResult.success) {
+        res.json({
+          success: true,
+          pay_url: payResult.codeUrl // 可能是扫码链接或跳转链接
+        });
+      } else {
+        res.json({
+          success: false,
+          error: payResult.error || '创建测试订单失败'
+        });
+      }
+    } finally {
+      // 恢复原配置
+      config.jiujiuMchId = originalMchId;
+      config.jiujiuAppSecret = originalSecret;
+    }
+  } catch (error) {
+    console.error('Test JiuJiu error:', error);
+    res.status(500).json({ error: '测试失败，内部错误' });
   }
 });
 

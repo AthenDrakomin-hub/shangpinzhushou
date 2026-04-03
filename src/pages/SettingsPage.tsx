@@ -964,7 +964,73 @@ function PaymentConfigModal({
         showToast(data.error || '保存失败', 'error');
       }
     } catch (error) {
-      showToast('保存失败', 'error');
+      showToast('网络错误，请重试', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleTestSuperpay = async () => {
+    if (!config.superpayMerchantOn || !config.superpayMerchantKey) {
+      showToast('请先填写商户号和密钥', 'error');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const response = await fetchApi('/api/settings/test-superpay', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          merchantOn: config.superpayMerchantOn,
+          merchantKey: config.superpayMerchantKey
+        })
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        if (data.pay_url) {
+          showToast('测试订单(0.01元)创建成功，正在跳转...', 'success');
+          setTimeout(() => window.open(data.pay_url, '_blank'), 1500);
+        } else {
+          showToast('通道可用！(测试响应无支付链接)', 'success');
+        }
+      } else {
+        showToast(data.error || '测试失败：通道配置有误', 'error');
+      }
+    } catch (error) {
+      showToast('网络错误，请重试', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleTestJiujiu = async () => {
+    if (!config.jiujiuMchId || !config.jiujiuSecretKey) {
+      showToast('请先填写商户ID和密钥', 'error');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const response = await fetchApi('/api/settings/test-jiujiu', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mchId: config.jiujiuMchId,
+          secretKey: config.jiujiuSecretKey
+        })
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        if (data.pay_url) {
+          showToast('测试订单(1.00元)创建成功，正在打开支付页面...', 'success');
+          setTimeout(() => window.open(data.pay_url, '_blank'), 1500);
+        } else {
+          showToast('通道可用！(测试响应无支付链接)', 'success');
+        }
+      } else {
+        showToast(data.error || '测试失败：通道配置有误', 'error');
+      }
+    } catch (error) {
+      showToast('网络错误，请重试', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -979,58 +1045,80 @@ function PaymentConfigModal({
       ) : (
         <div className="space-y-6">
           <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-            <h3 className="font-medium text-blue-900 mb-1">SuperPay 支付宝配置</h3>
-            <p className="text-xs text-blue-700 mb-4">如果不填写则不启用支付宝通道</p>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-sm text-gray-700 mb-1">商户编号 (Merchant ON)</label>
-                <input
-                  type="text"
-                  value={config.superpayMerchantOn}
-                  onChange={e => setConfig({...config, superpayMerchantOn: e.target.value})}
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                  placeholder="例如: 2410311234"
-                />
+              <div className="flex justify-between items-center mb-1">
+                <h3 className="font-medium text-blue-900">SuperPay 支付宝配置</h3>
+                <Button variant="outline" className="!py-1 !text-xs !bg-white" onClick={handleTestSuperpay} disabled={isLoading}>
+                  测试通道
+                </Button>
               </div>
-              <div>
-                <label className="block text-sm text-gray-700 mb-1">商户密钥 (Merchant Key)</label>
-                <input
-                  type="text"
-                  value={config.superpayMerchantKey}
-                  onChange={e => setConfig({...config, superpayMerchantKey: e.target.value})}
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                  placeholder="API Key"
-                />
+              <p className="text-xs text-blue-700 mb-4">如果不填写则不启用支付宝通道</p>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm text-gray-700 mb-1">商户编号 (Merchant ON)</label>
+                  <input
+                    type="text"
+                    value={config.superpayMerchantOn}
+                    onChange={e => setConfig({...config, superpayMerchantOn: e.target.value})}
+                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    placeholder="例如: 2410311234"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-700 mb-1">商户密钥 (Merchant Key)</label>
+                  <input
+                    type="text"
+                    value={config.superpayMerchantKey}
+                    onChange={e => setConfig({...config, superpayMerchantKey: e.target.value})}
+                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    placeholder="API Key"
+                  />
+                </div>
+                <div className="mt-2 p-2 bg-white/60 rounded border border-blue-100/50">
+                  <label className="block text-[10px] font-bold text-blue-800 uppercase mb-1">您的 Webhook 异步回调地址 (需填入三方后台)</label>
+                  <div className="text-xs font-mono text-gray-600 select-all break-all">
+                    {window.location.origin}/api/orders/callback
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="bg-green-50 p-4 rounded-lg border border-green-100">
-            <h3 className="font-medium text-green-900 mb-1">九久支付 微信配置</h3>
-            <p className="text-xs text-green-700 mb-4">如果不填写则不启用微信通道</p>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-sm text-gray-700 mb-1">商户 ID (Mch ID)</label>
-                <input
-                  type="text"
-                  value={config.jiujiuMchId}
-                  onChange={e => setConfig({...config, jiujiuMchId: e.target.value})}
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                  placeholder="例如: 82431"
-                />
+            <div className="bg-green-50 p-4 rounded-lg border border-green-100">
+              <div className="flex justify-between items-center mb-1">
+                <h3 className="font-medium text-green-900">九久支付 微信配置</h3>
+                <Button variant="outline" className="!py-1 !text-xs !bg-white" onClick={handleTestJiujiu} disabled={isLoading}>
+                  测试通道
+                </Button>
               </div>
-              <div>
-                <label className="block text-sm text-gray-700 mb-1">通讯密钥 (Secret Key)</label>
-                <input
-                  type="text"
-                  value={config.jiujiuSecretKey}
-                  onChange={e => setConfig({...config, jiujiuSecretKey: e.target.value})}
-                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                  placeholder="API Key"
-                />
+              <p className="text-xs text-green-700 mb-4">如果不填写则不启用微信通道</p>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm text-gray-700 mb-1">商户 ID (Mch ID)</label>
+                  <input
+                    type="text"
+                    value={config.jiujiuMchId}
+                    onChange={e => setConfig({...config, jiujiuMchId: e.target.value})}
+                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                    placeholder="例如: 10001"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-700 mb-1">商户密钥 (Secret Key)</label>
+                  <input
+                    type="text"
+                    value={config.jiujiuSecretKey}
+                    onChange={e => setConfig({...config, jiujiuSecretKey: e.target.value})}
+                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                    placeholder="API Key"
+                  />
+                </div>
+                <div className="mt-2 p-2 bg-white/60 rounded border border-green-100/50">
+                  <label className="block text-[10px] font-bold text-green-800 uppercase mb-1">您的 Webhook 异步回调地址 (需填入三方后台)</label>
+                  <div className="text-xs font-mono text-gray-600 select-all break-all">
+                    {window.location.origin}/api/orders/wechat/callback
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
 
           <div className="flex gap-3 pt-4">
             <Button variant="secondary" className="flex-1" onClick={onClose}>取消</Button>
