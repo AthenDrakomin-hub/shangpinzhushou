@@ -173,7 +173,7 @@ export async function createWechatOrder(params: CreateOrderParams): Promise<JiuJ
           return { success: false, error: json.msg || json.message || '九久支付网关报错' };
         }
         // 如果返回的是 JSON 格式的链接
-        const finalUrl = json.payUrl || json.url || json.codeUrl || json.data?.payUrl;
+        const finalUrl = json.pay_url || json.h5_url || json.payUrl || json.url || json.codeUrl || json.data?.payUrl;
         if (finalUrl) {
           return { success: true, payUrl: finalUrl };
         }
