@@ -14,13 +14,16 @@ function md5(str: string): string {
 export function generateSuperPaySign(data: Record<string, any>, key: string): string {
   const filteredData: Record<string, any> = {};
   for (const [field, value] of Object.entries(data)) {
-    if (value !== '' && value !== null && value !== undefined && field !== 'sign') {
+    if (value !== '' && value !== null && value !== undefined && field !== 'sign' && field !== 'SIGN') {
       filteredData[field] = value;
     }
   }
   const sortedKeys = Object.keys(filteredData).sort();
-  const stringA = sortedKeys.map(k => `${k}=${filteredData[k]}`).join('&');
-  const stringSignTemp = stringA + (stringA ? '&' : '') + `key=${key}`;
+  let stringA = '';
+  for (const k of sortedKeys) {
+    stringA += `${k}=${filteredData[k]}&`;
+  }
+  const stringSignTemp = stringA + `key=${key}`;
   return md5(stringSignTemp);
 }
 
