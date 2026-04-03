@@ -1217,14 +1217,16 @@ app.post('/api/orders', async (req: Request, res: Response) => {
         return res.status(400).json({ error: 'SuperPay 支付配置未设置，请检查环境变量' });
       }
       
-      // 检查金额是否在限额范围内 (渠道 824 限额 100-1000)
       const orderAmount = parseFloat(product.price);
-      if (orderAmount < 100 || orderAmount > 1000) {
-        return res.status(400).json({ error: '支付宝支付金额需在 100-1000 元之间' });
+      let channelCode = '824'; // 默认使用正式通道
+
+      // 允许 0.01 元的测试金额，使用测试通道 '1'
+      if (orderAmount === 0.01) {
+        channelCode = '1';
+      } else if (orderAmount < 100 || orderAmount > 1000) {
+        return res.status(400).json({ error: '支付宝正式支付金额需在 100-1000 元之间，或设为 0.01 元使用测试通道' });
       }
       
-      // 使用固定渠道编码 824 (正式通道)
-      const channelCode = '824';
       console.log('[SuperPay] 使用渠道编码:', channelCode);
       
       const returnUrl = `${projectDomain}/payment/result?orderId=${orderId}`;
@@ -2431,40 +2433,32 @@ app.post('/api/settings/test-superpay', authMiddleware, adminMiddleware, async (
       return res.status(400).json({ error: '请提供商户号和密钥' });
     }
 
-    const { generateSuperPaySign } = await import('./src/services/superPay.js');
-    // 生成签名 - 需要包含 merchant_on 参数
-    const sign = generateSuperPaySign({ merchant_on: merchantOn }, merchantKey);
+    const { createSuperPayOrder } = await import('./src/services/superPay.js');
+    
+    const projectDomain = process.env.COZE_PROJECT_DOMAIN_DEFAULT || `http://localhost:${config.port}`;
+    
+    // 使用测试通道1，金额 0.01
+    const payResult = await createSuperPayOrder({
+      merchantOn,
+      merchantKey,
+      amount: '0.01',
+      orderSn: `TEST${Date.now()}`,
+      channelCode: '1',
+      notifyUrl: `${projectDomain}/api/orders/callback`,
+      uid: 'test_uid'
+    }, config.superpayBaseUrl);
 
-    const response = await fetch(`${config.superpayBaseUrl}/api/collecting/pay`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'merchant_on': merchantOn,
-      },
-      body: JSON.stringify({
-        merchant_on: merchantOn,
-        amount: '1.00',
-        order_sn: `TEST${Date.now()}`,
-        notify_url: 'http://test.com/notify',
-        uid: 'test_uid',
-        sign
-      }),
-    });
+    console.log('SuperPay test response:', JSON.stringify(payResult));
 
-    const result = await response.json();
-    console.log('SuperPay test response:', JSON.stringify(result));
-
-    if (result.success) {
-      res.json({ 
-        success: true, 
-        balance: 0,
-        channels: result.items || [],
-        message: '商户配置正确' 
+    if (payResult.success) {
+      res.json({
+        success: true,
+        pay_url: payResult.jumpUrl
       });
     } else {
-      res.json({ 
-        success: false, 
-        error: result.error_message || '商户配置错误或未开通代收渠道' 
+      res.json({
+        success: false,
+        error: payResult.error || '商户配置错误或未开通代收渠道'
       });
     }
   } catch (error) {

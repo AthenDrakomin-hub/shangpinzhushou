@@ -1112,7 +1112,7 @@ function PaymentConfigModal({
                   />
                 </div>
                 <div className="mt-2 p-2 bg-white/60 rounded border border-green-100/50">
-                  <label className="block text-[10px] font-bold text-green-800 uppercase mb-1">您的 Webhook 异步回调地址 (需填入三方后台)</label>
+                  <label className="block text-[10px] font-bold text-green-800 uppercase mb-1">您的 Webhook 异步回调地址 (系统下单时自动携带，通常无需填写到三方后台)</label>
                   <div className="text-xs font-mono text-gray-600 select-all break-all">
                     {window.location.origin}/api/orders/wechat/callback
                   </div>
