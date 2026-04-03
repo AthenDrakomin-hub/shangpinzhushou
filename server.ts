@@ -57,10 +57,13 @@ const storage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: (_req, file, cb) => {
-    // 生成唯一文件名：时间戳-随机数.扩展名
+    // 生成唯一文件名，并强制根据 mimetype 重新分配扩展名，防止 XSS 和任意文件上传
     const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1E9)}`;
-    const ext = path.extname(file.originalname);
-    cb(null, `${uniqueSuffix}${ext}`);
+    let safeExt = '.jpg';
+    if (file.mimetype === 'image/png') safeExt = '.png';
+    if (file.mimetype === 'image/gif') safeExt = '.gif';
+    if (file.mimetype === 'image/webp') safeExt = '.webp';
+    cb(null, `${uniqueSuffix}${safeExt}`);
   }
 });
 
@@ -354,13 +357,13 @@ const chiefEngineerMiddleware = (req: AuthRequest, res: Response, next: NextFunc
 };
 
 // 递归计算三级分润 (经理 -> 主管 -> 员工)
-async function distributeRevenue(orderUserId: string, totalAmount: number) {
+async function distributeRevenue(orderUserId: string, totalAmount: number, dbClient: any) {
   try {
     const amount = parseFloat(totalAmount as any);
     if (isNaN(amount) || amount <= 0) return;
 
     // 1. 获取员工及其上级链路 (最多查3层)
-    const userRes = await pool.query(`
+    const userRes = await dbClient.query(`
       SELECT id, role, earnings_rate, created_by 
       FROM public.users WHERE id = $1
     `, [orderUserId]);
@@ -373,7 +376,7 @@ async function distributeRevenue(orderUserId: string, totalAmount: number) {
     let currentUserId = user.created_by;
     for (let i = 0; i < 3; i++) {
       if (!currentUserId) break;
-      const parentRes = await pool.query(`
+      const parentRes = await dbClient.query(`
         SELECT id, role, earnings_rate, created_by 
         FROM public.users WHERE id = $1
       `, [currentUserId]);
@@ -384,7 +387,7 @@ async function distributeRevenue(orderUserId: string, totalAmount: number) {
 
     // 2. 找到顶级经理 (链路最顶端且角色为 manager 或 admin 的人)
     // 如果链路中没有经理，说明数据异常，安全起见把钱给最终节点
-    let managerIndex = chain.findIndex(u => u.role === 'manager' || u.role === 'admin');
+    let managerIndex = chain.findIndex((u: any) => u.role === 'manager' || u.role === 'admin');
     if (managerIndex === -1) managerIndex = chain.length - 1; // 兜底
     
     const validChain = chain.slice(0, managerIndex + 1);
@@ -428,7 +431,7 @@ async function distributeRevenue(orderUserId: string, totalAmount: number) {
       if (amountToPay <= 0) continue;
       
       // 更新钱包
-      await pool.query(`
+      await dbClient.query(`
         UPDATE public.wallets SET 
           balance = balance + $1,
           total_earnings = total_earnings + $1,
@@ -441,6 +444,7 @@ async function distributeRevenue(orderUserId: string, totalAmount: number) {
 
   } catch (error) {
     console.error('Distribute revenue error:', error);
+    throw error; // 让上层事务回滚
   }
 }
 
@@ -612,7 +616,24 @@ app.post('/api/auth/reset-password-by-security', async (req: Request, res: Respo
       return res.status(404).json({ error: '用户不存在' });
     }
 
-    if (result.rows[0].security_answer !== answer) {
+    // 兼容处理：检查是否已经是 hash 值（以 $2a$ 或 $2b$ 开头）
+    const storedAnswer = result.rows[0].security_answer;
+    let isAnswerValid = false;
+
+    if (storedAnswer.startsWith('$2a$') || storedAnswer.startsWith('$2b$')) {
+      // 已加密的答案，使用 bcrypt.compare
+      isAnswerValid = await bcrypt.compare(answer, storedAnswer);
+    } else {
+      // 未加密的旧答案，直接对比（为了平滑过渡旧数据）
+      isAnswerValid = (storedAnswer === answer);
+      // 可以在此处静默将旧的明文答案升级为 hash
+      if (isAnswerValid) {
+        const hashedAnswer = await bcrypt.hash(answer, 10);
+        await pool.query('UPDATE public.users SET security_answer = $1 WHERE id = $2', [hashedAnswer, result.rows[0].id]);
+      }
+    }
+
+    if (!isAnswerValid) {
       return res.status(400).json({ error: '密保问题答案错误' });
     }
 
@@ -624,6 +645,8 @@ app.post('/api/auth/reset-password-by-security', async (req: Request, res: Respo
     res.status(500).json({ error: '密码重置失败' });
   }
 });
+
+// 设置密保问题
 app.post('/api/auth/security-question', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { question, answer, password } = req.body;
@@ -637,11 +660,14 @@ app.post('/api/auth/security-question', authMiddleware, async (req: AuthRequest,
       return res.status(400).json({ error: '当前密码错误' });
     }
 
+    // 增强安全：将密保答案加密存储，防止数据库拖库导致所有用户被重置密码
+    const hashedAnswer = await bcrypt.hash(answer, 10);
+
     await pool.query(`
       UPDATE public.users 
       SET security_question = $1, security_answer = $2, updated_at = NOW() 
       WHERE id = $3
-    `, [question, answer, req.user.id]);
+    `, [question, hashedAnswer, req.user.id]);
 
     res.json({ message: '密保问题设置成功' });
   } catch (error) {
@@ -1332,55 +1358,77 @@ app.post('/api/orders/callback', async (req: Request, res: Response) => {
 
     // SuperPay 回调参数
     const { order_sn, state, amount, payment_date } = params;
-    
-    // 根据 order_sn (商户单号) 查询订单
-    const orderResult = await pool.query('SELECT * FROM public.orders WHERE id = $1', [order_sn]);
-    
-    if (orderResult.rows.length === 0) {
-      console.error('Order not found:', order_sn);
-      return res.status(404).send('fail');
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // 根据 order_sn (商户单号) 查询订单并加排他锁 (FOR UPDATE)
+      const orderResult = await client.query('SELECT * FROM public.orders WHERE id = $1 FOR UPDATE', [order_sn]);
+
+      if (orderResult.rows.length === 0) {
+        await client.query('ROLLBACK');
+        console.error('Order not found:', order_sn);
+        return res.status(404).send('fail');
+      }
+
+      const order = orderResult.rows[0];
+
+      // 幂等性校验：如果订单已被处理，直接返回成功，防止重复加钱
+      if (order.status === 'paid' || order.status === 'failed') {
+        await client.query('ROLLBACK');
+        console.log('Order already processed:', order_sn, 'Current status:', order.status);
+        return res.send('success');
+      }
+
+      // state: 0-待支付, 1-已失败, 2-已超时, 3-已支付
+      if (state === 3) {
+        // 金额校验 (防止用户通过抓包修改金额)
+        const callbackAmount = parseFloat(amount);
+        const expectedAmount = parseFloat(order.amount);
+        if (Math.abs(callbackAmount - expectedAmount) > 0.01) {
+          console.error(`Amount mismatch for ${order_sn}: expected ${expectedAmount}, got ${callbackAmount}`);
+          await client.query('ROLLBACK');
+          return res.status(400).send('fail');
+        }
+
+        // 支付成功
+        await client.query(`
+          UPDATE public.orders SET
+            status = 'paid',
+            pay_url = NULL,
+            paid_at = $1,
+            updated_at = NOW()
+          WHERE id = $2
+        `, [payment_date || new Date(), order_sn]);
+
+        // 更新商品销量
+        await client.query(`
+          UPDATE products SET sales = sales + 1 WHERE id = $1
+        `, [order.product_id]);
+
+        // 三级分润
+        await distributeRevenue(order.user_id, expectedAmount, client);
+
+        await client.query('COMMIT');
+        console.log('Order paid successfully:', order_sn);
+      } else if (state === 1 || state === 2) {
+        // 失败或超时
+        await client.query(`UPDATE public.orders SET status = 'failed', updated_at = NOW() WHERE id = $1`, [order_sn]);
+        await client.query('COMMIT');
+        console.log('Order failed:', order_sn, 'state:', state);
+      } else {
+        await client.query('ROLLBACK');
+      }
+
+      // 返回 success 表示处理成功
+      res.send('success');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
     }
-
-    const order = orderResult.rows[0];
-
-    // 幂等性校验：如果订单已被处理，直接返回成功，防止重复加钱
-    if (order.status === 'paid' || order.status === 'failed') {
-      console.log('Order already processed:', order_sn, 'Current status:', order.status);
-      return res.send('success');
-    }
-
-    // state: 0-待支付, 1-已失败, 2-已超时, 3-已支付
-    if (state === 3) {
-      await pool.query('BEGIN');
-      
-      // 支付成功
-      await pool.query(`
-        UPDATE public.orders SET 
-          status = 'paid', 
-          pay_url = NULL,
-          paid_at = $1,
-          updated_at = NOW()
-        WHERE id = $2
-      `, [payment_date || new Date(), order_sn]);
-
-      // 更新商品销量
-      await pool.query(`
-        UPDATE products SET sales = sales + 1 WHERE id = $1
-      `, [order.product_id]);
-
-      // 三级分润
-      await distributeRevenue(order.user_id, amount || order.amount);
-
-      await pool.query('COMMIT');
-      console.log('Order paid successfully:', order_sn);
-    } else if (state === 1 || state === 2) {
-      // 失败或超时
-      await pool.query(`UPDATE public.orders SET status = 'failed', updated_at = NOW() WHERE id = $1`, [order_sn]);
-      console.log('Order failed:', order_sn, 'state:', state);
-    }
-
-    // 返回 success 表示处理成功
-    res.send('success');
   } catch (error) {
     console.error('Order callback error:', error);
     res.status(500).send('fail');
@@ -1423,44 +1471,69 @@ app.post('/api/orders/wechat/callback', async (req: Request, res: Response) => {
     // 九久支付通常回调就代表成功，如果有明确的状态字段，可以进一步判断
     const isSuccess = status ? (String(status).toUpperCase() === 'SUCCESS' || String(status) === '1' || String(status) === '3') : true;
 
-    const orderResult = await pool.query('SELECT * FROM public.orders WHERE id = $1', [orderId]);
-    if (orderResult.rows.length === 0) {
-      console.error('Wechat Order not found:', orderId);
-      return res.status(404).send('fail');
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const orderResult = await client.query('SELECT * FROM public.orders WHERE id = $1 FOR UPDATE', [orderId]);
+      if (orderResult.rows.length === 0) {
+        await client.query('ROLLBACK');
+        console.error('Wechat Order not found:', orderId);
+        return res.status(404).send('fail');
+      }
+
+      const order = orderResult.rows[0];
+
+      // 幂等性校验
+      if (order.status === 'paid' || order.status === 'failed') {
+        await client.query('ROLLBACK');
+        console.log('Wechat Order already processed:', orderId, 'Current status:', order.status);
+        return res.send('success');
+      }
+
+      if (isSuccess) {
+        // 金额校验 (九久回调的金额通常是以元为单位)
+        if (params.amount) {
+          const callbackAmount = parseFloat(params.amount);
+          const expectedAmount = parseFloat(order.amount);
+          if (Math.abs(callbackAmount - expectedAmount) > 0.01) {
+            console.error(`Amount mismatch for Wechat ${orderId}: expected ${expectedAmount}, got ${callbackAmount}`);
+            await client.query('ROLLBACK');
+            return res.status(400).send('fail');
+          }
+        }
+
+        await client.query(`
+          UPDATE public.orders SET
+            status = 'paid',
+            pay_url = NULL,
+            paid_at = NOW(),
+            updated_at = NOW()
+          WHERE id = $1
+        `, [orderId]);
+
+        await client.query(`
+          UPDATE products SET sales = sales + 1 WHERE id = $1
+        `, [order.product_id]);
+
+        // 三级分润
+        await distributeRevenue(order.user_id, parseFloat(order.amount), client);
+
+        await client.query('COMMIT');
+        console.log('Wechat Order paid successfully:', orderId);
+      } else {
+        await client.query(`UPDATE public.orders SET status = 'failed', updated_at = NOW() WHERE id = $1`, [orderId]);
+        await client.query('COMMIT');
+        console.log('Wechat Order failed:', orderId);
+      }
+
+      res.send('success');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
     }
-
-    const order = orderResult.rows[0];
-
-    // 幂等性校验
-    if (order.status === 'paid' || order.status === 'failed') {
-      console.log('Wechat Order already processed:', orderId, 'Current status:', order.status);
-      return res.send('success');
-    }
-
-    if (isSuccess) {
-      await pool.query(`
-        UPDATE public.orders SET 
-          status = 'paid', 
-          pay_url = NULL,
-          paid_at = NOW(),
-          updated_at = NOW()
-        WHERE id = $1
-      `, [orderId]);
-
-      await pool.query(`
-        UPDATE products SET sales = sales + 1 WHERE id = $1
-      `, [order.product_id]);
-
-      // 三级分润
-      await distributeRevenue(order.user_id, order.amount);
-
-      console.log('Wechat Order paid successfully:', orderId);
-    } else {
-      await pool.query(`UPDATE public.orders SET status = 'failed', updated_at = NOW() WHERE id = $1`, [orderId]);
-      console.log('Wechat Order failed:', orderId);
-    }
-
-    res.send('success');
   } catch (error) {
     console.error('Wechat Order callback error:', error);
     res.status(500).send('fail');
