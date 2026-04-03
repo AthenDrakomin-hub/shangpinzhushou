@@ -83,13 +83,13 @@ const getUserRole = (user: AuthUser | null): UserRole => {
 // 判断是否是管理员（经理或admin）
 const isManager = (user: AuthUser | null): boolean => {
   const role = getUserRole(user);
-  return role === 'manager' || role === 'admin';
+  return role === 'manager' || role === 'admin' || role === 'chief_engineer';
 };
 
 // 判断是否是主管或以上
 const isSupervisorOrAbove = (user: AuthUser | null): boolean => {
   const role = getUserRole(user);
-  return role === 'manager' || role === 'admin' || role === 'supervisor';
+  return role === 'manager' || role === 'admin' || role === 'supervisor' || role === 'chief_engineer';
 };
 
 // 快捷操作配置

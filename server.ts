@@ -2044,7 +2044,7 @@ app.get('/api/merchant/withdrawals/stats', authMiddleware, supervisorMiddleware,
     const visibleUserIds = await getVisibleUserIds(req.user.id, req.user.role);
     
     let query = `
-      SELECT 
+      SELECT
         COUNT(*) FILTER (WHERE w.status = 'pending') as pending_count,
         COUNT(*) FILTER (WHERE w.status = 'processing') as processing_count,
         COUNT(*) FILTER (WHERE w.status = 'success' OR w.status = 'paid') as success_count,
