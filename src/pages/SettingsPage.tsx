@@ -995,7 +995,7 @@ function PaymentConfigModal({
       const data = await response.json();
       if (response.ok && data.success) {
         if (data.pay_url) {
-          showToast('测试订单(0.01元)创建成功，正在跳转...', 'success');
+          showToast('测试订单(1.00元)创建成功，正在跳转...', 'success');
           setTimeout(() => window.open(data.pay_url, '_blank'), 1500);
         } else {
           showToast('通道可用！(测试响应无支付链接)', 'success');

@@ -1246,13 +1246,15 @@ app.post('/api/orders', async (req: Request, res: Response) => {
       const orderAmount = parseFloat(product.price);
       let channelCode = '824'; // 默认使用正式通道
 
-      // 允许 0.01 元的测试金额，使用测试通道 '1'
-      if (orderAmount === 0.01) {
-        channelCode = '1';
-      } else if (orderAmount < 100 || orderAmount > 1000) {
-        return res.status(400).json({ error: '支付宝正式支付金额需在 100-1000 元之间，或设为 0.01 元使用测试通道' });
+      // 根据金额自动选择渠道
+      if (orderAmount >= 1 && orderAmount < 100) {
+        channelCode = '1'; // 测试通道 (限额 1~100)
+      } else if (orderAmount >= 100 && orderAmount <= 20000) {
+        channelCode = '824'; // 正式小混通道 (限额 100~20000)
+      } else {
+        return res.status(400).json({ error: '支付宝支付金额需在 1-20000 元之间' });
       }
-      
+
       console.log('[SuperPay] 使用渠道编码:', channelCode);
       
       const returnUrl = `${projectDomain}/payment/result?orderId=${orderId}`;
@@ -2513,15 +2515,17 @@ app.post('/api/settings/test-superpay', authMiddleware, adminMiddleware, async (
     const { createSuperPayOrder } = await import('./src/services/superPay.js');
     
     const projectDomain = process.env.COZE_PROJECT_DOMAIN_DEFAULT || `http://localhost:${config.port}`;
-    
-    // 使用测试通道1，金额 0.01
+    const testOrderId = `TEST${Date.now()}`;
+
+    // 使用测试通道1，金额 1.00
     const payResult = await createSuperPayOrder({
       merchantOn,
       merchantKey,
-      amount: '0.01',
-      orderSn: `TEST${Date.now()}`,
+      amount: '1.00',
+      orderSn: testOrderId,
       channelCode: '1',
       notifyUrl: `${projectDomain}/api/orders/callback`,
+      returnUrl: `${projectDomain}/payment/result?orderId=${testOrderId}`,
       uid: 'test_uid'
     }, config.superpayBaseUrl);
 
