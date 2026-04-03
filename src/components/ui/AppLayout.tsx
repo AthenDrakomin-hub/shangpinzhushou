@@ -124,20 +124,21 @@ export default function AppLayout({
   });
 
   // 角色显示名称
-  const getRoleName = (role: string) => {
-    switch (role) {
-      case 'chief_engineer':
-        return '首席工程师';
-      case 'manager':
-      case 'admin':
-        return '经理';
-      case 'supervisor':
-        return '主管';
-      case 'employee':
-      default:
-        return '员工';
-    }
-  };
+    const getRoleName = (role: string) => {
+      switch (role) {
+        case 'chief_engineer':
+          return '首席工程师';
+        case 'manager':
+        case 'admin':
+          return '经理';
+        case 'supervisor':
+          return '主管';
+        case 'employee':
+        case 'staff':
+        default:
+          return '员工';
+      }
+    };
 
   return (
     <ThemeContext.Provider value={{ isDark, toggleTheme }}>
