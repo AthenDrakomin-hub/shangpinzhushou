@@ -85,7 +85,7 @@ export default function WithdrawalManagePage({ mode, user, onNavigate: _onNaviga
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
 
       if (mode === 'merchant') {
         const [withdrawalsRes, statsRes] = await Promise.all([
@@ -126,7 +126,7 @@ export default function WithdrawalManagePage({ mode, user, onNavigate: _onNaviga
 
     setProcessingId(id);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/merchant/withdraw/${id}/approve`, {
         method: 'POST',
         headers: {
@@ -154,7 +154,7 @@ export default function WithdrawalManagePage({ mode, user, onNavigate: _onNaviga
 
     setProcessingId(id);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/merchant/withdraw/${id}/reject`, {
         method: 'POST',
         headers: {
@@ -182,7 +182,7 @@ export default function WithdrawalManagePage({ mode, user, onNavigate: _onNaviga
 
     setProcessingId(id);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/merchant/withdraw/${id}/pay`, {
         method: 'POST',
         headers: {

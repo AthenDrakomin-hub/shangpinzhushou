@@ -205,7 +205,7 @@ export const isSupervisor = (user: AuthUser | null): boolean => {
  * 检查是否为员工
  */
 export const isEmployee = (user: AuthUser | null): boolean => {
-  return user?.role === 'employee';
+  return user?.role === 'employee' || user?.role === 'staff' as any;
 };
 
 /**

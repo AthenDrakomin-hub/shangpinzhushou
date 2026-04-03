@@ -47,7 +47,7 @@ export default function EarningsPage({ user, handleBack, setCurrentView, showToa
   const fetchEarnings = async () => {
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/earnings?limit=${pageSize}&offset=${page * pageSize}`, {
         headers: {
           'Authorization': `Bearer ${token}`,

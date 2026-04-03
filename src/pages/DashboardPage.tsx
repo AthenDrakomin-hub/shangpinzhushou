@@ -116,12 +116,12 @@ const QUICK_ACTIONS: QuickAction[] = [
     roles: ['manager', 'admin', 'supervisor', 'employee', 'staff'],
   },
   {
-    id: 'wallet',
-    label: '我的钱包',
-    icon: <Wallet className="w-5 h-5 text-purple-600 dark:text-purple-400" />,
-    iconBg: 'bg-purple-100 dark:bg-purple-900/30',
-    roles: ['employee', 'staff'],
-  },
+      id: 'wallet',
+      label: '我的钱包',
+      icon: <Wallet className="w-5 h-5 text-purple-600 dark:text-purple-400" />,
+      iconBg: 'bg-purple-100 dark:bg-purple-900/30',
+      roles: ['manager', 'admin', 'supervisor', 'employee', 'staff'],
+    },
   {
     id: 'merchant_employees',
     label: '员工管理',
@@ -213,7 +213,7 @@ export default function DashboardPage({ user, onNavigate }: DashboardPageProps) 
     const fetchDashboardStats = async () => {
       try {
         setLoading(true);
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('auth_token');
         const response = await fetch('/api/dashboard/stats', {
           headers: {
             'Authorization': `Bearer ${token}`,

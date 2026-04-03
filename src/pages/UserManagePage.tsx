@@ -74,7 +74,7 @@ export default function UserManagePage({ user, showToast }: UserManagePageProps)
   const loadUsers = async () => {
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
+      const token = localStorage.getItem('auth_token');
       
       if (user?.role === 'chief_engineer') {
         const response = await fetch('/api/users/tree', {
@@ -100,7 +100,7 @@ export default function UserManagePage({ user, showToast }: UserManagePageProps)
     if (!confirm('确定要删除该员工吗？')) return;
     
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/merchant/employees/${userId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
@@ -378,7 +378,7 @@ function CreateEmployeeModal({
 
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch('/api/merchant/employees', {
         method: 'POST',
         headers: {
@@ -523,7 +523,7 @@ function EditUserModal({
 
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/merchant/employees/${user.id}`, {
         method: 'PUT',
         headers: {

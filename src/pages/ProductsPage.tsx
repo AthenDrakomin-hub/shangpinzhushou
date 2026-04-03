@@ -66,7 +66,7 @@ export default function ProductsPage({ user, handleBack, setCurrentView, showToa
     if (!user?.id) return;
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch('/api/products', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -84,7 +84,7 @@ export default function ProductsPage({ user, handleBack, setCurrentView, showToa
     if (!confirm('确定要删除这个商品吗？此操作不可恢复！')) return;
     
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/products/${productId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
@@ -104,7 +104,7 @@ export default function ProductsPage({ user, handleBack, setCurrentView, showToa
   const handleToggleStatus = async (productId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/products/${productId}`, {
         method: 'PUT',
         headers: { 
@@ -386,7 +386,7 @@ function EditProductModal({
 
     setSaving(true);
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/products/${product?.id}`, {
         method: 'PUT',
         headers: {

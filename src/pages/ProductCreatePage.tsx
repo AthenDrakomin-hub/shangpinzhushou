@@ -38,7 +38,7 @@ export default function ProductCreatePage({ user, handleBack, setCurrentView, sh
 
     setUploading(true);
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
+      const token = localStorage.getItem('auth_token');
       const formData = new FormData();
       formData.append('image', file);
 
@@ -75,7 +75,7 @@ export default function ProductCreatePage({ user, handleBack, setCurrentView, sh
 
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch('/api/products', {
         method: 'POST',
         headers: {

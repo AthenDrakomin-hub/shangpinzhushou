@@ -30,7 +30,7 @@ export default function StaffWallet({ handleBack, setCurrentView, showToast, use
   const fetchWallet = async () => {
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch('/api/wallet', {
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -26,7 +26,7 @@ export default function DatabaseAdminPage() {
   const fetchTables = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const res = await fetch('/api/system/db/tables', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -48,7 +48,7 @@ export default function DatabaseAdminPage() {
     setActiveTable(tableName);
     setDataLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const res = await fetch(`/api/system/db/tables/${tableName}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });

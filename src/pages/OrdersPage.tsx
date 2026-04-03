@@ -101,7 +101,7 @@ export default function OrdersPage({ user, handleBack, showToast }: OrdersPagePr
       if (dateRange.end) params.append('endDate', dateRange.end);
       if (searchQuery) params.append('search', searchQuery);
 
-      const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(`/api/orders?${params}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -118,7 +118,7 @@ export default function OrdersPage({ user, handleBack, showToast }: OrdersPagePr
   const fetchStats = async () => {
     if (!user?.id) return;
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch('/api/dashboard/stats', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -143,7 +143,7 @@ export default function OrdersPage({ user, handleBack, showToast }: OrdersPagePr
       const response = await fetch(`/api/orders/${orderId}`, {
         method: 'DELETE',
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
+          Authorization: `Bearer ${localStorage.getItem('auth_token')}`
         }
       });
       

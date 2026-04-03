@@ -53,7 +53,7 @@ export default function WithdrawPage({ user, handleBack, setCurrentView, showToa
   const fetchWallet = async () => {
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch('/api/wallet', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -87,7 +87,7 @@ export default function WithdrawPage({ user, handleBack, setCurrentView, showToa
 
     setIsSubmitting(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch('/api/withdraw', {
         method: 'POST',
         headers: {

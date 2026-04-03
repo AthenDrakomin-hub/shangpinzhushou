@@ -400,7 +400,7 @@ function ProfileModal({ isOpen, onClose, user, showToast }: { isOpen: boolean; o
     }
     setLoading(true);
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
+      const token = localStorage.getItem('auth_token');
       const res = await fetch(`/api/merchant/employees/${user?.id}`, {
         method: 'PUT',
         headers: {
@@ -489,7 +489,7 @@ function PasswordModal({
 
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch('/api/auth/change-password', {
         method: 'POST',
         headers: {
@@ -620,7 +620,7 @@ function SecurityQuestionModal({
 
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch('/api/auth/security-question', {
         method: 'POST',
         headers: {
@@ -730,7 +730,7 @@ function PaymentConfigModal({
 
   const fetchConfig = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch('/api/admin/payment-config', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -753,7 +753,7 @@ function PaymentConfigModal({
   const handleSave = async () => {
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const response = await fetch('/api/admin/payment-config', {
         method: 'PUT',
         headers: {

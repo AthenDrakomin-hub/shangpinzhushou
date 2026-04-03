@@ -15,7 +15,7 @@ export default function ChiefEngineerDashboard() {
 
   const fetchStatus = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token');
       const res = await fetch('/api/system/status', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
