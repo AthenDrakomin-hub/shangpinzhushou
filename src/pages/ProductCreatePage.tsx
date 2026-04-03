@@ -69,8 +69,16 @@ export default function ProductCreatePage({ user, handleBack, setCurrentView, sh
       showToast('请输入商品名称', 'error');
       return;
     }
-    if (!product.price || parseFloat(product.price) <= 0) {
+    const priceNum = parseFloat(product.price);
+    if (!product.price || priceNum <= 0) {
       showToast('请输入正确的价格', 'error');
+      return;
+    }
+
+    const hasWechat = priceNum >= 1 && priceNum <= 50;
+    const hasAlipay = priceNum >= 100 && priceNum <= 20000;
+    if (!hasWechat && !hasAlipay) {
+      showToast('当前金额未匹配到任何收款方式，无法创建商品', 'error');
       return;
     }
 
@@ -221,8 +229,26 @@ export default function ProductCreatePage({ user, handleBack, setCurrentView, sh
                     className="w-full pl-8 pr-4 py-2.5 rounded-lg border transition-all duration-200 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
+                {product.price && parseFloat(product.price) > 0 && (
+                  <div className={`mt-2 text-xs font-medium px-2 py-1.5 rounded-md flex items-center gap-1.5 ${
+                    (parseFloat(product.price) >= 1 && parseFloat(product.price) <= 50) || 
+                    (parseFloat(product.price) >= 100 && parseFloat(product.price) <= 20000)
+                      ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300'
+                      : 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400'
+                  }`}>
+                    {(() => {
+                      const p = parseFloat(product.price);
+                      const w = p >= 1 && p <= 50;
+                      const a = p >= 100 && p <= 20000;
+                      if (w && a) return '✨ 当前金额可使用：微信、支付宝';
+                      if (w) return '💚 当前金额可使用：微信支付 (限额1-50)';
+                      if (a) return '💙 当前金额可使用：支付宝 (限额100-20000)';
+                      return '⚠️ 友情提示：未匹配到对应额度的收款方式，无法创建';
+                    })()}
+                  </div>
+                )}
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   原价 (元)

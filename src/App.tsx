@@ -148,7 +148,12 @@ export default function App() {
         }
       } else {
         setUser(null);
-        setCurrentView('landing');
+        setCurrentView(prev => {
+          if (prev === 'h5_product' || prev === 'product_checkout' || prev === 'payment_result') {
+            return prev;
+          }
+          return 'landing';
+        });
         setEmailVerified(null);
       }
       setIsAuthLoading(false);

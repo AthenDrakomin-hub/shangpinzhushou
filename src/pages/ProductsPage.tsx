@@ -383,8 +383,16 @@ function EditProductModal({
   }, [product]);
 
   const handleSave = async () => {
-    if (!form.name || !form.price) {
-      showToast('请填写商品名称和价格', 'error');
+    const priceNum = parseFloat(form.price);
+    if (!form.name || !form.price || priceNum <= 0) {
+      showToast('请填写商品名称和有效的价格', 'error');
+      return;
+    }
+
+    const hasWechat = priceNum >= 1 && priceNum <= 50;
+    const hasAlipay = priceNum >= 100 && priceNum <= 20000;
+    if (!hasWechat && !hasAlipay) {
+      showToast('当前金额未匹配到任何收款方式，无法修改商品', 'error');
       return;
     }
 
@@ -447,6 +455,24 @@ function EditProductModal({
               onChange={(e) => setForm({ ...form, price: e.target.value })}
               className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
             />
+            {form.price && parseFloat(form.price) > 0 && (
+              <div className={`mt-1 text-[10px] px-1.5 py-1 rounded-sm ${
+                (parseFloat(form.price) >= 1 && parseFloat(form.price) <= 50) || 
+                (parseFloat(form.price) >= 100 && parseFloat(form.price) <= 20000)
+                  ? 'text-blue-600 dark:text-blue-400'
+                  : 'text-red-500 dark:text-red-400'
+              }`}>
+                {(() => {
+                  const p = parseFloat(form.price);
+                  const w = p >= 1 && p <= 50;
+                  const a = p >= 100 && p <= 20000;
+                  if (w && a) return '✨ 支持微信、支付宝';
+                  if (w) return '💚 支持微信支付 (1-50)';
+                  if (a) return '💙 支持支付宝 (100-20000)';
+                  return '⚠️ 无匹配收款方式';
+                })()}
+              </div>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">原价 (元)</label>

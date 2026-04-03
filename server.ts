@@ -1247,13 +1247,11 @@ app.post('/api/orders', async (req: Request, res: Response) => {
       const orderAmount = parseFloat(product.price);
       let channelCode = '824'; // 默认使用正式通道
 
-      // 根据金额自动选择渠道
-      if (orderAmount >= 1 && orderAmount < 100) {
-        channelCode = '1'; // 测试通道 (限额 1~100)
-      } else if (orderAmount >= 100 && orderAmount <= 20000) {
+      // 支付宝只允许 100-20000 范围，走正式小混通道 824
+      if (orderAmount >= 100 && orderAmount <= 20000) {
         channelCode = '824'; // 正式小混通道 (限额 100~20000)
       } else {
-        return res.status(400).json({ error: '支付宝支付金额需在 1-20000 元之间' });
+        return res.status(400).json({ error: '支付宝支付金额需在 100-20000 元之间' });
       }
 
       console.log('[SuperPay] 使用渠道编码:', channelCode);
@@ -1281,9 +1279,14 @@ app.post('/api/orders', async (req: Request, res: Response) => {
     } else if (isJiuJiu) {
       // ========== 使用九久支付（微信支付）==========
       const { createWechatOrder } = await import('./src/services/wechatPay.js') as { createWechatOrder: (params: any) => Promise<any> };
-      
+
       console.log('[订单创建] 使用九久支付微信');
       
+      const orderAmount = parseFloat(product.price);
+      if (orderAmount < 1 || orderAmount > 50) {
+        return res.status(400).json({ error: '微信支付金额需在 1-50 元之间' });
+      }
+
       const returnUrl = `${projectDomain}/payment/result?orderId=${orderId}`;
       const wechatNotifyUrl = `${projectDomain}/api/orders/wechat/callback`;
       

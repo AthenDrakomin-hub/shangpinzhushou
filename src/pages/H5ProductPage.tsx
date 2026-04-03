@@ -100,19 +100,19 @@ interface PaymentChannel {
 
 // 预设支付渠道 - H5 页面显示支付宝（SuperPay）和微信（九久支付）
 const PAYMENT_CHANNELS: PaymentChannel[] = [
-  { 
-    code: 'alipay_superpay', 
-    name: '支付宝', 
-    icon: '💙', 
-    color: '#1677FF', 
+  {
+    code: 'alipay_superpay',
+    name: '支付宝',
+    icon: '💙',
+    color: '#1677FF',
     bgColor: 'bg-blue-50',
     gateway: 'superpay' // 使用 SuperPay 网关
   },
-  { 
-    code: 'WXpay_SM', 
-    name: '微信支付', 
-    icon: '💚', 
-    color: '#07C160', 
+  {
+    code: 'WXpay_SM',
+    name: '微信支付',
+    icon: '💚',
+    color: '#07C160',
     bgColor: 'bg-green-50',
     gateway: 'jiujiu' // 使用九久支付网关
   },
@@ -125,9 +125,26 @@ interface H5ProductPageProps {
 
 export default function H5ProductPage({ productId = 'p1', onClose }: H5ProductPageProps) {
   const [product, setProduct] = useState<Product | null>(null);
-  const [selectedChannel, setSelectedChannel] = useState<PaymentChannel>(PAYMENT_CHANNELS[0]);
+  const [selectedChannel, setSelectedChannel] = useState<PaymentChannel | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingProduct, setLoadingProduct] = useState(true);
+
+  // 根据商品价格过滤可用的支付通道
+  const getAvailableChannels = (price: number) => {
+    return PAYMENT_CHANNELS.filter(channel => {
+      if (channel.gateway === 'superpay') {
+        // 支付宝 (SuperPay) 额度 100-20000
+        return price >= 100 && price <= 20000;
+      }
+      if (channel.gateway === 'jiujiu') {
+        // 微信 (九久支付) 额度 1-50
+        return price >= 1 && price <= 50;
+      }
+      return false;
+    });
+  };
+
+  const availableChannels = product ? getAvailableChannels(product.price) : [];
   const [showWechatGuide, setShowWechatGuide] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [orderStatus, setOrderStatus] = useState<'idle' | 'pending' | 'paid' | 'failed'>('idle');
@@ -173,10 +190,11 @@ export default function H5ProductPage({ productId = 'p1', onClose }: H5ProductPa
         const response = await fetchApi(`/api/products/${productId}`);
         if (response.ok) {
           const data = await response.json();
+          const loadedPrice = parseFloat(data.price);
           setProduct({
             id: data.id,
             name: data.name,
-            price: parseFloat(data.price),
+            price: loadedPrice,
             originalPrice: parseFloat(data.originalPrice || data.price),
             description: data.description || '',
             image: data.image || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&q=80&w=400',
@@ -184,6 +202,10 @@ export default function H5ProductPage({ productId = 'p1', onClose }: H5ProductPa
             stock: data.stock || 100,
             status: data.status || 'active'
           });
+          const available = getAvailableChannels(loadedPrice);
+          if (available.length > 0) {
+            setSelectedChannel(available[0]);
+          }
           // 更新页面meta标签（用于分享）
           updateMetaTags({
             name: data.name,
@@ -261,13 +283,17 @@ export default function H5ProductPage({ productId = 'p1', onClose }: H5ProductPa
   // 处理支付
   const handlePayment = async () => {
     if (!product) return;
-    
+    if (!selectedChannel) {
+      alert('无可用支付通道');
+      return;
+    }
+
     // 如果在微信内，显示引导提示
     if (isInWechat) {
       setShowWechatGuide(true);
       return;
     }
-    
+
     setLoading(true);
     
     try {
@@ -447,32 +473,42 @@ export default function H5ProductPage({ productId = 'p1', onClose }: H5ProductPa
       {/* 支付方式选择 */}
       <div className="bg-white px-4 py-4">
         <h3 className="font-semibold text-gray-900 mb-3">选择支付方式</h3>
-        <div className="space-y-2">
-          {PAYMENT_CHANNELS.map((channel) => (
-            <button
-              key={channel.code}
-              onClick={() => setSelectedChannel(channel)}
-              className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
-                selectedChannel.code === channel.code
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-200 hover:border-gray-300'
-              }`}
-            >
-              <span className="text-2xl">{channel.icon}</span>
-              <span className="flex-1 text-left font-medium">{channel.name}</span>
-              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                selectedChannel.code === channel.code
-                  ? 'border-blue-500 bg-blue-500'
-                  : 'border-gray-300'
-              }`}>
-                {selectedChannel.code === channel.code && (
-                  <CheckCircle2 size={14} className="text-white" />
-                )}
-              </div>
-            </button>
-          ))}
-        </div>
-        
+        {availableChannels.length === 0 ? (
+          <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-orange-800 font-medium text-sm">该商品暂无可用支付通道</p>
+              <p className="text-orange-600 text-xs mt-1">当前金额 (¥{product.price.toFixed(2)}) 未匹配到任何商户收款渠道额度限制，无法下单。</p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {availableChannels.map((channel) => (
+              <button
+                key={channel.code}
+                onClick={() => setSelectedChannel(channel)}
+                className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
+                  selectedChannel?.code === channel.code
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <span className="text-2xl">{channel.icon}</span>
+                <span className="flex-1 text-left font-medium">{channel.name}</span>
+                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                  selectedChannel?.code === channel.code
+                    ? 'border-blue-500 bg-blue-500'
+                    : 'border-gray-300'
+                }`}>
+                  {selectedChannel?.code === channel.code && (
+                    <CheckCircle2 size={14} className="text-white" />
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* 微信环境提示 */}
         {isInWechat && (
           <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
