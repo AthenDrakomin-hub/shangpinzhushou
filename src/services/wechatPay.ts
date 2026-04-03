@@ -142,21 +142,71 @@ export async function createWechatOrder(params: CreateOrderParams): Promise<JiuJ
 
     const gatewayUrl = `${config.apiUrl}/Pay_Index.html`;
 
-    // 生成自动提交的表单HTML
-    const formHtml = `
-      <form id="jiujiu-pay-form" action="${gatewayUrl}" method="POST" style="display:none;">
-        ${Object.entries(fullParams).map(([key, value]) =>
-          `<input type="hidden" name="${key}" value="${value}">`
-        ).join('\n        ')}
-      </form>
-      <script>document.getElementById('jiujiu-pay-form').submit();</script>
-    `;
+    console.log('[九久支付] 正在服务器端发起支付请求...', gatewayUrl);
+    
+    try {
+      // 1. 在服务端代替浏览器发送 POST 请求，彻底避免浏览器提示“表单不安全（Mixed Content）”
+      const response = await fetch(gatewayUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams(fullParams).toString(),
+        redirect: 'manual' // 拦截重定向
+      });
 
-    return {
-      success: true,
-      payUrl: gatewayUrl,
-      formHtml: formHtml
-    };
+      // 2. 处理重定向 (302)
+      if (response.status >= 300 && response.status < 400) {
+        const location = response.headers.get('location');
+        if (location) {
+          console.log('[九久支付] 网关返回重定向:', location);
+          return { success: true, payUrl: location };
+        }
+      }
+
+      const text = await response.text();
+
+      // 3. 尝试解析为 JSON
+      try {
+        const json = JSON.parse(text);
+        if (json.status === 'error' || json.code === -1) {
+          return { success: false, error: json.msg || json.message || '九久支付网关报错' };
+        }
+        // 如果返回的是 JSON 格式的链接
+        const finalUrl = json.payUrl || json.url || json.codeUrl || json.data?.payUrl;
+        if (finalUrl) {
+          return { success: true, payUrl: finalUrl };
+        }
+      } catch (e) {
+        // 解析 JSON 失败，说明网关返回的是 HTML 页面（比如收银台或二维码页面）
+        // 直接把这个 HTML 发给前端渲染，不再让前端去 POST
+        return {
+          success: true,
+          formHtml: text
+        };
+      }
+
+      // 如果既不是重定向，也不是 JSON，也不是标准 HTML，兜底返回
+      return { success: true, formHtml: text };
+
+    } catch (fetchErr) {
+      console.error('[九久支付] 服务端请求失败，降级使用前端表单:', fetchErr);
+      // 生成自动提交的表单HTML (降级方案)
+      const formHtml = `
+        <form id="jiujiu-pay-form" action="${gatewayUrl}" method="POST" style="display:none;">
+          ${Object.entries(fullParams).map(([key, value]) =>
+            `<input type="hidden" name="${key}" value="${value}">`
+          ).join('\n          ')}
+        </form>
+        <script>document.getElementById('jiujiu-pay-form').submit();</script>
+      `;
+
+      return {
+        success: true,
+        payUrl: gatewayUrl,
+        formHtml: formHtml
+      };
+    }
   } catch (error: any) {
     console.error('Create JiuJiu Pay order error:', error.message);
     return {
