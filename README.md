@@ -1,184 +1,66 @@
-# 商品分享助手 (PayForMe Helper)
+# 商品助手 (PayForMe)
 
-一个面向个人商户/小微商家的商品展示页生成工具，帮助用户快速创建商品分享页面，支持多场景海报生成、商品分润共享、实时订单追踪和资金提现（USDT）。
+一个专为商户、团队打造的**商品与支付管理平台**。提供从商品发布、自动生成海报、多级团队权限管理、独立员工收益计算到自动化提现审核的一站式解决方案。
 
-## 🌟 核心功能亮点
+## 🎯 核心功能 (基于真实代码)
 
-- **极速商品建站**: 支持上传图片、设置原价/现价及商品描述，一键生成独立的 H5 商品购买页。
-- **全自动分润机制**: 
-  - 支持设置商品为“共享”模式。
-  - 管理员可为每位员工设置专属的“收益分配比例”。
-  - 员工分享他人的商品产生订单后，系统自动计算分成并实时发放到该员工钱包，商品原作者不抽成。
-- **场景化海报引擎**: 内置 8 种大厂风格模板（美团、京东、抖音、携程等），一键生成带专属二维码的高清营销海报。
-- **动态支付网关**: 
-  - 深度集成 SuperPay (支付宝) + 九久支付 (微信)。
-  - **动态配置**: 管理员可在后台动态配置支付通道商户号及秘钥，修改后**即刻生效**，无需重启服务器。
-- **严密的财务与权限体系**:
-  - 经理 (manager/admin)：系统最高权限，统管全局数据、配置支付网关、审核提现。
-  - 主管 (supervisor)：管理员工账号及基础数据。
-  - 员工 (employee)：创建/分享商品，查看个人业绩，发起 USDT 提现。
-- **安全加固**: 采用基于 JWT 的身份认证，且实现了无需绑定邮箱的**密保问题找回密码**机制。
+- **👨‍💼 严密的四级权限体系 (RBAC)**
+  - **首席工程师 (Chief Engineer)**: 拥有上帝视角，可全量管理账号，支持网页端直连执行底层 SQL，可修改系统全局配置。
+  - **经理 (Manager)**: 统筹团队，可管理主管与员工，查看团队订单流水，审批提现。
+  - **主管 (Supervisor)**: 团队中层管理，可创建下级员工，查看自己和下级的订单与业绩。
+  - **员工 (Employee)**: 基础业务员，管理自己的商品与订单，发起提现申请。
+- **🛍️ 商品与订单管理**
+  - 商品支持上传封面图，设置原价与售价。
+  - 基于 Canvas/Sharp 动态生成带支付二维码的精美商品海报。
+  - 支持对接 Webhook，实现支付回调的自动化订单对账。
+- **💰 收益与提现系统**
+  - 根据为员工设置的“收益比例”自动计算提成。
+  - 员工发起提现申请 -> 经理后台可视化审核打款 -> 账单流水自动记录。
+- **⚙️ 高级配置**
+  - 支付配置：支持在前端动态配置收款网关参数。
+  - 数据库操作：提供前端 SQL 执行器，内置增删改查模板。
 
-## 🎨 海报模板引擎
+## 🛠️ 技术栈
 
-支持以下品牌风格的海报模板：
+- **前端**: React 18 + Vite + Tailwind CSS + Lucide Icons
+- **后端**: Node.js + Express
+- **数据库**: PostgreSQL (`pg` 模块连接)
+- **图像处理**: Canvas + Sharp (用于海报合成与二维码生成)
+- **认证**: JWT (JSON Web Token) + bcryptjs 密码加密
+- **部署**: PM2 + GitHub Actions 自动化流水线
 
-| 模板 | 风格 | 主题色 |
-|------|------|--------|
-| `default` | 酸性渐变 | 紫粉渐变 |
-| `meituan` | 美团风格 | 黄色 #FFD100 |
-| `jd` | 京东风格 | 红色 #E1251B |
-| `eleme` | 饿了么风格 | 蓝色 #0097FF |
-| `douyin` | 抖音风格 | 黑色 #161823 |
-| `ctrip` | 携程风格 | 蓝色 #2577E3 |
-| `kuaishou` | 快手风格 | 橙色 #FF4906 |
-| `daifu` | 代付风格 | 绿色 #07C160 |
+## 🚀 快速开始
 
-## 技术栈
+### 1. 环境要求
+- Node.js (v18 或 v20+)
+- PostgreSQL 数据库
+- Git
 
-### 前端
-- React 19.2.3 + TypeScript 5.9.3
-- Vite 7.2.4
-- Tailwind CSS 4.1.17
-- Motion (Framer Motion)
-- Lucide React
-- Recharts
-
-### 后端
-- Express 4.18.2 + TypeScript
-- tsx 4.7.0 (直接运行 TypeScript)
-- PostgreSQL (pg 8.11.3)
-- JWT + bcryptjs
-- node-canvas 3.2.3 + sharp 0.34.5 (海报生成)
-
-### 支付网关
-- SuperPay (支付宝收款)
-- 九久支付 (微信收款)
-
-## 快速开始
-
-### 安装依赖
-
+### 2. 克隆与安装
 ```bash
+git clone https://github.com/AthenDrakomin-hub/shangpinzhushou.git
+cd shangpinzhushou
 npm install
 ```
 
-### 开发模式
+### 3. 环境配置
+在项目根目录创建 `.env` 文件，并填入以下内容：
+```env
+PORT=5000
+DATABASE_URL=postgresql://用户名:密码@localhost:5432/payforme
+JWT_SECRET=your_jwt_secret_key_here
+ENCRYPTION_KEY=your_encryption_key_32_bytes_long
+```
 
+### 4. 运行项目
 ```bash
-# 启动后端服务 + 热重载
+# 启动开发环境
 npm run dev
 
-# 前端单独开发 (Vite 开发服务器)
-npm run dev:frontend
-```
-
-### 构建
-
-```bash
+# 编译与生产环境运行
 npm run build
+pm2 start server.ts --name payforme --interpreter ./node_modules/.bin/tsx
 ```
 
-### 生产模式
-
-```bash
-npm run start
-```
-
-## 环境变量
-
-创建 `.env` 文件：
-
-```env
-# 数据库
-PGDATABASE_URL=postgresql://user:password@localhost:5432/payforme
-
-# JWT
-JWT_SECRET=your-secret-key
-ENCRYPTION_KEY=your-encryption-key
-
-# 管理员
-ADMIN_EMAIL=admin@example.com
-ADMIN_PASSWORD=admin123
-
-# 支付网关底层配置 (一般无需修改)
-SUPERPAY_BASE_URL=https://hixrs.ibpee.com:13758
-JIUJIU_API_URL=http://bayq.hanyin.9jiupay.com
-
-# 项目域名 (核心：用于拼接回调地址和海报二维码)
-COZE_PROJECT_DOMAIN_DEFAULT=https://your-domain.com
-```
-
-> **注意**：商户号（`MCH_ID`）和通信秘钥（`APP_SECRET`）无需写入 `.env` 文件。系统初始化启动后，请使用超级管理员账号登录，在「系统设置 -> 支付通道配置」中动态填写并保存。
-
-## 用户角色权限
-
-| 角色 | 别名 | 权限说明 |
-|------|------|----------|
-| 经理 (manager) | admin | 系统最高权限，管理所有用户、审核商户申请 |
-| 主管 (supervisor) | director | 商户管理员，管理员工、查看订单、配置支付 |
-| 员工 (staff/employee) | 用户 | 普通用户，创建商品、查看自己的订单 |
-
-## API 接口
-
-### 认证
-- `POST /api/auth/login` - 登录
-- `POST /api/auth/register` - 注册
-- `GET /api/auth/me` - 获取当前用户
-
-### 商品
-- `GET /api/products` - 商品列表
-- `POST /api/products` - 创建商品
-- `PUT /api/products/:id` - 更新商品
-- `DELETE /api/products/:id` - 删除商品
-
-### 订单
-- `POST /api/orders` - 创建订单
-- `POST /api/orders/callback` - 支付回调
-- `GET /api/orders/:id` - 订单详情
-
-### 海报生成
-- `POST /api/poster/generate` - 生成商品分享海报
-  - 参数: `productId` (商品ID), `template` (模板类型)
-  - 返回: PNG 图片
-
-## 项目结构
-
-```
-payforme-helper/
-├── server.ts                 # 后端服务入口
-├── src/
-│   ├── App.tsx               # 前端主应用
-│   ├── pages/                # 页面组件
-│   ├── services/             # 业务服务层
-│   │   └── posterService/    # 海报生成服务
-│   ├── utils/                # 工具函数
-│   └── components/           # 可复用组件
-├── public/
-│   └── logos/                # 品牌Logo
-├── dist/                     # 构建输出
-└── specs/                    # 项目文档
-```
-
-## 部署
-
-详细部署配置请查看 [`specs/部署配置.md`](specs/部署配置.md)
-
-## 文档
-
-| 文档 | 说明 |
-|------|------|
-| [AGENTS.md](AGENTS.md) | 项目开发指南 |
-| [specs/产品概述.md](specs/产品概述.md) | 产品定位与核心功能 |
-| [specs/技术栈.md](specs/技术栈.md) | 前后端技术选型 |
-| [specs/开发路线图.md](specs/开发路线图.md) | 版本规划与进度 |
-| [docs/功能使用说明.md](docs/功能使用说明.md) | 详细功能与API说明 |
-
-## 访问地址
-
-- **正式环境**: https://goodspage.cn
-- **API 端点**: https://goodspage.cn/api/
-
-## License
-
-MIT
+## 🌐 在线交付文档
+关于详细的操作指南与系统截图，请访问独立托管的 [系统交付说明书](https://athendrakomin-hub.github.io/shangpinzhushou/)。
