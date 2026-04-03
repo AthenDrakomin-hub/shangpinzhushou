@@ -13,6 +13,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import path from 'path';
+import os from 'os';
 import { fileURLToPath } from 'url';
 import { generatePoster, type PosterTemplate } from './src/services/posterService';
 import fs from 'fs';
@@ -312,20 +313,29 @@ const authMiddleware = async (req: AuthRequest, res: Response, next: NextFunctio
   }
 };
 
-// 主管权限中间件（支持 admin, manager, supervisor 角色）
+// 主管权限中间件（支持 admin, manager, supervisor, chief_engineer 角色）
 const supervisorMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
   const role = req.user?.role;
-  if (role !== 'manager' && role !== 'admin' && role !== 'supervisor') {
+  if (role !== 'manager' && role !== 'admin' && role !== 'supervisor' && role !== 'chief_engineer') {
     return res.status(403).json({ error: '需要主管或以上权限' });
   }
   next();
 };
 
-// 管理员权限中间件（支持 admin 和 manager 角色）
+// 管理员权限中间件（支持 admin, manager, chief_engineer 角色）
 const adminMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
   const role = req.user?.role;
-  if (role !== 'manager' && role !== 'admin') {
+  if (role !== 'manager' && role !== 'admin' && role !== 'chief_engineer') {
     return res.status(403).json({ error: '需要经理权限' });
+  }
+  next();
+};
+
+// 首席工程师中间件
+const chiefEngineerMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
+  const role = req.user?.role;
+  if (role !== 'chief_engineer' && role !== 'admin') {
+    return res.status(403).json({ error: '需要首席工程师权限' });
   }
   next();
 };
@@ -509,8 +519,8 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
 
 // Helper: 获取当前用户可见的所有用户ID（用于数据隔离）
 async function getVisibleUserIds(userId: string, role: string): Promise<string[] | null> {
-  // admin 看全库，返回 null 代表无过滤限制
-  if (role === 'admin') return null;
+  // admin 和 chief_engineer 看全库，返回 null 代表无过滤限制
+  if (role === 'admin' || role === 'chief_engineer') return null;
 
   if (role === 'manager' || role === 'supervisor') {
     const visibleUsersRes = await pool.query(`
@@ -525,7 +535,6 @@ async function getVisibleUserIds(userId: string, role: string): Promise<string[]
     return visibleUsersRes.rows.map(r => r.id);
   }
 
-  // 员工只能看自己
   return [userId];
 }
 
@@ -1599,6 +1608,125 @@ app.post('/api/withdraw', authMiddleware, async (req: AuthRequest, res: Response
 });
 
 // ---------- 用户管理 API (管理员) ----------
+
+// 首席工程师：获取用户树形结构
+app.get('/api/users/tree', authMiddleware, chiefEngineerMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await pool.query(`
+      SELECT id, email, display_name as name, role, status, created_at, updated_at, created_by
+      FROM public.users
+      ORDER BY created_at ASC
+    `);
+
+    const users = result.rows;
+    // 构建树形结构
+    const map = new Map();
+    const roots: any[] = [];
+
+    users.forEach(user => {
+      map.set(user.id, { ...user, children: [] });
+    });
+
+    users.forEach(user => {
+      if (user.created_by && map.has(user.created_by)) {
+        map.get(user.created_by).children.push(map.get(user.id));
+      } else {
+        roots.push(map.get(user.id));
+      }
+    });
+
+    res.json({ tree: roots });
+  } catch (error) {
+    console.error('获取树形用户失败:', error);
+    res.status(500).json({ error: '获取用户结构失败' });
+  }
+});
+
+// 获取系统运行状态 (首席工程师专属)
+app.get('/api/system/status', authMiddleware, chiefEngineerMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const dbSizeResult = await pool.query("SELECT pg_size_pretty(pg_database_size(current_database())) as size");
+    const userCountResult = await pool.query("SELECT count(*) FROM public.users");
+    const orderCountResult = await pool.query("SELECT count(*) FROM public.orders");
+    
+    res.json({
+      uptime: process.uptime(),
+      nodeVersion: process.version,
+      memoryUsage: process.memoryUsage(),
+      systemMemory: {
+        total: os.totalmem(),
+        free: os.freemem()
+      },
+      cpuLoad: os.loadavg(),
+      db: {
+        size: dbSizeResult.rows[0].size,
+        userCount: parseInt(userCountResult.rows[0].count),
+        orderCount: parseInt(orderCountResult.rows[0].count)
+      }
+    });
+  } catch (error) {
+    console.error('获取系统状态失败:', error);
+    res.status(500).json({ error: '获取系统状态失败' });
+  }
+});
+
+// ---------- 系统与数据库管理 API (首席工程师) ----------
+
+// 获取数据库中所有的表
+app.get('/api/system/db/tables', authMiddleware, chiefEngineerMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await pool.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public'
+    `);
+    
+    // 获取每个表的行数
+    const tables = [];
+    for (const row of result.rows) {
+      const countRes = await pool.query(`SELECT COUNT(*) FROM public.${row.table_name}`);
+      tables.push({
+        name: row.table_name,
+        rows: parseInt(countRes.rows[0].count)
+      });
+    }
+
+    res.json({ tables });
+  } catch (error) {
+    console.error('获取数据库表失败:', error);
+    res.status(500).json({ error: '获取数据库表失败' });
+  }
+});
+
+// 获取指定表的列信息和数据
+app.get('/api/system/db/tables/:tableName', authMiddleware, chiefEngineerMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const tableName = req.params.tableName;
+    // 简单的防止 SQL 注入：确保表名只包含字母下划线
+    if (!/^[a-zA-Z_]+$/.test(tableName)) {
+      return res.status(400).json({ error: '无效的表名' });
+    }
+
+    // 1. 获取列信息
+    const columnsRes = await pool.query(`
+      SELECT column_name, data_type 
+      FROM information_schema.columns 
+      WHERE table_name = $1 AND table_schema = 'public'
+    `, [tableName]);
+
+    // 2. 获取数据 (最多取 50 条)
+    const dataRes = await pool.query(`SELECT * FROM public.${tableName} LIMIT 50`);
+
+    res.json({
+      columns: columnsRes.rows,
+      data: dataRes.rows
+    });
+  } catch (error) {
+    console.error(`获取表 ${req.params.tableName} 数据失败:`, error);
+    res.status(500).json({ error: '获取表数据失败' });
+  }
+});
+
 // 获取用户列表
 app.get('/api/users', authMiddleware, adminMiddleware, async (_req: AuthRequest, res: Response) => {
   try {
@@ -1780,7 +1908,7 @@ app.post('/api/merchant/employees', authMiddleware, supervisorMiddleware, async 
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const userId = uuidv4();
+    const userId = crypto.randomUUID();
 
     await pool.query(`
       INSERT INTO public.users (

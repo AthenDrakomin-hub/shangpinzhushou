@@ -60,29 +60,29 @@
 ### 安装依赖
 
 ```bash
-pnpm install
+npm install
 ```
 
 ### 开发模式
 
 ```bash
 # 启动后端服务 + 热重载
-pnpm run dev
+npm run dev
 
 # 前端单独开发 (Vite 开发服务器)
-pnpm run dev:frontend
+npm run dev:frontend
 ```
 
 ### 构建
 
 ```bash
-pnpm run build
+npm run build
 ```
 
 ### 生产模式
 
 ```bash
-pnpm run start
+npm run start
 ```
 
 ## 环境变量
