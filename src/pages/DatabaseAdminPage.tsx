@@ -1,6 +1,6 @@
 import { fetchApi } from '../utils/apiClient';
 import { useState, useEffect } from 'react';
-import { Database, RefreshCw, Table, FileText } from 'lucide-react';
+import { Database, RefreshCw, Table, FileText, Play, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, PageHeader, Button } from '../components/ui';
 
 interface TableInfo {
@@ -19,6 +19,11 @@ export default function DatabaseAdminPage() {
   const [tableData, setTableData] = useState<TableData | null>(null);
   const [loading, setLoading] = useState(true);
   const [dataLoading, setDataLoading] = useState(false);
+  const [sqlQuery, setSqlQuery] = useState('');
+  const [sqlResult, setSqlResult] = useState<any>(null);
+  const [sqlError, setSqlError] = useState<string | null>(null);
+  const [sqlLoading, setSqlLoading] = useState(false);
+  const [viewMode, setViewMode] = useState<'tables' | 'sql'>('tables');
 
   useEffect(() => {
     fetchTables();
@@ -64,6 +69,30 @@ export default function DatabaseAdminPage() {
     }
   };
 
+  const executeSql = async () => {
+    if (!sqlQuery.trim()) return;
+    setSqlLoading(true);
+    setSqlError(null);
+    setSqlResult(null);
+    try {
+      const res = await fetchApi('/api/system/db/query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sql: sqlQuery })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setSqlError(data.error || 'SQL 执行失败');
+      } else {
+        setSqlResult(data);
+      }
+    } catch (e) {
+      setSqlError('网络请求失败');
+    } finally {
+      setSqlLoading(false);
+    }
+  };
+
   const formatCellValue = (value: any) => {
     if (value === null || value === undefined) return <span className="text-gray-400 italic">null</span>;
     if (typeof value === 'boolean') return <span className={value ? "text-green-600 font-medium" : "text-red-600 font-medium"}>{value.toString()}</span>;
@@ -76,26 +105,43 @@ export default function DatabaseAdminPage() {
   };
 
   return (
-    <div className="space-y-6 h-[calc(100vh-100px)] flex flex-col">
-      <PageHeader 
-        title="数据库管理" 
-        subtitle="查看和分析系统底层数据表 (只读)"
-        action={
-          <Button 
-            variant="outline" 
-            icon={<RefreshCw className="w-4 h-4" />}
-            onClick={() => {
-              fetchTables();
-              if (activeTable) fetchTableData(activeTable);
-            }}
-          >
-            刷新数据
-          </Button>
-        }
-      />
+      <div className="space-y-6 h-[calc(100vh-100px)] flex flex-col">
+        <PageHeader
+          title="数据库管理"
+          subtitle="查看和分析系统底层数据表及执行自定义 SQL 操作"
+          action={
+            <div className="flex items-center gap-4">
+              <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+                <button
+                  onClick={() => setViewMode('tables')}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${viewMode === 'tables' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
+                >
+                  表视图
+                </button>
+                <button
+                  onClick={() => setViewMode('sql')}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${viewMode === 'sql' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
+                >
+                  SQL执行器
+                </button>
+              </div>
+              <Button
+                variant="outline"
+                icon={<RefreshCw className="w-4 h-4" />}
+                onClick={() => {
+                  fetchTables();
+                  if (activeTable) fetchTableData(activeTable);
+                }}
+              >
+                刷新数据
+              </Button>
+            </div>
+          }
+        />
 
-      <div className="flex gap-6 flex-1 min-h-0">
-        {/* 左侧表列表 */}
+        {viewMode === 'tables' ? (
+          <div className="flex gap-6 flex-1 min-h-0">
+            {/* 左侧表列表 */}
         <Card className="w-64 shrink-0 flex flex-col h-full overflow-hidden">
           <CardHeader title="数据表" />
           <div className="flex-1 overflow-y-auto p-2">
@@ -186,7 +232,88 @@ export default function DatabaseAdminPage() {
             </div>
           )}
         </Card>
+        </div>
+        ) : (
+          <div className="flex gap-6 flex-1 min-h-0 flex-col">
+            <Card className="shrink-0 flex flex-col overflow-hidden">
+              <CardHeader title="SQL 执行器" />
+              <CardContent className="p-4 flex flex-col gap-4">
+                <textarea
+                  value={sqlQuery}
+                  onChange={(e) => setSqlQuery(e.target.value)}
+                  className="w-full h-32 p-3 font-mono text-sm border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none dark:bg-gray-800 dark:text-gray-200"
+                  placeholder="输入 SQL 语句 (例如: SELECT * FROM users LIMIT 10;)"
+                ></textarea>
+                <div className="flex justify-between items-center">
+                  <div className="text-sm text-gray-500 flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-yellow-500" />
+                    请谨慎执行 UPDATE 或 DELETE 操作，修改不可逆。
+                  </div>
+                  <Button variant="primary" loading={sqlLoading} onClick={executeSql} icon={<Play className="w-4 h-4" />}>
+                    执行 SQL
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <CardHeader title="执行结果" />
+              <CardContent className="flex-1 overflow-auto p-0">
+                {sqlError ? (
+                  <div className="p-6 text-red-500 bg-red-50 dark:bg-red-900/10 border-b border-red-100 dark:border-red-900/20 m-4 rounded-lg">
+                    <p className="font-semibold mb-1">执行失败:</p>
+                    <p className="font-mono text-sm">{sqlError}</p>
+                  </div>
+                ) : sqlResult ? (
+                  <div className="p-0">
+                    <div className="bg-gray-50 dark:bg-gray-800 px-4 py-3 border-b border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300">
+                      命令: <span className="font-mono text-blue-600 dark:text-blue-400">{sqlResult.command}</span> |
+                      影响行数: <span className="font-mono text-green-600 dark:text-green-400">{sqlResult.rowCount}</span>
+                      {sqlResult.message && <span className="ml-2 text-gray-500">({sqlResult.message})</span>}
+                    </div>
+
+                    {sqlResult.rows && sqlResult.rows.length > 0 && (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full text-left text-sm whitespace-nowrap">
+                          <thead className="bg-gray-50 dark:bg-gray-800/80 sticky top-0 z-10 shadow-sm">
+                            <tr>
+                              {sqlResult.fields?.map((field: string) => (
+                                <th key={field} className="px-4 py-3 font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
+                                  {field}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                            {sqlResult.rows.map((row: any, i: number) => (
+                              <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                                {sqlResult.fields?.map((field: string) => (
+                                  <td key={field} className="px-4 py-2 text-gray-700 dark:text-gray-300 max-w-[200px] truncate">
+                                    {formatCellValue(row[field])}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                    {sqlResult.rows && sqlResult.rows.length === 0 && (
+                      <div className="p-8 text-center text-gray-500">
+                        执行成功，但没有返回数据。
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex-1 flex justify-center items-center text-gray-400 flex-col gap-2 h-64">
+                    <Database className="w-12 h-12 opacity-20" />
+                    <p>等待执行 SQL 语句</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
-    </div>
-  );
-}
+    );
+  }

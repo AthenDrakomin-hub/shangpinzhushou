@@ -21,7 +21,11 @@ import {
   EyeOff,
   CreditCard,
   Save,
-  ShieldCheck
+  ShieldCheck,
+  Database,
+  Plus,
+  Trash2,
+  Edit2
 } from 'lucide-react';
 import { Card, CardHeader, CardContent, Button, Badge, PageHeader, Modal } from '../components/ui';
 import type { AuthUser } from '../services/authService';
@@ -41,12 +45,191 @@ interface SettingItem {
   onClick?: () => void;
 }
 
+// @ts-ignore
+function SystemConfigModal({ isOpen, onClose, showToast }: any) {
+  const [configs, setConfigs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [formData, setFormData] = useState({ key: '', value: '', description: '' });
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      loadConfigs();
+    }
+  }, [isOpen]);
+
+  const loadConfigs = async () => {
+    setLoading(true);
+    try {
+      const res = await fetchApi('/api/system/configs');
+      const data = await res.json();
+      setConfigs(data || []);
+    } catch (e) {
+      showToast('加载配置失败', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!formData.key.trim() || !formData.value.trim()) {
+      showToast('键和值不能为空', 'error');
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const res = await fetchApi('/api/system/configs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+      if (res.ok) {
+        showToast('保存成功');
+        setEditingKey(null);
+        setFormData({ key: '', value: '', description: '' });
+        loadConfigs();
+      } else {
+        showToast('保存失败', 'error');
+      }
+    } catch (e) {
+      showToast('网络错误', 'error');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async (key: string) => {
+    if (!confirm(`确定要删除配置项 ${key} 吗？`)) return;
+    try {
+      const res = await fetchApi(`/api/system/configs/${key}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        showToast('删除成功');
+        loadConfigs();
+      } else {
+        showToast('删除失败', 'error');
+      }
+    } catch (e) {
+      showToast('网络错误', 'error');
+    }
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="系统管理 (全局配置)">
+      <div className="space-y-4">
+        {editingKey !== null && (
+          <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg space-y-4 border border-gray-200 dark:border-gray-700">
+            <h3 className="font-medium text-sm text-gray-700 dark:text-gray-300">
+              {editingKey === 'new' ? '新增配置项' : '编辑配置项'}
+            </h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm text-gray-500 mb-1">配置键 (Key)</label>
+                <input 
+                  type="text" 
+                  value={formData.key}
+                  disabled={editingKey !== 'new'}
+                  onChange={e => setFormData({...formData, key: e.target.value})}
+                  className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50" 
+                  placeholder="如: SYSTEM_TITLE"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-500 mb-1">配置值 (Value)</label>
+                <textarea 
+                  value={formData.value}
+                  onChange={e => setFormData({...formData, value: e.target.value})}
+                  className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg min-h-[80px]" 
+                  placeholder="如: PayForMe 助手"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-500 mb-1">描述说明 (可选)</label>
+                <input 
+                  type="text" 
+                  value={formData.description}
+                  onChange={e => setFormData({...formData, description: e.target.value})}
+                  className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg" 
+                  placeholder="配置项用途说明"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setEditingKey(null)}>取消</Button>
+                <Button variant="primary" loading={isSaving} onClick={handleSave}>保存</Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="flex justify-between items-center">
+          <h3 className="font-medium text-gray-900 dark:text-white">配置列表</h3>
+          <Button 
+            variant="primary" 
+            onClick={() => {
+              setFormData({ key: '', value: '', description: '' });
+              setEditingKey('new');
+            }}
+            icon={<Plus className="w-4 h-4" />}
+            disabled={editingKey !== null}
+          >
+            新增配置
+          </Button>
+        </div>
+
+        {loading ? (
+          <div className="py-8 text-center text-gray-500">加载中...</div>
+        ) : configs.length === 0 ? (
+          <div className="py-8 text-center text-gray-500 bg-gray-50 dark:bg-gray-800 rounded-lg border border-dashed border-gray-200 dark:border-gray-700">
+            暂无自定义系统配置
+          </div>
+        ) : (
+          <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+            {configs.map(config => (
+              <div key={config.key} className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 flex justify-between items-start">
+                <div className="flex-1 overflow-hidden pr-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-mono text-sm font-bold text-blue-600 dark:text-blue-400">{config.key}</span>
+                  </div>
+                  <p className="text-sm text-gray-900 dark:text-white truncate" title={config.value}>{config.value}</p>
+                  {config.description && (
+                    <p className="text-xs text-gray-500 mt-1">{config.description}</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button 
+                    onClick={() => {
+                      setFormData({ key: config.key, value: config.value, description: config.description || '' });
+                      setEditingKey(config.key);
+                    }}
+                    className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md transition-colors"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                  <button 
+                    onClick={() => handleDelete(config.key)}
+                    className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
 export default function SettingsPage({ user, showToast, onLogout }: SettingsPageProps) {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showSecurityModal, setShowSecurityModal] = useState(false);
   const [showPaymentConfigModal, setShowPaymentConfigModal] = useState(false);
+  const [showSystemConfigModal, setShowSystemConfigModal] = useState(false);
   const [showAboutModal, setShowAboutModal] = useState(false);
   const [notifications, setNotifications] = useState(true);
   const [isDark, setIsDark] = useState(false);
@@ -145,21 +328,31 @@ export default function SettingsPage({ user, showToast, onLogout }: SettingsPage
   ];
 
   const supportSettings: SettingItem[] = [
-    {
-      id: 'help',
-      icon: <HelpCircle className="w-5 h-5" />,
-      title: '帮助中心',
-      description: '常见问题和使用指南',
-      onClick: () => setShowHelpModal(true),
-    },
-    {
-      id: 'about',
-      icon: <Info className="w-5 h-5" />,
-      title: '关于我们',
-      description: '版本 v2.2.0',
-      onClick: () => setShowAboutModal(true),
-    },
-  ];
+      {
+        id: 'help',
+        icon: <HelpCircle className="w-5 h-5" />,
+        title: '帮助中心',
+        description: '常见问题和使用指南',
+        onClick: () => setShowHelpModal(true),
+      },
+      {
+        id: 'about',
+        icon: <Info className="w-5 h-5" />,
+        title: '关于我们',
+        description: '版本 v2.2.0',
+        onClick: () => setShowAboutModal(true),
+      },
+    ];
+
+    const systemSettings: SettingItem[] = user?.role === 'chief_engineer' ? [
+      {
+        id: 'system_management',
+        icon: <Database className="w-5 h-5" />,
+        title: '全局系统配置 (仅首席工程师)',
+        description: '管理全局字典、密钥和其他系统级别参数',
+        onClick: () => setShowSystemConfigModal(true),
+      }
+    ] : [];
 
   return (
     <div className="space-y-6">
@@ -242,29 +435,56 @@ export default function SettingsPage({ user, showToast, onLogout }: SettingsPage
       </Card>
 
       {/* 支持与帮助 */}
-      <Card>
-        <CardHeader title="支持与帮助" className="px-4 py-3 border-b border-gray-100 dark:border-gray-700" />
-        <CardContent className="p-0">
-          {supportSettings.map((item, index) => (
-            <div
-              key={item.id}
-              onClick={item.onClick}
-              className={`flex items-center gap-4 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer ${
-                index !== supportSettings.length - 1 ? 'border-b border-gray-100 dark:border-gray-700' : ''
-              }`}
-            >
-              <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-400">
-                {item.icon}
+        <Card>
+          <CardHeader title="支持与帮助" className="px-4 py-3 border-b border-gray-100 dark:border-gray-700" />
+          <CardContent className="p-0">
+            {supportSettings.map((item, index) => (
+              <div
+                key={item.id}
+                onClick={item.onClick}
+                className={`flex items-center gap-4 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer ${
+                  index !== supportSettings.length - 1 ? 'border-b border-gray-100 dark:border-gray-700' : ''
+                }`}
+              >
+                <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-400">
+                  {item.icon}
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-gray-900 dark:text-white">{item.title}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{item.description}</p>
+                </div>
+                <ChevronRight className="w-5 h-5 text-gray-400" />
               </div>
-              <div className="flex-1">
-                <p className="font-medium text-gray-900 dark:text-white">{item.title}</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">{item.description}</p>
-              </div>
-              <ChevronRight className="w-5 h-5 text-gray-400" />
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+            ))}
+          </CardContent>
+        </Card>
+
+        {/* 系统管理 (仅首席工程师) */}
+        {user?.role === 'chief_engineer' && systemSettings.length > 0 && (
+          <Card>
+            <CardHeader title="系统管理" className="px-4 py-3 border-b border-gray-100 dark:border-gray-700" />
+            <CardContent className="p-0">
+              {systemSettings.map((item, index) => (
+                <div
+                  key={item.id}
+                  onClick={item.onClick}
+                  className={`flex items-center gap-4 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer ${
+                    index !== systemSettings.length - 1 ? 'border-b border-gray-100 dark:border-gray-700' : ''
+                  }`}
+                >
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                    {item.icon}
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900 dark:text-white">{item.title}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{item.description}</p>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-gray-400" />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
 
       {/* 退出登录 */}
       <Card>
@@ -313,6 +533,9 @@ export default function SettingsPage({ user, showToast, onLogout }: SettingsPage
 
       {/* 个人资料弹窗 */}
       <ProfileModal isOpen={showProfileModal} onClose={() => setShowProfileModal(false)} user={user} showToast={showToast} />
+
+      {/* 系统配置弹窗 */}
+      <SystemConfigModal isOpen={showSystemConfigModal} onClose={() => setShowSystemConfigModal(false)} showToast={showToast} />
     </div>
   );
 }

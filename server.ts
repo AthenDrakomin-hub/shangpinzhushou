@@ -142,7 +142,18 @@ async function initDatabase() {
       }
     }
 
-    // 创建商品表
+    // 创建系统配置表
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS public.system_configs (
+          key VARCHAR(100) PRIMARY KEY,
+          value TEXT NOT NULL,
+          description TEXT,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        )
+      `);
+
+      // 创建商品表
     await client.query(`
       CREATE TABLE IF NOT EXISTS public.products (
         id VARCHAR(50) PRIMARY KEY,
@@ -1754,7 +1765,78 @@ app.get('/api/system/db/tables/:tableName', authMiddleware, chiefEngineerMiddlew
   }
 });
 
-// 获取用户列表
+// 执行自定义 SQL
+  app.post('/api/system/db/query', authMiddleware, chiefEngineerMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const { sql } = req.body;
+      if (!sql || typeof sql !== 'string') {
+        return res.status(400).json({ error: 'SQL 不能为空' });
+      }
+
+      // 允许 SELECT, UPDATE, DELETE, INSERT 等
+      const result = await pool.query(sql);
+
+      // 根据操作类型返回适当的响应
+      if (result.command === 'SELECT') {
+        res.json({
+          success: true,
+          command: result.command,
+          rowCount: result.rowCount,
+          rows: result.rows,
+          fields: result.fields.map(f => f.name)
+        });
+      } else {
+        res.json({
+          success: true,
+          command: result.command,
+          rowCount: result.rowCount,
+          message: `执行成功，影响了 ${result.rowCount} 行数据`
+        });
+      }
+    } catch (error: any) {
+      console.error('SQL执行失败:', error);
+      res.status(400).json({ error: error.message || 'SQL执行失败' });
+    }
+  });
+
+  // 系统设置相关 API (仅首席工程师)
+  app.get('/api/system/configs', authMiddleware, chiefEngineerMiddleware, async (_req: AuthRequest, res: Response) => {
+    try {
+      const result = await pool.query('SELECT * FROM public.system_configs ORDER BY key');
+      res.json(result.rows);
+    } catch (error) {
+      res.status(500).json({ error: '获取系统配置失败' });
+    }
+  });
+
+  app.post('/api/system/configs', authMiddleware, chiefEngineerMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const { key, value, description } = req.body;
+      const result = await pool.query(
+        `INSERT INTO public.system_configs (key, value, description) 
+         VALUES ($1, $2, $3) 
+         ON CONFLICT (key) DO UPDATE 
+         SET value = EXCLUDED.value, description = EXCLUDED.description, updated_at = NOW()
+         RETURNING *`,
+        [key, value, description]
+      );
+      res.json(result.rows[0]);
+    } catch (error) {
+      res.status(500).json({ error: '保存系统配置失败' });
+    }
+  });
+
+  app.delete('/api/system/configs/:key', authMiddleware, chiefEngineerMiddleware, async (req: AuthRequest, res: Response) => {
+    try {
+      const { key } = req.params;
+      await pool.query('DELETE FROM public.system_configs WHERE key = $1', [key]);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: '删除系统配置失败' });
+    }
+  });
+
+  // 获取用户列表
 app.get('/api/users', authMiddleware, adminMiddleware, async (_req: AuthRequest, res: Response) => {
   try {
     const result = await pool.query(`
@@ -2018,11 +2100,16 @@ app.delete('/api/merchant/employees/:id', authMiddleware, supervisorMiddleware, 
       return res.status(400).json({ error: '不能删除自己' });
     }
 
-    // 检查员工是否存在且是由当前商户创建的
-    const existingResult = await pool.query(
-      'SELECT * FROM public.users WHERE id = $1 AND created_by = $2',
-      [employeeId, req.user.id]
-    );
+    // 检查员工是否存在且是由当前商户创建的 (如果是 chief_engineer 则无需创建者限制)
+    let existingResult;
+    if (req.user.role === 'chief_engineer' || req.user.role === 'admin') {
+      existingResult = await pool.query('SELECT * FROM public.users WHERE id = $1', [employeeId]);
+    } else {
+      existingResult = await pool.query(
+        'SELECT * FROM public.users WHERE id = $1 AND created_by = $2',
+        [employeeId, req.user.id]
+      );
+    }
     if (existingResult.rows.length === 0) {
       return res.status(404).json({ error: '员工不存在或无权删除' });
     }

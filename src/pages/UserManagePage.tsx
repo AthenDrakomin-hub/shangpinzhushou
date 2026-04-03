@@ -66,18 +66,20 @@ export default function UserManagePage({ user, showToast }: UserManagePageProps)
   const [showCreate, setShowCreate] = useState(false);
   const [editingUser, setEditingUser] = useState<UserData | null>(null);
 
+  const [viewMode, setViewMode] = useState<'list' | 'tree'>('list');
+
   const [treeData, setTreeData] = useState<any[]>([]);
 
   useEffect(() => {
     loadUsers();
-  }, [user]);
+  }, [user, viewMode]);
 
   const loadUsers = async () => {
     setIsLoading(true);
     try {
       const token = localStorage.getItem('auth_token');
-      
-      if (user?.role === 'chief_engineer') {
+
+      if (user?.role === 'chief_engineer' && viewMode === 'tree') {
         const response = await fetchApi('/api/users/tree', {
           headers: { }
         });
@@ -119,10 +121,10 @@ export default function UserManagePage({ user, showToast }: UserManagePageProps)
   };
 
   // 判断是否有权限编辑指定用户（同级及以上不可编辑）
-  const canEditUser = (targetRole?: string) => {
-    const myRole = user?.role || 'employee';
-    if (myRole === 'admin') return true;
-    if (myRole === 'manager') {
+    const canEditUser = (targetRole?: string) => {
+      const myRole = user?.role || 'employee';
+      if (myRole === 'admin' || myRole === 'chief_engineer') return true;
+      if (myRole === 'manager') {
       return targetRole !== 'manager' && targetRole !== 'admin';
     }
     if (myRole === 'supervisor') {
@@ -162,13 +164,31 @@ export default function UserManagePage({ user, showToast }: UserManagePageProps)
         title={pageTitle}
         subtitle={pageSubtitle}
         action={
-          <Button
-            variant="primary"
-            icon={<Plus className="w-4 h-4" />}
-            onClick={() => setShowCreate(true)}
-          >
-            添加账号
-          </Button>
+          <div className="flex items-center gap-4">
+            {user?.role === 'chief_engineer' && (
+              <div className="flex bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${viewMode === 'list' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
+                >
+                  列表视图
+                </button>
+                <button
+                  onClick={() => setViewMode('tree')}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${viewMode === 'tree' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
+                >
+                  树状视图
+                </button>
+              </div>
+            )}
+            <Button
+              variant="primary"
+              icon={<Plus className="w-4 h-4" />}
+              onClick={() => setShowCreate(true)}
+            >
+              添加账号
+            </Button>
+          </div>
         }
       />
 
@@ -188,9 +208,9 @@ export default function UserManagePage({ user, showToast }: UserManagePageProps)
         />
       </div>
 
-      {/* 搜索和筛选 (仅非首席工程师显示) */}
-      {user?.role !== 'chief_engineer' && (
-        <Card>
+      {/* 搜索和筛选 */}
+        {(user?.role !== 'chief_engineer' || viewMode === 'list') && (
+          <Card>
           <CardContent className="p-4">
             <div className="flex flex-col sm:flex-row gap-4">
               {/* 搜索框 */}
@@ -222,9 +242,9 @@ export default function UserManagePage({ user, showToast }: UserManagePageProps)
       )}
 
       {/* 用户列表/树形图 */}
-      {user?.role === 'chief_engineer' ? (
-        <UserTreeView data={treeData} />
-      ) : (
+        {user?.role === 'chief_engineer' && viewMode === 'tree' ? (
+          <UserTreeView data={treeData} />
+        ) : (
         <Card>
           <CardContent className="p-0">
           {isLoading ? (

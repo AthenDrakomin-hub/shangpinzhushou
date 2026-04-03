@@ -52,7 +52,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'wallet', label: '我的钱包', icon: <Wallet className="w-5 h-5" /> },
   { id: 'merchant_employees', label: '员工管理', icon: <Users className="w-5 h-5" /> },
   { id: 'merchant_withdrawals', label: '提现管理', icon: <Wallet className="w-5 h-5" /> },
-  { id: 'settings', label: '系统设置', icon: <Settings className="w-5 h-5" /> },
+  { id: 'settings', label: '系统管理', icon: <Settings className="w-5 h-5" /> },
 ];
 
 interface AppLayoutProps {
