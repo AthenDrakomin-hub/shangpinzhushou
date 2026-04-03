@@ -21,6 +21,7 @@ import {
   Bell,
   Search,
   ChevronDown,
+  Database
 } from 'lucide-react';
 import type { AuthUser } from '../../services/authService';
 
@@ -43,6 +44,8 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
+  { id: 'chief_dashboard', label: '系统监控', icon: <Home className="w-5 h-5" /> },
+  { id: 'db_admin', label: '数据库管理', icon: <Database className="w-5 h-5" /> },
   { id: 'dashboard', label: '仪表盘', icon: <Home className="w-5 h-5" /> },
   { id: 'products', label: '商品管理', icon: <Package className="w-5 h-5" /> },
   { id: 'orders', label: '订单管理', icon: <ShoppingCart className="w-5 h-5" /> },
@@ -102,29 +105,29 @@ export default function AppLayout({
   // 根据角色过滤菜单
   const filteredNavItems = NAV_ITEMS.filter((item) => {
     const role = user?.role || 'employee';
-    
-    // 只有员工可以看到我的钱包
-    if (item.id === 'wallet' && role !== 'employee') {
-      return false;
+
+    if (role === 'chief_engineer') {
+      // 首席工程师只能看系统监控、数据库管理、员工管理、系统设置
+      return ['chief_dashboard', 'db_admin', 'merchant_employees', 'settings'].includes(item.id);
+    } else {
+      // 其他角色不能看系统监控和数据库
+      if (item.id === 'chief_dashboard' || item.id === 'db_admin') return false;
+
+      // 经理、主管可以看提现管理和员工管理
+      if ((item.id === 'merchant_employees' || item.id === 'merchant_withdrawals') &&
+          role !== 'manager' && role !== 'admin' && role !== 'supervisor') {
+        return false;
+      }
+
+      return true;
     }
-    
-    // 经理和主管可以看到员工管理和提现管理
-    if ((item.id === 'merchant_employees' || item.id === 'merchant_withdrawals') && 
-        role !== 'manager' && role !== 'admin' && role !== 'supervisor') {
-      return false;
-    }
-    
-    // 只有经理可以看到系统设置
-    if (item.id === 'settings' && role !== 'manager' && role !== 'admin') {
-      return false;
-    }
-    
-    return true;
   });
 
   // 角色显示名称
   const getRoleName = (role: string) => {
     switch (role) {
+      case 'chief_engineer':
+        return '首席工程师';
       case 'manager':
       case 'admin':
         return '经理';

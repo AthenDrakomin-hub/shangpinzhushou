@@ -12,6 +12,7 @@
     "preview": "vite preview --port 5000 --host",
     "db:init": "tsx -e \"import('./server.ts').then(m => m.initDatabase && m.initDatabase())\"",
     "db:migrate": "node migrations/run-migration.js",
+    "db:seed": "node scripts/seed_accounts.js",
     "lint": "eslint src/ server.ts --ext .ts,.tsx",
     "lint:fix": "eslint src/ server.ts --ext .ts,.tsx --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\" \"server.ts\" \"*.json\"",

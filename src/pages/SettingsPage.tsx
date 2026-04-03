@@ -85,42 +85,42 @@ export default function SettingsPage({ user, showToast, onLogout }: SettingsPage
     }
   };
 
-  const accountSettings: SettingItem[] = [
-    {
-      id: 'profile',
-      icon: <User className="w-5 h-5" />,
-      title: '个人资料',
-      description: '修改头像、昵称等个人信息',
-      onClick: () => setShowProfileModal(true),
-    },
-    {
-      id: 'password',
-      icon: <Lock className="w-5 h-5" />,
-      title: '修改密码',
-      description: '更新登录密码',
-      onClick: () => setShowPasswordModal(true),
-    },
-    {
-      id: 'security_question',
-      icon: <ShieldCheck className="w-5 h-5" />,
-      title: '密保问题',
-      description: '设置或修改密保问题，用于找回密码',
-      onClick: () => setShowSecurityModal(true),
-    },
-    {
-      id: 'payment_config',
-      icon: <CreditCard className="w-5 h-5" />,
-      title: '支付通道配置',
-      description: '设置收款账户、通道参数等',
-      onClick: () => {
-        if (user?.role === 'manager' || user?.role === 'admin') {
-          setShowPaymentConfigModal(true);
-        } else {
-          showToast('权限不足，请提升至经理权限', 'error');
-        }
+  const baseAccountSettings: SettingItem[] = [
+      {
+        id: 'profile',
+        icon: <User className="w-5 h-5" />,
+        title: '个人资料',
+        description: '修改头像、昵称等个人信息',
+        onClick: () => setShowProfileModal(true),
       },
-    }
-  ];
+      {
+        id: 'password',
+        icon: <Lock className="w-5 h-5" />,
+        title: '修改密码',
+        description: '更新登录密码',
+        onClick: () => setShowPasswordModal(true),
+      },
+      {
+        id: 'security_question',
+        icon: <ShieldCheck className="w-5 h-5" />,
+        title: '密保问题',
+        description: '设置或修改密保问题，用于找回密码',
+        onClick: () => setShowSecurityModal(true),
+      },
+    ];
+
+    const accountSettings: SettingItem[] = (user?.role === 'manager' || user?.role === 'admin' || user?.role === 'chief_engineer')
+      ? [
+          ...baseAccountSettings,
+          {
+            id: 'payment_config',
+            icon: <CreditCard className="w-5 h-5" />,
+            title: '支付通道配置',
+            description: '设置收款账户、通道参数等',
+            onClick: () => setShowPaymentConfigModal(true),
+          }
+        ]
+      : baseAccountSettings;
 
   const appSettings: SettingItem[] = [
     {

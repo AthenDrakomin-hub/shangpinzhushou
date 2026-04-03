@@ -22,6 +22,8 @@ import { Card, CardContent, Button, Badge, StatCard, PageHeader, Modal } from '.
 
 import type { AuthUser } from '../services/authService';
 
+import UserTreeView from '../components/ui/UserTreeView';
+
 interface UserManagePageProps {
   user: AuthUser | null;
   showToast: (msg: string, type?: 'success' | 'error') => void;
@@ -62,19 +64,30 @@ export default function UserManagePage({ user, showToast }: UserManagePageProps)
   const [showCreate, setShowCreate] = useState(false);
   const [editingUser, setEditingUser] = useState<UserData | null>(null);
 
+  const [treeData, setTreeData] = useState<any[]>([]);
+
   useEffect(() => {
     loadUsers();
-  }, []);
+  }, [user]);
 
   const loadUsers = async () => {
     setIsLoading(true);
     try {
       const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
-      const response = await fetch('/api/merchant/employees', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await response.json();
-      setUsers(data.employees || data || []);
+      
+      if (user?.role === 'chief_engineer') {
+        const response = await fetch('/api/users/tree', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        setTreeData(data.tree || []);
+      } else {
+        const response = await fetch('/api/merchant/employees', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        setUsers(data.employees || data || []);
+      }
     } catch (error) {
       showToast('加载失败', 'error');
     } finally {
@@ -173,40 +186,45 @@ export default function UserManagePage({ user, showToast }: UserManagePageProps)
         />
       </div>
 
-      {/* 搜索和筛选 */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            {/* 搜索框 */}
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="搜索用户..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              />
+      {/* 搜索和筛选 (仅非首席工程师显示) */}
+      {user?.role !== 'chief_engineer' && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex flex-col sm:flex-row gap-4">
+              {/* 搜索框 */}
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="搜索用户..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                />
+              </div>
+
+              {/* 角色筛选 */}
+              <select
+                value={filterRole}
+                onChange={(e) => setFilterRole(e.target.value)}
+                className="px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              >
+                <option value="all">全部角色</option>
+                <option value="manager">经理</option>
+                <option value="supervisor">主管</option>
+                <option value="employee">员工</option>
+              </select>
             </div>
+          </CardContent>
+        </Card>
+      )}
 
-            {/* 角色筛选 */}
-            <select
-              value={filterRole}
-              onChange={(e) => setFilterRole(e.target.value)}
-              className="px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-            >
-              <option value="all">全部角色</option>
-              <option value="manager">经理</option>
-              <option value="supervisor">主管</option>
-              <option value="employee">员工</option>
-            </select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 用户列表 */}
-      <Card>
-        <CardContent className="p-0">
+      {/* 用户列表/树形图 */}
+      {user?.role === 'chief_engineer' ? (
+        <UserTreeView data={treeData} />
+      ) : (
+        <Card>
+          <CardContent className="p-0">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
@@ -293,8 +311,9 @@ export default function UserManagePage({ user, showToast }: UserManagePageProps)
               })}
             </div>
           )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* 创建员工弹窗 */}
       <CreateEmployeeModal
@@ -438,11 +457,11 @@ function CreateEmployeeModal({
             className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
           >
             <option value="employee">员工</option>
-            <option value="supervisor">主管</option>
-            {(currentUserRole === 'manager' || currentUserRole === 'admin') && (
-              <option value="manager">经理</option>
-            )}
-          </select>
+              <option value="supervisor">主管</option>
+              {(currentUserRole === 'manager' || currentUserRole === 'admin' || currentUserRole === 'chief_engineer') && (
+                <option value="manager">经理</option>
+              )}
+            </select>
         </div>
 
         <div className="flex gap-3 pt-4">

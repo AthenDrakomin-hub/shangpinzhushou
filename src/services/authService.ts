@@ -7,7 +7,7 @@ interface AuthUser {
   email: string | null;
   displayName: string | null;
   photoURL: string | null;
-  role: 'admin' | 'manager' | 'supervisor' | 'employee';
+  role: 'admin' | 'manager' | 'supervisor' | 'employee' | 'chief_engineer';
   status: 'pending' | 'approved' | 'active' | 'inactive' | 'disabled';
   merchantId?: string;  // 员工所属商户ID
 }

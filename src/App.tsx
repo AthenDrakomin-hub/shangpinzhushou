@@ -32,6 +32,8 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import OrdersPage from './pages/OrdersPage';
 import DashboardPage from './pages/DashboardPage';
+import ChiefEngineerDashboard from './pages/ChiefEngineerDashboard';
+import DatabaseAdminPage from './pages/DatabaseAdminPage';
 import ProductsPage from './pages/ProductsPage';
 import ProductCreatePage from './pages/ProductCreatePage';
 import EarningsPage from './pages/EarningsPage';
@@ -42,7 +44,7 @@ import H5ProductPage from './pages/H5ProductPage';
 import EmailVerificationBanner from './components/EmailVerificationBanner';
 import AppLayout from './components/ui/AppLayout';
 
-type View = 'landing' | 'dashboard' | 'products' | 'product_create' | 'orders' | 'product_checkout' | 'h5_product' | 'payment_result' | 'wallet' | 'earnings' | 'withdraw' | 'withdrawals' | 'forgot_password' | 'reset_password' | 'merchant_employees' | 'merchant_withdrawals' | 'settings';
+type View = 'landing' | 'dashboard' | 'chief_dashboard' | 'db_admin' | 'products' | 'product_create' | 'orders' | 'product_checkout' | 'h5_product' | 'payment_result' | 'wallet' | 'earnings' | 'withdraw' | 'withdrawals' | 'forgot_password' | 'reset_password' | 'merchant_employees' | 'merchant_withdrawals' | 'settings';
 
 // ==================== Main App Component ====================
 import ShareProductModal from './components/ShareProductModal';
@@ -129,8 +131,13 @@ export default function App() {
           } catch (syncErr) {
             console.warn('[Auth] syncUserProfile failed (non-blocking):', syncErr);
           }
-          
-          setCurrentView(prev => prev === 'landing' ? 'dashboard' : prev);
+
+          setCurrentView(prev => {
+            if (prev === 'landing') {
+              return authUser.role === 'chief_engineer' ? 'chief_dashboard' : 'dashboard';
+            }
+            return prev;
+          });
           
           // 检查邮箱验证状态
           const verified = await isEmailVerified();
@@ -279,7 +286,7 @@ export default function App() {
   }
 
   // 判断是否是登录后的页面
-  const isAuthenticatedPages: View[] = ['dashboard', 'products', 'product_create', 'orders', 'wallet', 'earnings', 'withdraw', 'withdrawals', 'merchant_employees', 'merchant_withdrawals', 'settings'];
+  const isAuthenticatedPages: View[] = ['dashboard', 'chief_dashboard', 'db_admin', 'products', 'product_create', 'orders', 'wallet', 'earnings', 'withdraw', 'withdrawals', 'merchant_employees', 'merchant_withdrawals', 'settings'];
 
   return (
     <div className="min-h-screen bg-[#F2F3F5] font-sans selection:bg-blue-500/30 overflow-x-hidden">
@@ -306,8 +313,10 @@ export default function App() {
               isResending={isResendingVerification} 
             />
           )}
-          
+
           {currentView === 'dashboard' && <DashboardPage key="dashboard" user={user} onNavigate={(view) => setCurrentView(view as View)} />}
+          {currentView === 'chief_dashboard' && <ChiefEngineerDashboard key="chief_dashboard" />}
+          {currentView === 'db_admin' && <DatabaseAdminPage key="db_admin" />}
           {currentView === 'products' && <ProductsPage key="products" handleBack={handleBack} setCurrentView={(view) => setCurrentView(view as View)} showToast={showToast} user={user} setSharingProduct={setSharingProduct} />}
           {currentView === 'product_create' && <ProductCreatePage key="product_create" handleBack={handleBack} setCurrentView={(view) => setCurrentView(view as View)} showToast={showToast} user={user} setSharingProduct={setSharingProduct} />}
           {currentView === 'orders' && <OrdersPage key="orders" handleBack={handleBack} showToast={showToast} user={user} />}
