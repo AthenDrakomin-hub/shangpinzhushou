@@ -124,51 +124,24 @@ export default function SettingsPage({ user, showToast, onLogout }: SettingsPage
       : baseAccountSettings;
 
   const appSettings: SettingItem[] = [
-    {
-      id: 'theme',
-      icon: <Palette className="w-5 h-5" />,
-      title: '深色模式',
-      description: '切换明暗主题',
-      action: (
-        <button
-          onClick={toggleTheme}
-          className={`relative w-12 h-6 rounded-full transition-colors ${
-            isDark ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
-          }`}
-        >
-          <motion.div
-            className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow flex items-center justify-center"
-            animate={{ x: isDark ? 24 : 0 }}
-            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-          >
-            {isDark ? (
-              <Moon className="w-3 h-3 text-blue-600" />
-            ) : (
-              <Sun className="w-3 h-3 text-yellow-500" />
-            )}
-          </motion.div>
-        </button>
-      ),
-    },
-    {
-      id: 'language',
-      icon: <Globe className="w-5 h-5" />,
-      title: '语言设置',
-      description: `当前: ${language === 'zh-CN' ? '简体中文' : 'English'}`,
-      action: (
-        <select
-          value={language}
-          onChange={(e) => {
-            setLanguage(e.target.value);
-            showToast('语言已切换，刷新后生效');
-          }}
-          className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2 dark:text-white"
-        >
-          <option value="zh-CN">简体中文</option>
-          <option value="en-US">English</option>
-        </select>
-      )
-    },
+      {
+        id: 'theme',
+        icon: <Palette className="w-5 h-5" />,
+        title: '深色模式',
+        description: '切换明暗主题',
+        action: (
+          <Badge variant="warning">待开发</Badge>
+        ),
+      },
+      {
+        id: 'language',
+        icon: <Globe className="w-5 h-5" />,
+        title: '语言设置',
+        description: `当前: ${language === 'zh-CN' ? '简体中文' : 'English'}`,
+        action: (
+          <Badge variant="warning">待开发</Badge>
+        )
+      },
   ];
 
   const supportSettings: SettingItem[] = [
@@ -395,33 +368,31 @@ function ProfileModal({ isOpen, onClose, user, showToast }: { isOpen: boolean; o
   }, [user]);
 
   const handleSave = async () => {
-    if (!name.trim()) {
-      showToast('昵称不能为空', 'error');
-      return;
-    }
-    setLoading(true);
-    try {
-      const token = localStorage.getItem('auth_token');
-      const res = await fetchApi(`/api/merchant/employees/${user?.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          
-        },
-        body: JSON.stringify({ display_name: name })
-      });
-      if (res.ok) {
-        showToast('资料已更新，刷新页面后生效');
-        onClose();
-      } else {
-        showToast('更新失败', 'error');
+      if (!name.trim()) {
+        showToast('昵称不能为空', 'error');
+        return;
       }
-    } catch (e) {
-      showToast('网络错误', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
+      setLoading(true);
+      try {
+        const res = await fetchApi(`/api/user/profile`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ display_name: name })
+        });
+        if (res.ok) {
+          showToast('资料已更新，刷新页面后生效');
+          onClose();
+        } else {
+          showToast('更新失败', 'error');
+        }
+      } catch (e) {
+        showToast('网络错误', 'error');
+      } finally {
+        setLoading(false);
+      }
+    };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="个人资料">

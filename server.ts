@@ -1607,6 +1607,33 @@ app.post('/api/withdraw', authMiddleware, async (req: AuthRequest, res: Response
   }
 });
 
+app.put('/api/user/profile', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { display_name } = req.body;
+    const userId = req.user.id;
+
+    if (!display_name) {
+      return res.status(400).json({ error: '昵称不能为空' });
+    }
+
+    const result = await pool.query(`
+      UPDATE public.users
+      SET display_name = $1, updated_at = NOW()
+      WHERE id = $2
+      RETURNING id, email, display_name as name, role, status
+    `, [display_name, userId]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: '用户不存在' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({ error: '更新个人资料失败' });
+  }
+});
+
 // ---------- 用户管理 API (管理员) ----------
 
 // 首席工程师：获取用户树形结构
@@ -1940,12 +1967,12 @@ app.put('/api/merchant/employees/:id', authMiddleware, supervisorMiddleware, asy
     if (myRole === 'manager' && (targetUser.role === 'manager' || targetUser.role === 'admin')) {
       return res.status(403).json({ error: '无权修改同级或上级账号' });
     }
-    if (myRole === 'supervisor' && targetUser.role !== 'employee') {
+    if (myRole === 'supervisor' && targetUser.role !== 'employee' && targetUser.role !== 'staff') {
       return res.status(403).json({ error: '主管只能修改员工账号' });
     }
 
     // 只能修改自己创建的员工，除非是管理员或者跨级（比如经理改员工）
-    if (myRole !== 'admin' && targetUser.created_by !== req.user.id) {
+    if (myRole !== 'admin' && myRole !== 'chief_engineer' && targetUser.created_by !== req.user.id) {
        // 检查是否是下级的下级
        const creatorResult = await pool.query('SELECT created_by FROM public.users WHERE id = $1', [targetUser.created_by]);
        if (creatorResult.rows.length === 0 || creatorResult.rows[0].created_by !== req.user.id) {
@@ -1956,10 +1983,10 @@ app.put('/api/merchant/employees/:id', authMiddleware, supervisorMiddleware, asy
     }
 
     let query = `
-      UPDATE public.users 
-      SET display_name = $1, role = $2, status = $3, earnings_rate = $4, updated_at = NOW()
+      UPDATE public.users
+      SET display_name = COALESCE($1, display_name), role = COALESCE($2, role), status = COALESCE($3, status), earnings_rate = COALESCE($4, earnings_rate), updated_at = NOW()
     `;
-    const params = [display_name, role, status, profit_share_rate];
+    const params = [display_name || null, role || null, status || null, profit_share_rate || null];
     let paramIndex = 5;
 
     if (password) {

@@ -39,7 +39,7 @@ interface DashboardPageProps {
 }
 
 // 角色类型
-type UserRole = 'manager' | 'admin' | 'supervisor' | 'employee' | 'staff';
+type UserRole = 'manager' | 'admin' | 'supervisor' | 'employee' | 'staff' | 'chief_engineer' | string;
 
 // API 响应类型
 interface DashboardStats {
@@ -161,13 +161,15 @@ const QUICK_ACTIONS: QuickAction[] = [
 ];
 
 // 获取角色显示名称
-const getRoleDisplayName = (role: UserRole): string => {
+const getRoleDisplayName = (role: string): string => {
   switch (role) {
     case 'manager':
     case 'admin':
       return '经理';
     case 'supervisor':
       return '主管';
+    case 'chief_engineer':
+      return '首席工程师';
     case 'employee':
     case 'staff':
     default:
