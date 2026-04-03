@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>商品助手 (PayForMe) - 系统交付文档</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    :root {
+      --primary: #3b82f6;
+      --primary-dark: #2563eb;
+      --bg-color: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+    }
+    body {
+      font-family: 'Inter', 'Noto Sans SC', sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      line-height: 1.6;
+      scroll-behavior: smooth;
+    }
+    .glass-effect {
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    .hero-gradient {
+      background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+      position: relative;
+      overflow: hidden;
+    }
+    .hero-gradient::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 50%);
+      animation: rotate 30s linear infinite;
+    }
+    @keyframes rotate {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .nav-link {
+      position: relative;
+      color: var(--text-muted);
+      transition: color 0.3s ease;
+    }
+    .nav-link:hover, .nav-link.active {
+      color: var(--primary);
+    }
+    .nav-link::after {
+      content: '';
+      position: absolute;
+      bottom: -4px;
+      left: 0;
+      width: 0%;
+      height: 2px;
+      background-color: var(--primary);
+      transition: width 0.3s ease;
+    }
+    .nav-link:hover::after, .nav-link.active::after {
+      width: 100%;
+    }
+    .section-title {
+      position: relative;
+      padding-bottom: 12px;
+      margin-bottom: 32px;
+      font-weight: 700;
+      color: #1e293b;
+    }
+    .section-title::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 60px;
+      height: 4px;
+      background: var(--primary);
+      border-radius: 2px;
+    }
+    .role-card {
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .role-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+    .feature-icon-wrapper {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #eff6ff;
+      color: #3b82f6;
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body class="antialiased">
+
+  <!-- Header / Navigation -->
+  <nav class="fixed w-full z-50 glass-effect border-b border-gray-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between h-16 items-center">
+        <div class="flex-shrink-0 flex items-center gap-3">
+          <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
+            <i data-lucide="zap"></i>
+          </div>
+          <span class="font-bold text-xl tracking-tight text-slate-800">商品助手 <span class="text-blue-600">交付文档</span></span>
+        </div>
+        <div class="hidden md:flex space-x-8">
+          <a href="#intro" class="nav-link active font-medium text-sm">项目介绍</a>
+          <a href="#features" class="nav-link font-medium text-sm">核心功能</a>
+          <a href="#roles" class="nav-link font-medium text-sm">职责与权限</a>
+          <a href="#usage" class="nav-link font-medium text-sm">使用说明</a>
+          <a href="#tech" class="nav-link font-medium text-sm">技术架构</a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section id="intro" class="hero-gradient pt-32 pb-20 lg:pt-48 lg:pb-32 px-4">
+    <div class="max-w-4xl mx-auto text-center relative z-10">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-700 font-medium text-sm mb-6 border border-blue-200">
+        <span class="relative flex h-2 w-2">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+        </span>
+        系统版本 v2.2.0 | 正式交付
+      </div>
+      <h1 class="text-5xl lg:text-6xl font-extrabold text-slate-900 tracking-tight mb-6 leading-tight">
+        现代化商品与支付管理平台
+      </h1>
+      <p class="text-xl text-slate-600 mb-10 max-w-2xl mx-auto">
+        一套集成了多级权限管理、自动化支付回调、商品管理与提现对账的完整商业解决方案。专为团队协作与精细化运营打造。
+      </p>
+      <div class="flex flex-col sm:flex-row justify-center gap-4">
+        <a href="#roles" class="px-8 py-3.5 bg-blue-600 text-white font-medium rounded-lg shadow-lg shadow-blue-500/30 hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
+          <i data-lucide="shield" class="w-5 h-5"></i> 查阅权限体系
+        </a>
+        <a href="#usage" class="px-8 py-3.5 bg-white text-slate-700 font-medium rounded-lg shadow-sm border border-slate-200 hover:bg-slate-50 transition-colors flex items-center justify-center gap-2">
+          <i data-lucide="book-open" class="w-5 h-5"></i> 查看使用手册
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Core Features -->
+  <section id="features" class="py-20 bg-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <h2 class="text-3xl section-title">核心功能模块</h2>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <!-- Feature 1 -->
+        <div class="bg-slate-50 p-8 rounded-2xl border border-slate-100">
+          <div class="feature-icon-wrapper"><i data-lucide="package"></i></div>
+          <h3 class="text-xl font-bold mb-3 text-slate-800">商品管理与展示</h3>
+          <p class="text-slate-600">支持富文本商品详情、多图上传、价格配置及库存管理。自动生成带支付二维码的商品分享海报，一键分发。</p>
+        </div>
+        
+        <!-- Feature 2 -->
+        <div class="bg-slate-50 p-8 rounded-2xl border border-slate-100">
+          <div class="feature-icon-wrapper"><i data-lucide="shopping-cart"></i></div>
+          <h3 class="text-xl font-bold mb-3 text-slate-800">全自动订单对账</h3>
+          <p class="text-slate-600">无缝对接第三方支付接口，实时监听支付回调 webhook。自动修改订单状态、记录支付流水，免除人工核对烦恼。</p>
+        </div>
+
+        <!-- Feature 3 -->
+        <div class="bg-slate-50 p-8 rounded-2xl border border-slate-100">
+          <div class="feature-icon-wrapper"><i data-lucide="network"></i></div>
+          <h3 class="text-xl font-bold mb-3 text-slate-800">严密的权限树</h3>
+          <p class="text-slate-600">内置「首席工程师-经理-主管-员工」四级权限体系。支持组织架构树状图展示，严格控制数据隔离与收益查看权限。</p>
+        </div>
+
+        <!-- Feature 4 -->
+        <div class="bg-slate-50 p-8 rounded-2xl border border-slate-100">
+          <div class="feature-icon-wrapper"><i data-lucide="wallet"></i></div>
+          <h3 class="text-xl font-bold mb-3 text-slate-800">收益与提现管理</h3>
+          <p class="text-slate-600">员工独立计算分成收益，支持发起提现申请。管理层可视化审批提现单，系统自动汇总每日/历史资金流水。</p>
+        </div>
+
+        <!-- Feature 5 -->
+        <div class="bg-slate-50 p-8 rounded-2xl border border-slate-100">
+          <div class="feature-icon-wrapper"><i data-lucide="database"></i></div>
+          <h3 class="text-xl font-bold mb-3 text-slate-800">底层数据库管控</h3>
+          <p class="text-slate-600">为首席工程师提供专属的「上帝视角」。网页端直连 PostgreSQL，支持查看表结构及运行自定义 SQL（增删改查）。</p>
+        </div>
+
+        <!-- Feature 6 -->
+        <div class="bg-slate-50 p-8 rounded-2xl border border-slate-100">
+          <div class="feature-icon-wrapper"><i data-lucide="settings"></i></div>
+          <h3 class="text-xl font-bold mb-3 text-slate-800">动态系统配置</h3>
+          <p class="text-slate-600">系统字典、支付网关密钥、运行参数等支持可视化配置。修改即生效，无需重启服务器，满足多变的业务需求。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Roles & Permissions -->
+  <section id="roles" class="py-20 bg-slate-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <h2 class="text-3xl section-title">系统职责与权限体系</h2>
+      <p class="text-lg text-slate-600 mb-12 max-w-3xl">
+        系统采用基于角色的访问控制（RBAC）结合数据隔离策略。不同层级的用户拥有不同的页面访问权和数据操作权。
+      </p>
+
+      <div class="space-y-6">
+        <!-- 首席工程师 -->
+        <div class="role-card bg-white p-8 rounded-2xl border border-blue-100 shadow-sm flex flex-col md:flex-row gap-8 items-start relative overflow-hidden">
+          <div class="absolute top-0 right-0 bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-bl-lg uppercase tracking-wider">
+            最高权限 / 上帝视角
+          </div>
+          <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center shrink-0 text-blue-600">
+            <i data-lucide="crown" class="w-8 h-8"></i>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-2xl font-bold text-slate-900 mb-2">首席工程师 (Chief Engineer)</h3>
+            <p class="text-slate-600 mb-4">系统的终极管理者，拥有全部开发与运维级别的控制权限，无视所有数据隔离限制。</p>
+            <ul class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-slate-700">
+              <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-blue-500"></i> 查看全平台所有数据（包含所有商户、员工、订单）</li>
+              <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-blue-500"></i> 员工管理：全量增删改查所有账号（树状图/列表切换）</li>
+              <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-blue-500"></i> 数据库管理：直接执行 SQL 语句进行底层数据维护</li>
+              <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-blue-500"></i> 系统管理：配置全局环境变量、字典与核心密钥</li>
+              <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-blue-500"></i> 支付配置：设置系统级收款通道参数</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- 经理 -->
+        <div class="role-card bg-white p-8 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-8 items-start">
+          <div class="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center shrink-0 text-purple-600">
+            <i data-lucide="briefcase" class="w-8 h-8"></i>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-2xl font-bold text-slate-900 mb-2">经理 (Manager / Admin)</h3>
+            <p class="text-slate-600 mb-4">商户级的最高管理者，负责统筹整个商户团队的运营与资金调度。</p>
+            <ul class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-slate-700">
+              <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-purple-500"></i> 管理直属主管与员工的账号，设置提成比例</li>
+              <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-purple-500"></i> 查看本团队全部订单、收益及销售统计</li>
+              <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-purple-500"></i> 审批下属员工的提现申请</li>
+              <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-purple-500"></i> 配置本商户的支付网关参数</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- 主管 -->
+        <div class="role-card bg-white p-8 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-8 items-start">
+          <div class="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center shrink-0 text-emerald-600">
+            <i data-lucide="users" class="w-8 h-8"></i>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-2xl font-bold text-slate-900 mb-2">主管 (Supervisor)</h3>
+            <p class="text-slate-600 mb-4">团队中层管理，带领小组员工进行销售工作。</p>
+            <ul class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-slate-700">
+              <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-500"></i> 创建并管理直属的下级员工账号</li>
+              <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-500"></i> 查看自己及直属下级的订单与业绩</li>
+              <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-500"></i> 管理自己的商品库与提现申请</li>
+              <li class="flex items-center gap-2"><i data-lucide="x-circle" class="w-4 h-4 text-slate-300"></i> 无法查看其他主管或上级经理的数据</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- 员工 -->
+        <div class="role-card bg-white p-8 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-8 items-start">
+          <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center shrink-0 text-slate-600">
+            <i data-lucide="user" class="w-8 h-8"></i>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-2xl font-bold text-slate-900 mb-2">员工 (Employee)</h3>
+            <p class="text-slate-600 mb-4">基础业务执行者，负责商品推广与客户转化。</p>
+            <ul class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-slate-700">
+              <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-slate-500"></i> 创建与管理自己的商品</li>
+              <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-slate-500"></i> 查看自己的专属推广订单与佣金明细</li>
+              <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-slate-500"></i> 发起个人的收益提现申请</li>
+              <li class="flex items-center gap-2"><i data-lucide="x-circle" class="w-4 h-4 text-slate-300"></i> 无任何人员管理或系统配置权限</li>
+            </ul>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Usage Instructions -->
+  <section id="usage" class="py-20 bg-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <h2 class="text-3xl section-title">系统使用手册</h2>
+      
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 mt-12">
+        
+        <div>
+          <h3 class="text-xl font-bold mb-6 flex items-center gap-2 text-slate-800">
+            <span class="w-8 h-8 rounded bg-blue-100 text-blue-600 flex items-center justify-center text-sm">1</span> 
+            环境与部署
+          </h3>
+          <div class="prose prose-slate max-w-none text-slate-600">
+            <p>本项目已集成 <strong>GitHub Actions</strong> 自动化流水线。在完成开发并推送至 `main` 分支后，服务器会自动完成部署：</p>
+            <pre class="bg-slate-900 text-slate-50 p-4 rounded-lg text-sm overflow-x-auto mt-2 mb-4"><code>git commit -m "update"
+git push origin main
+# 自动触发云服务器拉取代码 -> npm build -> pm2 restart</code></pre>
+            <p><strong>手动运维：</strong>如果需要手动干预，请登录服务器并执行 <code>pm2 logs payforme</code> 查看实时运行日志。</p>
+          </div>
+        </div>
+
+        <div>
+          <h3 class="text-xl font-bold mb-6 flex items-center gap-2 text-slate-800">
+            <span class="w-8 h-8 rounded bg-blue-100 text-blue-600 flex items-center justify-center text-sm">2</span> 
+            初始化设置 (首席工程师必看)
+          </h3>
+          <div class="prose prose-slate max-w-none text-slate-600">
+            <p>作为首席工程师，接手系统后建议首先进行以下操作：</p>
+            <ul class="list-disc pl-5 space-y-2 mt-2">
+              <li>进入 <strong>系统管理</strong> 页面，配置全局需要的系统变量（如 <code>SYSTEM_TITLE</code> 等）。</li>
+              <li>进入 <strong>数据库管理</strong> 页面，检查表状态。可执行 <code>SELECT * FROM users;</code> 核对核心账号。</li>
+              <li>进入 <strong>员工管理</strong>，清理多余的测试账号。您可使用“列表视图”进行直观的批量管理，点击垃圾桶即可安全删除。</li>
+            </ul>
+          </div>
+        </div>
+
+        <div>
+          <h3 class="text-xl font-bold mb-6 flex items-center gap-2 text-slate-800">
+            <span class="w-8 h-8 rounded bg-blue-100 text-blue-600 flex items-center justify-center text-sm">3</span> 
+            日常运营流程
+          </h3>
+          <div class="prose prose-slate max-w-none text-slate-600">
+            <ol class="list-decimal pl-5 space-y-2 mt-2">
+              <li><strong>建品：</strong>在「商品管理」新建商品，上传封面，设置价格。</li>
+              <li><strong>分发：</strong>点击商品生成推广海报，分发给客户。</li>
+              <li><strong>支付：</strong>客户扫码支付后，Webhook 自动回调更新「订单管理」状态。</li>
+              <li><strong>分润：</strong>系统按预设比例计算佣金，计入员工「我的钱包」。</li>
+              <li><strong>提现：</strong>员工发起提现，经理/财务进行审批打款。</li>
+            </ol>
+          </div>
+        </div>
+
+        <div>
+          <h3 class="text-xl font-bold mb-6 flex items-center gap-2 text-slate-800">
+            <span class="w-8 h-8 rounded bg-blue-100 text-blue-600 flex items-center justify-center text-sm">4</span> 
+            异常排查指南
+          </h3>
+          <div class="prose prose-slate max-w-none text-slate-600">
+            <ul class="list-disc pl-5 space-y-2 mt-2">
+              <li><strong>界面显示异常/未更新：</strong> 请使用 <code>Ctrl + F5</code> 强制清空浏览器缓存加载最新 JS 文件。</li>
+              <li><strong>接口报 500 错误：</strong> 请首席工程师登录服务器查看 PM2 日志，或在「数据库管理」模块使用 SQL 执行器排查脏数据。</li>
+              <li><strong>订单状态未变更：</strong> 检查支付服务商的 Webhook 回调地址配置是否正确，且网络是否畅通。</li>
+            </ul>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Tech Stack -->
+  <section id="tech" class="py-20 bg-slate-900 text-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex flex-col md:flex-row justify-between items-end mb-12">
+        <div>
+          <h2 class="text-3xl font-bold mb-2">底层技术架构</h2>
+          <p class="text-slate-400">稳定、高性能的现代化全栈架构方案</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+        <div class="bg-slate-800/50 border border-slate-700 p-6 rounded-xl text-center">
+          <div class="text-blue-400 mb-3 flex justify-center"><i data-lucide="layout-template" class="w-10 h-10"></i></div>
+          <div class="font-bold text-lg">React 18 + Vite</div>
+          <div class="text-sm text-slate-400 mt-1">前端响应式框架</div>
+        </div>
+        <div class="bg-slate-800/50 border border-slate-700 p-6 rounded-xl text-center">
+          <div class="text-sky-400 mb-3 flex justify-center"><i data-lucide="server" class="w-10 h-10"></i></div>
+          <div class="font-bold text-lg">Node.js + Express</div>
+          <div class="text-sm text-slate-400 mt-1">高性能后端服务</div>
+        </div>
+        <div class="bg-slate-800/50 border border-slate-700 p-6 rounded-xl text-center">
+          <div class="text-indigo-400 mb-3 flex justify-center"><i data-lucide="database" class="w-10 h-10"></i></div>
+          <div class="font-bold text-lg">PostgreSQL</div>
+          <div class="text-sm text-slate-400 mt-1">关系型数据库</div>
+        </div>
+        <div class="bg-slate-800/50 border border-slate-700 p-6 rounded-xl text-center">
+          <div class="text-teal-400 mb-3 flex justify-center"><i data-lucide="paint-bucket" class="w-10 h-10"></i></div>
+          <div class="font-bold text-lg">Tailwind CSS</div>
+          <div class="text-sm text-slate-400 mt-1">原子化样式引擎</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="bg-slate-950 py-8 border-t border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <div class="flex items-center justify-center gap-2 text-slate-400 mb-2">
+        <i data-lucide="zap" class="w-4 h-4 text-blue-500"></i>
+        <span class="font-semibold text-slate-300">商品助手 (PayForMe)</span>
+      </div>
+      <p class="text-slate-500 text-sm">© 2026 首席工程师交付版本. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script>
+    // Initialize Lucide icons
+    lucide.createIcons();
+
+    // Active state for navigation
+    const sections = document.querySelectorAll("section");
+    const navLinks = document.querySelectorAll(".nav-link");
+
+    window.addEventListener("scroll", () => {
+      let current = "";
+      sections.forEach((section) => {
+        const sectionTop = section.offsetTop;
+        if (pageYOffset >= sectionTop - 100) {
+          current = section.getAttribute("id");
+        }
+      });
+
+      navLinks.forEach((link) => {
+        link.classList.remove("active");
+        if (link.getAttribute("href").includes(current)) {
+          link.classList.add("active");
+        }
+      });
+    });
+  </script>
+</body>
+</html>
