@@ -1,3 +1,4 @@
+import { fetchApi } from '../utils/apiClient';
 /**
  * 员工钱包页面
  * 包含：余额显示、申请提现、提现记录、收益记录
@@ -31,9 +32,9 @@ export default function StaffWallet({ handleBack, setCurrentView, showToast, use
     setIsLoading(true);
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch('/api/wallet', {
+      const response = await fetchApi('/api/wallet', {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          
         },
       });
       const data = await response.json();

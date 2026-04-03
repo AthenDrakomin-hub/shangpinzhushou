@@ -1,3 +1,4 @@
+import { fetchApi } from '../utils/apiClient';
 /**
  * 忘记密码页面 (密保问题验证版)
  */
@@ -29,7 +30,7 @@ export default function ForgotPasswordPage({ handleBack, showToast }: ForgotPass
 
     setIsLoading(true);
     try {
-      const response = await fetch('/api/auth/get-security-question', {
+      const response = await fetchApi('/api/auth/get-security-question', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim() }),
@@ -67,7 +68,7 @@ export default function ForgotPasswordPage({ handleBack, showToast }: ForgotPass
 
     setIsLoading(true);
     try {
-      const response = await fetch('/api/auth/reset-password-by-security', {
+      const response = await fetchApi('/api/auth/reset-password-by-security', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 

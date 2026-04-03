@@ -1,3 +1,4 @@
+import { fetchApi } from '../utils/apiClient';
 /**
  * 设置页面
  * 使用新布局和UI组件
@@ -401,11 +402,11 @@ function ProfileModal({ isOpen, onClose, user, showToast }: { isOpen: boolean; o
     setLoading(true);
     try {
       const token = localStorage.getItem('auth_token');
-      const res = await fetch(`/api/merchant/employees/${user?.id}`, {
+      const res = await fetchApi(`/api/merchant/employees/${user?.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          
         },
         body: JSON.stringify({ display_name: name })
       });
@@ -490,11 +491,11 @@ function PasswordModal({
     setIsLoading(true);
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch('/api/auth/change-password', {
+      const response = await fetchApi('/api/auth/change-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          
         },
         body: JSON.stringify({
           currentPassword,
@@ -621,11 +622,11 @@ function SecurityQuestionModal({
     setIsLoading(true);
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch('/api/auth/security-question', {
+      const response = await fetchApi('/api/auth/security-question', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          
         },
         body: JSON.stringify({
           question,
@@ -731,8 +732,8 @@ function PaymentConfigModal({
   const fetchConfig = async () => {
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch('/api/admin/payment-config', {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const response = await fetchApi('/api/admin/payment-config', {
+        headers: { }
       });
       const data = await response.json();
       if (response.ok) {
@@ -754,12 +755,11 @@ function PaymentConfigModal({
     setIsLoading(true);
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch('/api/admin/payment-config', {
+      const response = await fetchApi('/api/admin/payment-config', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+          },
         body: JSON.stringify(config)
       });
       const data = await response.json();

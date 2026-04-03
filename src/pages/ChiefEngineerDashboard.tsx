@@ -1,3 +1,4 @@
+import { fetchApi } from '../utils/apiClient';
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Activity, Database, Users, HardDrive, Cpu, Clock, Code } from 'lucide-react';
@@ -16,8 +17,8 @@ export default function ChiefEngineerDashboard() {
   const fetchStatus = async () => {
     try {
       const token = localStorage.getItem('auth_token');
-      const res = await fetch('/api/system/status', {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const res = await fetchApi('/api/system/status', {
+        headers: { }
       });
       const data = await res.json();
       if (!data.error) {

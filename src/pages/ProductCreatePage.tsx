@@ -1,3 +1,4 @@
+import { fetchApi } from '../utils/apiClient';
 /**
  * 商品创建页面
  * 使用新布局和UI组件
@@ -42,10 +43,10 @@ export default function ProductCreatePage({ user, handleBack, setCurrentView, sh
       const formData = new FormData();
       formData.append('image', file);
 
-      const response = await fetch('/api/upload/image', {
+      const response = await fetchApi('/api/upload/image', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          
         },
         body: formData,
       });
@@ -76,11 +77,11 @@ export default function ProductCreatePage({ user, handleBack, setCurrentView, sh
     setIsLoading(true);
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch('/api/products', {
+      const response = await fetchApi('/api/products', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          
         },
         body: JSON.stringify({
           name: product.name,

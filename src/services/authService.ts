@@ -1,3 +1,4 @@
+import { fetchApi } from '../utils/apiClient';
 // ==================== 认证服务（PostgreSQL + JWT）====================
 // 认证服务 - 直接使用后端 API
 
@@ -36,9 +37,9 @@ export const getCurrentUser = async (): Promise<AuthUser | null> => {
   if (!token) return null;
 
   try {
-    const response = await fetch('/api/auth/me', {
+    const response = await fetchApi('/api/auth/me', {
       headers: {
-        'Authorization': `Bearer ${token}`,
+        
       },
     });
 
@@ -80,7 +81,7 @@ export const signUpWithEmail = async (
   displayName?: string
 ): Promise<{ user: AuthUser | null; error: string | null }> => {
   try {
-    const response = await fetch('/api/auth/register', {
+    const response = await fetchApi('/api/auth/register', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -109,7 +110,7 @@ export const signInWithEmail = async (
   password: string
 ): Promise<{ user: AuthUser | null; error: string | null }> => {
   try {
-    const response = await fetch('/api/auth/login', {
+    const response = await fetchApi('/api/auth/login', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -242,11 +243,11 @@ export const updatePassword = async (newPassword: string): Promise<{ error: stri
   }
 
   try {
-    const response = await fetch('/api/auth/password', {
+    const response = await fetchApi('/api/auth/password', {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
+        
       },
       body: JSON.stringify({ newPassword }),
     });

@@ -1,3 +1,4 @@
+import { fetchApi } from '../utils/apiClient';
 /**
  * 用户管理页面 (新布局版本)
  * 支持两种模式：
@@ -77,14 +78,14 @@ export default function UserManagePage({ user, showToast }: UserManagePageProps)
       const token = localStorage.getItem('auth_token');
       
       if (user?.role === 'chief_engineer') {
-        const response = await fetch('/api/users/tree', {
-          headers: { 'Authorization': `Bearer ${token}` }
+        const response = await fetchApi('/api/users/tree', {
+          headers: { }
         });
         const data = await response.json();
         setTreeData(data.tree || []);
       } else {
-        const response = await fetch('/api/merchant/employees', {
-          headers: { 'Authorization': `Bearer ${token}` }
+        const response = await fetchApi('/api/merchant/employees', {
+          headers: { }
         });
         const data = await response.json();
         setUsers(data.employees || data || []);
@@ -101,9 +102,9 @@ export default function UserManagePage({ user, showToast }: UserManagePageProps)
     
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch(`/api/merchant/employees/${userId}`, {
+      const response = await fetchApi(`/api/merchant/employees/${userId}`, {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { }
       });
       const data = await response.json();
       if (data.success) {
@@ -379,11 +380,11 @@ function CreateEmployeeModal({
     setIsLoading(true);
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch('/api/merchant/employees', {
+      const response = await fetchApi('/api/merchant/employees', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          
         },
         body: JSON.stringify(form),
       });
@@ -524,11 +525,11 @@ function EditUserModal({
     setIsLoading(true);
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch(`/api/merchant/employees/${user.id}`, {
+      const response = await fetchApi(`/api/merchant/employees/${user.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          
         },
         body: JSON.stringify(form),
       });

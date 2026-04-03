@@ -1,3 +1,4 @@
+import { fetchApi } from '../utils/apiClient';
 /**
  * 提现管理页面
  * 支持两种模式：
@@ -90,10 +91,10 @@ export default function WithdrawalManagePage({ mode, user, onNavigate: _onNaviga
       if (mode === 'merchant') {
         const [withdrawalsRes, statsRes] = await Promise.all([
           fetch(activeTab === 'pending' ? '/api/merchant/withdrawals/pending' : '/api/merchant/withdrawals', {
-            headers: { 'Authorization': `Bearer ${token}` },
+            headers: { },
           }),
-          fetch('/api/merchant/withdrawals/stats', {
-            headers: { 'Authorization': `Bearer ${token}` },
+          fetchApi('/api/merchant/withdrawals/stats', {
+            headers: { },
           }),
         ]);
 
@@ -107,8 +108,8 @@ export default function WithdrawalManagePage({ mode, user, onNavigate: _onNaviga
         }
         setStats(statsData.stats);
       } else {
-        const response = await fetch('/api/withdrawals', {
-          headers: { 'Authorization': `Bearer ${token}` },
+        const response = await fetchApi('/api/withdrawals', {
+          headers: { },
         });
         const data = await response.json();
         setWithdrawals(data.items || data || []);
@@ -127,11 +128,11 @@ export default function WithdrawalManagePage({ mode, user, onNavigate: _onNaviga
     setProcessingId(id);
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch(`/api/merchant/withdraw/${id}/approve`, {
+      const response = await fetchApi(`/api/merchant/withdraw/${id}/approve`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          
         },
       });
       const data = await response.json();
@@ -155,11 +156,11 @@ export default function WithdrawalManagePage({ mode, user, onNavigate: _onNaviga
     setProcessingId(id);
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch(`/api/merchant/withdraw/${id}/reject`, {
+      const response = await fetchApi(`/api/merchant/withdraw/${id}/reject`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          
         },
         body: JSON.stringify({ reason }),
       });
@@ -183,11 +184,11 @@ export default function WithdrawalManagePage({ mode, user, onNavigate: _onNaviga
     setProcessingId(id);
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch(`/api/merchant/withdraw/${id}/pay`, {
+      const response = await fetchApi(`/api/merchant/withdraw/${id}/pay`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          
         },
       });
       const data = await response.json();

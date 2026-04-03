@@ -1,3 +1,4 @@
+import { fetchApi } from '../utils/apiClient';
 /**
  * 收益记录页面
  * 使用新布局和UI组件
@@ -48,9 +49,9 @@ export default function EarningsPage({ user, handleBack, setCurrentView, showToa
     setIsLoading(true);
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch(`/api/earnings?limit=${pageSize}&offset=${page * pageSize}`, {
+      const response = await fetchApi(`/api/earnings?limit=${pageSize}&offset=${page * pageSize}`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          
         },
       });
       const data = await response.json();

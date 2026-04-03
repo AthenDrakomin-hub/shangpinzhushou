@@ -1,3 +1,4 @@
+import { fetchApi } from '../utils/apiClient';
 /**
  * 仪表盘页面
  * 数据概览、统计图表、快捷操作
@@ -214,9 +215,9 @@ export default function DashboardPage({ user, onNavigate }: DashboardPageProps) 
       try {
         setLoading(true);
         const token = localStorage.getItem('auth_token');
-        const response = await fetch('/api/dashboard/stats', {
+        const response = await fetchApi('/api/dashboard/stats', {
           headers: {
-            'Authorization': `Bearer ${token}`,
+            
           },
         });
 

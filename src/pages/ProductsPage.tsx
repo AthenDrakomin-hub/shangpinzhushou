@@ -1,3 +1,4 @@
+import { fetchApi } from '../utils/apiClient';
 /**
  * 商品管理页面
  * 使用新布局和UI组件
@@ -67,8 +68,8 @@ export default function ProductsPage({ user, handleBack, setCurrentView, showToa
     setIsLoading(true);
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch('/api/products', {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const response = await fetchApi('/api/products', {
+        headers: { }
       });
       const data = await response.json();
       setProducts(data || []);
@@ -85,9 +86,9 @@ export default function ProductsPage({ user, handleBack, setCurrentView, showToa
     
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch(`/api/products/${productId}`, {
+      const response = await fetchApi(`/api/products/${productId}`, {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { }
       });
       if (response.ok) {
         showToast('商品已删除');
@@ -105,12 +106,11 @@ export default function ProductsPage({ user, handleBack, setCurrentView, showToa
     const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch(`/api/products/${productId}`, {
+      const response = await fetchApi(`/api/products/${productId}`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+          },
         body: JSON.stringify({ status: newStatus }),
       });
       
@@ -387,11 +387,11 @@ function EditProductModal({
     setSaving(true);
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch(`/api/products/${product?.id}`, {
+      const response = await fetchApi(`/api/products/${product?.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          
         },
         body: JSON.stringify({
           name: form.name,
