@@ -122,6 +122,7 @@
           <a href="#intro" class="nav-link active font-medium text-sm">项目介绍</a>
           <a href="#features" class="nav-link font-medium text-sm">核心功能</a>
           <a href="#roles" class="nav-link font-medium text-sm">职责与权限</a>
+          <a href="#revenue" class="nav-link font-medium text-sm">收益机制</a>
           <a href="#usage" class="nav-link font-medium text-sm">使用说明</a>
           <a href="#tech" class="nav-link font-medium text-sm">技术架构</a>
         </div>
@@ -321,6 +322,75 @@
           </div>
         </div>
 
+      </div>
+    </div>
+  </section>
+
+  <!-- Revenue Distribution Mechanism -->
+  <section id="revenue" class="py-20 bg-slate-50 border-t border-slate-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <h2 class="text-3xl section-title">三级收益分润机制</h2>
+      <p class="text-lg text-slate-600 mb-12 max-w-3xl">
+        系统内置了极具灵活性的<strong>“自顶向下、层层抽成”</strong>的分润模型。每一笔成功支付的订单，系统都会自动沿着汇报链路（员工 ➔ 主管 截取 ➔ 经理 截取）进行 100% 的资金分配。
+      </p>
+
+      <div class="bg-white rounded-2xl border border-blue-100 shadow-sm overflow-hidden">
+        <div class="p-8">
+          <h3 class="text-xl font-bold mb-6 flex items-center gap-2 text-slate-800">
+            <i data-lucide="calculator" class="w-6 h-6 text-blue-600"></i> 分配算法详解
+          </h3>
+          
+          <div class="space-y-6 text-slate-600">
+            <p>
+              在【员工管理】页面中，您可以为每个下属设置 <strong>收益比例 (Earnings Rate)</strong>，比如设为 <code>50%</code>。这个比例的含义是：<strong>“该节点（下属）能够从他拿到的资金池中，分走多少钱”</strong>，而剩下的钱则截留归他的直接上级所有。
+            </p>
+
+            <div class="bg-blue-50/50 p-6 rounded-xl border border-blue-100">
+              <h4 class="font-bold text-slate-900 mb-4">案例演示：一笔 100 元订单的分成过程</h4>
+              <p class="mb-4">假设架构链条为：<strong>经理 (Manager) ➔ 主管 (Supervisor) ➔ 员工 (Employee)</strong>，员工卖出了一单 100 元的商品。</p>
+              
+              <ul class="space-y-4">
+                <li class="flex items-start gap-3">
+                  <div class="w-8 h-8 rounded-full bg-white border border-blue-200 flex items-center justify-center shrink-0 font-bold text-blue-600 text-sm mt-1">1</div>
+                  <div>
+                    <strong class="text-slate-900">经理给主管设置了 80% 的比例：</strong>
+                    <p class="text-sm mt-1">100元的总池子传到主管层。经理截留 <code>100 * (1 - 80%) = 20元</code>。剩下的 80元 池子继续往下传给主管。</p>
+                  </div>
+                </li>
+                <li class="flex items-start gap-3">
+                  <div class="w-8 h-8 rounded-full bg-white border border-blue-200 flex items-center justify-center shrink-0 font-bold text-blue-600 text-sm mt-1">2</div>
+                  <div>
+                    <strong class="text-slate-900">主管给员工设置了 50% 的比例：</strong>
+                    <p class="text-sm mt-1">80元的池子传到员工层。主管截留 <code>80 * (1 - 50%) = 40元</code>。剩下的 40元 池子继续往下传。</p>
+                  </div>
+                </li>
+                <li class="flex items-start gap-3">
+                  <div class="w-8 h-8 rounded-full bg-white border border-blue-200 flex items-center justify-center shrink-0 font-bold text-blue-600 text-sm mt-1">3</div>
+                  <div>
+                    <strong class="text-slate-900">最终结算：</strong>
+                    <p class="text-sm mt-1">员工是链路的终点，拿走最后剩下的 <code>40元</code>。</p>
+                    <p class="text-sm font-medium text-blue-700 mt-2 bg-blue-100/50 inline-block px-3 py-1 rounded">
+                      此单最终收益：经理 20元 | 主管 40元 | 员工 40元 （合计刚好 100 元，100% 分配完毕）
+                    </p>
+                  </div>
+                </li>
+              </ul>
+            </div>
+
+            <h4 class="font-bold text-slate-900 mt-8 mb-4">异常情况与兜底规则（未设置比例会怎样？）</h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="border border-red-100 bg-red-50/30 p-5 rounded-xl">
+                <strong class="text-red-800 block mb-2">情况 A：全员未设置比例 (默认为 0%)</strong>
+                <p class="text-sm">如果下级比例都是 0%，意味着资金池“一毛不拔”往下传，下级全拿 0 元。由于最终没有被下级分走，<strong>100元将全部归属于最顶层的「经理 (Manager)」</strong>。无论如何都不会出现资金去向不明的问题。</p>
+              </div>
+              <div class="border border-purple-100 bg-purple-50/30 p-5 rounded-xl">
+                <strong class="text-purple-800 block mb-2">情况 B：越级抽成 (某一层为 0%)</strong>
+                <p class="text-sm">如果经理给主管设了 0%（主管不拿钱），但主管给员工设了 50%。<br/>此时 100元 穿透主管到达员工层。经理拿走 <code>100 * (1 - 50%) = 50元</code>，员工拿走 50元，主管 0元。</p>
+              </div>
+            </div>
+
+          </div>
+        </div>
       </div>
     </div>
   </section>
