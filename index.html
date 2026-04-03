@@ -211,12 +211,30 @@
   <!-- Roles & Permissions -->
   <section id="roles" class="py-20 bg-slate-50">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <h2 class="text-3xl section-title">系统职责与权限体系</h2>
-      <p class="text-lg text-slate-600 mb-12 max-w-3xl">
-        系统采用基于角色的访问控制（RBAC）结合数据隔离策略。不同层级的用户拥有不同的页面访问权和数据操作权。
-      </p>
+        <h2 class="text-3xl section-title">系统职责与权限体系</h2>
+        
+        <p class="text-lg text-slate-600 mb-6 max-w-3xl">
+          系统采用极其严格的<strong>“子团队数据隔离”</strong>机制。除了首席工程师拥有“上帝视角”外，所有经理（Manager）及其下属员工都具有<strong>完全的独立性</strong>。
+        </p>
 
-      <div class="space-y-12">
+        <!-- 独立性说明 -->
+        <div class="bg-blue-50/50 p-6 rounded-xl border border-blue-100 mb-12">
+          <h4 class="font-bold text-slate-900 mb-3 flex items-center gap-2">
+            <i data-lucide="shield-alert" class="w-5 h-5 text-blue-600"></i> 数据隔离与团队独立性说明
+          </h4>
+          <ul class="space-y-3 text-sm text-slate-700">
+            <li class="flex items-start gap-2">
+              <i data-lucide="check-circle" class="w-4 h-4 text-blue-500 mt-0.5 shrink-0"></i>
+              <span><strong>经理之间的绝对隔离：</strong>经理 A 只能看到并管理他自己创建的主管和员工。经理 A 绝对无法看到经理 B 的团队成员、商品列表、订单流水或财务数据。这就相当于在一个大系统下，为不同的经理开通了完全独立的“子商户/子公司”。</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <i data-lucide="check-circle" class="w-4 h-4 text-blue-500 mt-0.5 shrink-0"></i>
+              <span><strong>员工之间的独立经营：</strong>同属于一个经理的员工，彼此之间也是完全隔离的。员工甲看不到员工乙上架的商品和产生的订单，每个人都只能管理自己的专属商品，独立核算自己的业绩。</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="space-y-12">
         <!-- 首席工程师 -->
         <div class="role-card bg-white p-8 rounded-2xl border border-blue-100 shadow-sm flex flex-col lg:flex-row gap-8 items-start relative overflow-hidden">
           <div class="absolute top-0 right-0 bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-bl-lg uppercase tracking-wider">
@@ -272,18 +290,18 @@
         </div>
 
         <!-- 经理 -->
-        <div class="role-card bg-white p-8 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-8 items-start">
+        <div class="role-card bg-white p-8 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row gap-8 items-start">
           <div class="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center shrink-0 text-purple-600">
             <i data-lucide="briefcase" class="w-8 h-8"></i>
           </div>
           <div class="flex-1">
-            <h3 class="text-2xl font-bold text-slate-900 mb-2">经理 (Manager / Admin)</h3>
-            <p class="text-slate-600 mb-4">商户级的最高管理者，负责统筹整个商户团队的运营与资金调度。</p>
+            <h3 class="text-2xl font-bold text-slate-900 mb-2">经理 (Manager)</h3>
+            <p class="text-slate-600 mb-4">团队的最高领导者。系统相当于为其开通了“独立子商户”，其所有数据与其它经理绝对隔离。</p>
             <ul class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-slate-700">
-              <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-purple-500"></i> 管理直属主管与员工的账号，设置提成比例</li>
-              <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-purple-500"></i> 查看本团队全部订单、收益及销售统计</li>
-              <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-purple-500"></i> 审批下属员工的提现申请</li>
-              <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-purple-500"></i> 配置本商户的支付网关参数</li>
+              <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-slate-400"></i> 创建并管理自己的主管和员工账号</li>
+              <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-slate-400"></i> 设定下属各层级的收益分成比例</li>
+              <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-slate-400"></i> 查看自己团队内的全部商品与订单明细</li>
+              <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-slate-400"></i> 审批团队成员发起的提现申请</li>
             </ul>
           </div>
         </div>
@@ -306,18 +324,18 @@
         </div>
 
         <!-- 员工 -->
-        <div class="role-card bg-white p-8 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-8 items-start">
-          <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center shrink-0 text-slate-600">
+        <div class="role-card bg-white p-8 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row gap-8 items-start">
+          <div class="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center shrink-0 text-emerald-600">
             <i data-lucide="user" class="w-8 h-8"></i>
           </div>
           <div class="flex-1">
             <h3 class="text-2xl font-bold text-slate-900 mb-2">员工 (Employee)</h3>
-            <p class="text-slate-600 mb-4">基础业务执行者，负责商品推广与客户转化。</p>
+            <p class="text-slate-600 mb-4">基层业务员。每个员工都有独立经营的专属商品库，相互之间完全隔离、互不干扰。</p>
             <ul class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-slate-700">
-              <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-slate-500"></i> 创建与管理自己的商品</li>
-              <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-slate-500"></i> 查看自己的专属推广订单与佣金明细</li>
-              <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-slate-500"></i> 发起个人的收益提现申请</li>
-              <li class="flex items-center gap-2"><i data-lucide="x-circle" class="w-4 h-4 text-slate-300"></i> 无任何人员管理或系统配置权限</li>
+              <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-slate-400"></i> 管理自己的商品、图片与推广海报</li>
+              <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-slate-400"></i> 追踪自己的客户订单与实时分成收益</li>
+              <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-slate-400"></i> 查看自己专属的虚拟钱包余额</li>
+              <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-slate-400"></i> 发起提现申请等待上级审批打款</li>
             </ul>
           </div>
         </div>
