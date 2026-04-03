@@ -2014,16 +2014,37 @@ app.delete('/api/merchant/employees/:id', authMiddleware, supervisorMiddleware, 
 // 获取下级提现统计
 app.get('/api/merchant/withdrawals/stats', authMiddleware, supervisorMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const statsResult = await pool.query(`
+    const visibleUserIds = await getVisibleUserIds(req.user.id, req.user.role);
+    
+    let query = `
       SELECT 
-        COUNT(*) FILTER (WHERE status = 'pending') as pending_count,
-        COUNT(*) FILTER (WHERE status = 'processing') as processing_count,
-        COUNT(*) FILTER (WHERE status = 'success' OR status = 'paid') as success_count,
-        COALESCE(SUM(amount) FILTER (WHERE status = 'success' OR status = 'paid' AND created_at >= CURRENT_DATE), 0) as today_amount
+        COUNT(*) FILTER (WHERE w.status = 'pending') as pending_count,
+        COUNT(*) FILTER (WHERE w.status = 'processing') as processing_count,
+        COUNT(*) FILTER (WHERE w.status = 'success' OR w.status = 'paid') as success_count,
+        COALESCE(SUM(w.amount) FILTER (WHERE (w.status = 'success' OR w.status = 'paid') AND w.created_at >= CURRENT_DATE), 0) as today_amount
       FROM public.withdrawals w
       JOIN public.users u ON w.user_id = u.id
-      WHERE u.created_by = $1
-    `, [req.user.id]);
+    `;
+    let queryParams: any[] = [];
+    
+    if (visibleUserIds === null) {
+      // admin / chief_engineer 看所有人
+    } else if (visibleUserIds.length > 0) {
+      query += ` WHERE w.user_id = ANY($1)`;
+      queryParams.push(visibleUserIds);
+    } else {
+      // 如果没有下级
+      return res.json({
+        stats: {
+          pendingCount: 0,
+          processingCount: 0,
+          successCount: 0,
+          todayAmount: 0
+        }
+      });
+    }
+
+    const statsResult = await pool.query(query, queryParams);
 
     res.json({
       stats: {
@@ -2042,14 +2063,28 @@ app.get('/api/merchant/withdrawals/stats', authMiddleware, supervisorMiddleware,
 // 获取待审核提现记录
 app.get('/api/merchant/withdrawals/pending', authMiddleware, supervisorMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const result = await pool.query(`
-      SELECT 
+    const visibleUserIds = await getVisibleUserIds(req.user.id, req.user.role);
+
+    let query = `
+      SELECT
         w.*, u.display_name as user_name, u.email as user_email
       FROM public.withdrawals w
       JOIN public.users u ON w.user_id = u.id
-      WHERE u.created_by = $1 AND w.status = 'pending'
-      ORDER BY w.created_at ASC
-    `, [req.user.id]);
+      WHERE w.status = 'pending'
+    `;
+    let queryParams: any[] = [];
+
+    if (visibleUserIds === null) {
+      // no filter
+    } else if (visibleUserIds.length > 0) {
+      query += ` AND w.user_id = ANY($1)`;
+      queryParams.push(visibleUserIds);
+    } else {
+      return res.json({ withdrawals: [] });
+    }
+
+    query += ` ORDER BY w.created_at ASC`;
+    const result = await pool.query(query, queryParams);
 
     res.json({ withdrawals: result.rows });
   } catch (error) {
@@ -2061,14 +2096,27 @@ app.get('/api/merchant/withdrawals/pending', authMiddleware, supervisorMiddlewar
 // 获取所有下级提现记录
 app.get('/api/merchant/withdrawals', authMiddleware, supervisorMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const result = await pool.query(`
-      SELECT 
+    const visibleUserIds = await getVisibleUserIds(req.user.id, req.user.role);
+
+    let query = `
+      SELECT
         w.*, u.display_name as user_name, u.email as user_email
       FROM public.withdrawals w
       JOIN public.users u ON w.user_id = u.id
-      WHERE u.created_by = $1
-      ORDER BY w.created_at DESC
-    `, [req.user.id]);
+    `;
+    let queryParams: any[] = [];
+
+    if (visibleUserIds === null) {
+      // no filter
+    } else if (visibleUserIds.length > 0) {
+      query += ` WHERE w.user_id = ANY($1)`;
+      queryParams.push(visibleUserIds);
+    } else {
+      return res.json({ withdrawals: [] });
+    }
+
+    query += ` ORDER BY w.created_at DESC`;
+    const result = await pool.query(query, queryParams);
 
     res.json({ withdrawals: result.rows });
   } catch (error) {
@@ -2081,13 +2129,26 @@ app.get('/api/merchant/withdrawals', authMiddleware, supervisorMiddleware, async
 app.post('/api/merchant/withdraw/:id/approve', authMiddleware, supervisorMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const withdrawId = req.params.id;
+    const visibleUserIds = await getVisibleUserIds(req.user.id, req.user.role);
+
     // Verify it belongs to sub-user
-    const checkRes = await pool.query(`
+    let checkQuery = `
       SELECT w.* FROM public.withdrawals w
       JOIN public.users u ON w.user_id = u.id
-      WHERE w.id = $1 AND u.created_by = $2
-    `, [withdrawId, req.user.id]);
-    
+      WHERE w.id = $1
+    `;
+    let queryParams: any[] = [withdrawId];
+
+    if (visibleUserIds === null) {
+      // no filter
+    } else if (visibleUserIds.length > 0) {
+      checkQuery += ` AND w.user_id = ANY($2)`;
+      queryParams.push(visibleUserIds);
+    } else {
+      return res.status(404).json({ error: '提现记录不存在或无权限' });
+    }
+
+    const checkRes = await pool.query(checkQuery, queryParams);
     if (checkRes.rows.length === 0) return res.status(404).json({ error: '提现记录不存在或无权限' });
 
     await pool.query(`UPDATE public.withdrawals SET status = 'approved', updated_at = NOW() WHERE id = $1`, [withdrawId]);
@@ -2101,15 +2162,30 @@ app.post('/api/merchant/withdraw/:id/approve', authMiddleware, supervisorMiddlew
 app.post('/api/merchant/withdraw/:id/reject', authMiddleware, supervisorMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const withdrawId = req.params.id;
-    const { reason } = req.body;
-    
+    // const { reason } = req.body; // Unused
+    const visibleUserIds = await getVisibleUserIds(req.user.id, req.user.role);
+
     await pool.query('BEGIN');
-    const checkRes = await pool.query(`
+    
+    let checkQuery = `
       SELECT w.* FROM public.withdrawals w
       JOIN public.users u ON w.user_id = u.id
-      WHERE w.id = $1 AND u.created_by = $2 AND w.status = 'pending' FOR UPDATE
-    `, [withdrawId, req.user.id]);
-    
+      WHERE w.id = $1 AND w.status = 'pending' FOR UPDATE
+    `;
+    let queryParams: any[] = [withdrawId];
+
+    if (visibleUserIds === null) {
+      // no filter
+    } else if (visibleUserIds.length > 0) {
+      checkQuery += ` AND w.user_id = ANY($2)`;
+      queryParams.push(visibleUserIds);
+    } else {
+      await pool.query('ROLLBACK');
+      return res.status(404).json({ error: '提现记录不存在或状态已变更' });
+    }
+
+    const checkRes = await pool.query(checkQuery, queryParams);
+
     if (checkRes.rows.length === 0) {
       await pool.query('ROLLBACK');
       return res.status(404).json({ error: '提现记录不存在或状态已变更' });
@@ -2138,13 +2214,26 @@ app.post('/api/merchant/withdraw/:id/reject', authMiddleware, supervisorMiddlewa
 app.post('/api/merchant/withdraw/:id/pay', authMiddleware, supervisorMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const withdrawId = req.params.id;
-    
-    const checkRes = await pool.query(`
+    const visibleUserIds = await getVisibleUserIds(req.user.id, req.user.role);
+
+    let checkQuery = `
       SELECT w.* FROM public.withdrawals w
       JOIN public.users u ON w.user_id = u.id
-      WHERE w.id = $1 AND u.created_by = $2 AND (w.status = 'pending' OR w.status = 'approved')
-    `, [withdrawId, req.user.id]);
-    
+      WHERE w.id = $1 AND (w.status = 'pending' OR w.status = 'approved')
+    `;
+    let queryParams: any[] = [withdrawId];
+
+    if (visibleUserIds === null) {
+      // no filter
+    } else if (visibleUserIds.length > 0) {
+      checkQuery += ` AND w.user_id = ANY($2)`;
+      queryParams.push(visibleUserIds);
+    } else {
+      return res.status(404).json({ error: '提现记录不存在或状态不正确' });
+    }
+
+    const checkRes = await pool.query(checkQuery, queryParams);
+
     if (checkRes.rows.length === 0) return res.status(404).json({ error: '提现记录不存在或状态不正确' });
 
     await pool.query(`UPDATE public.withdrawals SET status = 'paid', updated_at = NOW() WHERE id = $1`, [withdrawId]);
