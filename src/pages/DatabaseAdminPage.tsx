@@ -238,6 +238,14 @@ export default function DatabaseAdminPage() {
             <Card className="shrink-0 flex flex-col overflow-hidden">
               <CardHeader title="SQL 执行器" />
               <CardContent className="p-4 flex flex-col gap-4">
+                <div className="flex gap-2 flex-wrap">
+                  <span className="text-sm font-medium text-gray-500 py-1 mr-2">操作模板 (点击填充):</span>
+                  <button onClick={() => setSqlQuery("SELECT * FROM public.users LIMIT 10;")} className="px-3 py-1 text-xs bg-blue-50 text-blue-600 rounded hover:bg-blue-100 border border-blue-100 transition-colors">查数据</button>
+                  <button onClick={() => setSqlQuery("UPDATE public.users SET role = 'manager' WHERE email = 'xxx@example.com';")} className="px-3 py-1 text-xs bg-orange-50 text-orange-600 rounded hover:bg-orange-100 border border-orange-100 transition-colors">改角色</button>
+                  <button onClick={() => setSqlQuery("DELETE FROM public.users WHERE email = 'xxx@example.com';")} className="px-3 py-1 text-xs bg-red-50 text-red-600 rounded hover:bg-red-100 border border-red-100 transition-colors">删记录</button>
+                  <button onClick={() => setSqlQuery("ALTER TABLE public.users ADD COLUMN new_column VARCHAR(255);")} className="px-3 py-1 text-xs bg-purple-50 text-purple-600 rounded hover:bg-purple-100 border border-purple-100 transition-colors">增字段</button>
+                  <button onClick={() => setSqlQuery("ALTER TABLE public.users DROP COLUMN old_column;")} className="px-3 py-1 text-xs bg-purple-50 text-purple-600 rounded hover:bg-purple-100 border border-purple-100 transition-colors">删字段</button>
+                </div>
                 <textarea
                   value={sqlQuery}
                   onChange={(e) => setSqlQuery(e.target.value)}

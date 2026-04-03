@@ -243,8 +243,12 @@ export default function UserManagePage({ user, showToast }: UserManagePageProps)
 
       {/* 用户列表/树形图 */}
         {user?.role === 'chief_engineer' && viewMode === 'tree' ? (
-          <UserTreeView data={treeData} />
-        ) : (
+            <UserTreeView 
+              data={treeData} 
+              onDelete={(id) => handleDeleteEmployee(id)}
+              onAddChild={() => setShowCreate(true)}
+            />
+          ) : (
         <Card>
           <CardContent className="p-0">
           {isLoading ? (
