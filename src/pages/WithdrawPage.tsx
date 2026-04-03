@@ -1,3 +1,4 @@
+import { fetchApi } from '../utils/apiClient';
 /**
  * 申请提现页面
  * 使用新布局和UI组件
@@ -53,10 +54,10 @@ export default function WithdrawPage({ user, handleBack, setCurrentView, showToa
   const fetchWallet = async () => {
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/wallet', {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetchApi('/api/wallet', {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          
         },
       });
       const data = await response.json();
@@ -87,12 +88,12 @@ export default function WithdrawPage({ user, handleBack, setCurrentView, showToa
 
     setIsSubmitting(true);
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/withdraw', {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetchApi('/api/withdraw', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          
         },
         body: JSON.stringify(formData),
       });

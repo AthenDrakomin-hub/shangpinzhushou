@@ -1,3 +1,4 @@
+import { fetchApi } from '../utils/apiClient';
 /**
  * 支付结果页面
  */
@@ -22,7 +23,7 @@ const PaymentResultPage: React.FC<PaymentResultPageProps> = ({ orderId }) => {
 
   const loadOrderInfo = async () => {
     try {
-      const response = await fetch(`/api/pay/order/status/${orderId}`);
+      const response = await fetchApi(`/api/pay/order/status/${orderId}`);
       const data = await response.json();
       setOrderInfo(data);
     } catch (error) {

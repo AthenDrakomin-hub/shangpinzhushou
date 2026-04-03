@@ -1,3 +1,4 @@
+import { fetchApi } from '../utils/apiClient';
 /**
  * 商品下单页面
  */
@@ -83,7 +84,7 @@ const ProductCheckoutPage: React.FC<ProductCheckoutPageProps> = ({
   // 加载支付渠道列表
   const loadPayChannels = async () => {
     try {
-      const res = await fetch('/api/pay/superpay/channels');
+      const res = await fetchApi('/api/pay/superpay/channels');
       const data = await res.json();
       if (data.channels && Array.isArray(data.channels)) {
         setPayChannels(data.channels.map((ch: any) => ({
@@ -101,7 +102,7 @@ const ProductCheckoutPage: React.FC<ProductCheckoutPageProps> = ({
   const loadProductAndPaymentMethods = async () => {
     try {
       // 获取商品信息
-      const productRes = await fetch(`/api/products/${productId}`);
+      const productRes = await fetchApi(`/api/products/${productId}`);
       const productData = await productRes.json();
       
       if (!productData || productData.error) {
@@ -113,7 +114,7 @@ const ProductCheckoutPage: React.FC<ProductCheckoutPageProps> = ({
       setProduct(productData);
 
       // 获取商户可用的下单方式
-      const methodsRes = await fetch(`/api/merchant/${productData.user_id}/payment-methods`);
+      const methodsRes = await fetchApi(`/api/merchant/${productData.user_id}/payment-methods`);
       const methodsData = await methodsRes.json();
       
       setMerchantPaymentMethods(methodsData.methods || []);
@@ -189,7 +190,7 @@ const ProductCheckoutPage: React.FC<ProductCheckoutPageProps> = ({
     try {
       // 银行卡转账
       if (selectedMethod === 'bank') {
-        const response = await fetch('/api/pay/create-order', {
+        const response = await fetchApi('/api/pay/create-order', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -240,7 +241,7 @@ const ProductCheckoutPage: React.FC<ProductCheckoutPageProps> = ({
         return;
       }
 
-      const response = await fetch('/api/pay/superpay/create', {
+      const response = await fetchApi('/api/pay/superpay/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

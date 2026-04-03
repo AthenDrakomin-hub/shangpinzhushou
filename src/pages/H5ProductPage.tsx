@@ -1,3 +1,4 @@
+import { fetchApi } from '../utils/apiClient';
 import { useState, useEffect } from 'react';
 import { 
   Share2, ChevronRight, CheckCircle2, Clock, 
@@ -169,7 +170,7 @@ export default function H5ProductPage({ productId = 'p1', onClose }: H5ProductPa
     const fetchProduct = async () => {
       try {
         setLoadingProduct(true);
-        const response = await fetch(`/api/products/${productId}`);
+        const response = await fetchApi(`/api/products/${productId}`);
         if (response.ok) {
           const data = await response.json();
           setProduct({
@@ -275,7 +276,7 @@ export default function H5ProductPage({ productId = 'p1', onClose }: H5ProductPa
       const shareUid = searchParams.get('uid');
 
       // 调用真实的订单创建 API
-      const response = await fetch('/api/orders', {
+      const response = await fetchApi('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -1,3 +1,4 @@
+import { fetchApi } from '../utils/apiClient';
 /**
  * 订单管理页面
  * 使用新布局和UI组件
@@ -101,9 +102,9 @@ export default function OrdersPage({ user, handleBack, showToast }: OrdersPagePr
       if (dateRange.end) params.append('endDate', dateRange.end);
       if (searchQuery) params.append('search', searchQuery);
 
-      const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
-      const response = await fetch(`/api/orders?${params}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const token = localStorage.getItem('auth_token');
+      const response = await fetchApi(`/api/orders?${params}`, {
+        headers: { }
       });
       const data = await response.json();
       setOrders(data.orders || []);
@@ -118,9 +119,9 @@ export default function OrdersPage({ user, handleBack, showToast }: OrdersPagePr
   const fetchStats = async () => {
     if (!user?.id) return;
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
-      const response = await fetch('/api/dashboard/stats', {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const token = localStorage.getItem('auth_token');
+      const response = await fetchApi('/api/dashboard/stats', {
+        headers: { }
       });
       const data = await response.json();
       setStats({
@@ -140,11 +141,10 @@ export default function OrdersPage({ user, handleBack, showToast }: OrdersPagePr
     if (!confirm('确定删除该订单？此操作不可恢复！')) return;
     
     try {
-      const response = await fetch(`/api/orders/${orderId}`, {
+      const response = await fetchApi(`/api/orders/${orderId}`, {
         method: 'DELETE',
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        }
+          }
       });
       
       const data = await response.json();

@@ -1,3 +1,4 @@
+import { fetchApi } from '../utils/apiClient';
 import { useState } from 'react';
 import { Button, Modal } from './ui';
 
@@ -63,7 +64,7 @@ export default function ShareProductModal({
     setGenerating(true);
     setPosterUrl('');
     try {
-      const response = await fetch('/api/poster/generate', {
+      const response = await fetchApi('/api/poster/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 

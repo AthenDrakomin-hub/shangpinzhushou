@@ -1,3 +1,4 @@
+import { fetchApi } from '../utils/apiClient';
 import { useState, useEffect } from 'react';
 import { Database, RefreshCw, Table, FileText } from 'lucide-react';
 import { Card, CardContent, CardHeader, PageHeader, Button } from '../components/ui';
@@ -26,9 +27,9 @@ export default function DatabaseAdminPage() {
   const fetchTables = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/system/db/tables', {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const token = localStorage.getItem('auth_token');
+      const res = await fetchApi('/api/system/db/tables', {
+        headers: { }
       });
       const data = await res.json();
       if (data.tables) {
@@ -48,9 +49,9 @@ export default function DatabaseAdminPage() {
     setActiveTable(tableName);
     setDataLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`/api/system/db/tables/${tableName}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const token = localStorage.getItem('auth_token');
+      const res = await fetchApi(`/api/system/db/tables/${tableName}`, {
+        headers: { }
       });
       const data = await res.json();
       if (!data.error) {

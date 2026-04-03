@@ -1,3 +1,4 @@
+import { fetchApi } from '../utils/apiClient';
 /**
  * 微信支付二维码页面
  */
@@ -57,7 +58,7 @@ const WechatPayQrCode: React.FC<WechatPayQrCodeProps> = ({
 
     const pollInterval = setInterval(async () => {
       try {
-        const response = await fetch(`/api/pay/order/status/${orderId}`);
+        const response = await fetchApi(`/api/pay/order/status/${orderId}`);
         const data = await response.json();
         
         if (data.status === 'paid') {

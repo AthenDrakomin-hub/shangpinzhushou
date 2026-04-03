@@ -1,3 +1,4 @@
+import { fetchApi } from '../utils/apiClient';
 import type { User, Order } from '../storage/database/shared/schema';
 
 // Token 存储
@@ -5,7 +6,7 @@ const TOKEN_KEY = 'auth_token';
 
 function getAuthHeaders(): Record<string, string> {
   const token = localStorage.getItem(TOKEN_KEY);
-  return token ? { 'Authorization': `Bearer ${token}` } : {};
+  return token ? { } : {};
 }
 
 // ==================== 用户服务 ====================
@@ -15,8 +16,8 @@ function getAuthHeaders(): Record<string, string> {
  */
 export const getUser = async (uid: string): Promise<User | null> => {
   try {
-    const response = await fetch('/api/auth/me', {
-      headers: getAuthHeaders(),
+    const response = await fetchApi('/api/auth/me', {
+      
     });
 
     if (!response.ok) return null;
@@ -47,9 +48,9 @@ export const syncUserProfile = async (user: {
  */
 export const getOrders = async (uid: string): Promise<Order[]> => {
   try {
-    const response = await fetch('/api/user/orders', {
+    const response = await fetchApi('/api/user/orders', {
       headers: {
-        ...getAuthHeaders(),
+        
         'x-user-id': uid,
       },
     });
@@ -73,11 +74,11 @@ export const createOrder = async (orderData: {
   templateId: string;
   timeLeft: number;
 }): Promise<string> => {
-  const response = await fetch('/api/orders', {
+  const response = await fetchApi('/api/orders', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...getAuthHeaders(),
+      
       'x-user-id': orderData.creatorUid,
     },
     body: JSON.stringify(orderData),
@@ -97,8 +98,8 @@ export const createOrder = async (orderData: {
  */
 export const getOrder = async (orderId: string): Promise<Order | null> => {
   try {
-    const response = await fetch(`/api/orders/${orderId}`, {
-      headers: getAuthHeaders(),
+    const response = await fetchApi(`/api/orders/${orderId}`, {
+      
     });
     if (!response.ok) return null;
     const data = await response.json();
@@ -117,11 +118,11 @@ export const updateOrderStatus = async (
   status: string,
   payerInfo?: string
 ): Promise<void> => {
-  const response = await fetch(`/api/orders/${orderId}/status`, {
+  const response = await fetchApi(`/api/orders/${orderId}/status`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
-      ...getAuthHeaders(),
+      
     },
     body: JSON.stringify({ status, payerInfo }),
   });
@@ -172,7 +173,7 @@ export const subscribeToOrders = (
  */
 export const getPaymentConfig = async (): Promise<Record<string, unknown> | null> => {
   try {
-    const response = await fetch('/api/config/payment');
+    const response = await fetchApi('/api/config/payment');
     if (!response.ok) return null;
     const data = await response.json();
     return data.config;
@@ -186,11 +187,11 @@ export const getPaymentConfig = async (): Promise<Record<string, unknown> | null
  * 保存支付配置
  */
 export const savePaymentConfig = async (configData: Record<string, unknown>): Promise<void> => {
-  const response = await fetch('/api/config/payment', {
+  const response = await fetchApi('/api/config/payment', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...getAuthHeaders(),
+      
     },
     body: JSON.stringify(configData),
   });
@@ -240,7 +241,7 @@ export const subscribeToPaymentConfig = (
  */
 export const testConnection = async (): Promise<{ success: boolean; error?: string }> => {
   try {
-    const response = await fetch('/api/health/db');
+    const response = await fetchApi('/api/health/db');
     const data = await response.json();
     return data;
   } catch (err) {
