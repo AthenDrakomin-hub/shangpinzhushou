@@ -51,9 +51,13 @@ export async function createSuperPayOrder(
     amount: params.amount,
     order_sn: params.orderSn,
     notify_url: params.notifyUrl,
-    return_url: params.returnUrl || '',
     uid: params.uid || `U${Date.now()}`, // 用户标识，必填
   };
+
+  // 如果提供了 returnUrl，加入到参数中
+  if (params.returnUrl) {
+    data.return_url = params.returnUrl;
+  }
   
   // 只有传了 channelCode 才添加
   if (params.channelCode) {

@@ -2476,6 +2476,9 @@ app.put('/api/admin/payment-config', authMiddleware, adminMiddleware, async (req
     if (jiujiuMchId) config.jiujiuMchId = jiujiuMchId;
     if (jiujiuSecretKey) config.jiujiuAppSecret = jiujiuSecretKey;
 
+    // 注入到 global 供服务读取
+    (global as any).paymentConfig = config;
+
     res.json({ message: '配置已更新并生效' });
   } catch (error) {
     console.error('Update payment config error:', error);
@@ -2766,6 +2769,23 @@ async function start() {
 
     // 初始化数据库
     await initDatabase();
+
+    try {
+      const result = await pool.query(`SELECT superpay_merchant_on, superpay_merchant_key, jiujiu_mch_id, jiujiu_secret_key FROM public.users WHERE role = 'manager' LIMIT 1`);
+      if (result.rows.length > 0) {
+        config.superpayMerchantOn = result.rows[0].superpay_merchant_on || config.superpayMerchantOn;
+        config.superpayMerchantKey = result.rows[0].superpay_merchant_key || config.superpayMerchantKey;
+        config.jiujiuMchId = result.rows[0].jiujiu_mch_id || config.jiujiuMchId;
+        config.jiujiuAppSecret = result.rows[0].jiujiu_secret_key || config.jiujiuAppSecret;
+        (global as any).paymentConfig = config;
+        console.log('Loaded payment config from database');
+      } else {
+        (global as any).paymentConfig = config;
+      }
+    } catch (e) {
+      console.error('Failed to load payment config', e);
+      (global as any).paymentConfig = config;
+    }
 
     // 启动 HTTP 服务
     app.listen(config.port, () => {

@@ -31,13 +31,30 @@ export interface JiuJiuPayResult {
 }
 
 /**
- * 获取九久支付配置（从环境变量读取）
+ * 获取九久支付配置
  */
 export function getJiujiuConfig(): JiuJiuPayConfig {
+  // 如果 server.ts 中通过 import 或其他方式将 config 注入，可以通过 global 或传入参数的方式
+  // 这里为了兼容并确保实时读取到最新的配置，可以动态去尝试获取 server.ts 里的 config
+  let dynamicMchId = process.env.JIUJIU_MCH_ID || '';
+  let dynamicAppSecret = process.env.JIUJIU_APP_SECRET || '';
+  const apiUrl = process.env.JIUJIU_API_URL || 'http://bayq.hanyin.9jiupay.com';
+
+  try {
+    // 尝试读取全局可能注入的变量（在 server.ts 中可把 config 挂在 global 上）
+    if ((global as any).paymentConfig) {
+      const gConfig = (global as any).paymentConfig;
+      if (gConfig.jiujiuMchId) dynamicMchId = gConfig.jiujiuMchId;
+      if (gConfig.jiujiuAppSecret) dynamicAppSecret = gConfig.jiujiuAppSecret;
+    }
+  } catch (e) {
+    // 忽略
+  }
+
   return {
-    mchId: process.env.JIUJIU_MCH_ID || '',
-    appSecret: process.env.JIUJIU_APP_SECRET || '',
-    apiUrl: process.env.JIUJIU_API_URL || 'http://bayq.hanyin.9jiupay.com'
+    mchId: dynamicMchId,
+    appSecret: dynamicAppSecret,
+    apiUrl: apiUrl
   };
 }
 
