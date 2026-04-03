@@ -621,21 +621,28 @@ function ProfileModal({ isOpen, onClose, user, showToast }: { isOpen: boolean; o
     <Modal isOpen={isOpen} onClose={onClose} title="个人资料">
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">邮箱</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            登录账号 (不可修改)
+          </label>
           <input
             type="email"
             value={user?.email || ''}
             disabled
-            className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-500"
+            className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-500 cursor-not-allowed"
+            title="作为系统唯一身份凭证，账号不支持修改"
           />
+          <p className="text-xs text-gray-500 mt-1">账号作为系统唯一身份凭证，暂不支持直接修改。如需变更请联系首席工程师。</p>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">昵称</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            显示昵称
+          </label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            placeholder="请输入您希望在系统中展示的名称"
           />
         </div>
       </div>

@@ -21,7 +21,11 @@ import {
   Bell,
   Search,
   ChevronDown,
-  Database
+  Database,
+  Shield,
+  Briefcase,
+  Crown,
+  User
 } from 'lucide-react';
 import type { AuthUser } from '../../services/authService';
 
@@ -137,6 +141,17 @@ export default function AppLayout({
         case 'staff':
         default:
           return '员工';
+      }
+    };
+
+    const getRoleIcon = (role: string | undefined, className = "w-5 h-5") => {
+      switch (role) {
+        case 'chief_engineer': return <Crown className={className} />;
+        case 'admin':
+        case 'manager': return <Briefcase className={className} />;
+        case 'supervisor': return <Shield className={className} />;
+        case 'employee':
+        default: return <User className={className} />;
       }
     };
 
@@ -277,14 +292,15 @@ export default function AppLayout({
         {/* 右侧主区域 */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* 顶部栏 */}
-          <header className="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 lg:px-6 flex items-center justify-between flex-shrink-0">
+          <header className="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 lg:px-6 flex items-center justify-between flex-shrink-0 z-10">
             <div className="flex items-center gap-4">
               {/* 移动端菜单按钮 */}
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                className="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors -ml-2"
+                title="打开菜单"
               >
-                <Menu className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                <Menu className="w-6 h-6 text-gray-600 dark:text-gray-300" />
               </button>
 
               {/* 搜索框 */}
@@ -326,7 +342,7 @@ export default function AppLayout({
                   className="flex items-center gap-2 p-1.5 pr-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                 >
                   <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
-                    {user?.displayName?.[0] || user?.email?.[0] || 'U'}
+                    {getRoleIcon(user?.role, "w-4 h-4")}
                   </div>
                   <span className="hidden md:block text-sm font-medium text-gray-700 dark:text-gray-300">
                     {user?.displayName || '用户'}
@@ -340,15 +356,22 @@ export default function AppLayout({
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
-                      className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-50"
+                      className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-50"
                     >
-                      <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">
-                          {user?.email}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {getRoleName(user?.role || 'employee')}
-                        </p>
+                      <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-lg font-bold shadow-inner">
+                            {getRoleIcon(user?.role, "w-5 h-5")}
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-sm font-bold text-gray-900 dark:text-white">
+                              {user?.displayName || '用户'}
+                            </span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[140px]">
+                              {user?.email}
+                            </span>
+                          </div>
+                        </div>
                       </div>
                       <button
                         onClick={() => {

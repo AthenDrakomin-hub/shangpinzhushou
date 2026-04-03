@@ -285,18 +285,21 @@ export default function ProductsPage({ user, handleBack, setCurrentView, showToa
                       size="sm"
                       icon={<Share2 className="w-4 h-4" />}
                       onClick={() => setSharingProduct(product)}
+                      title="生成推广海报"
                     />
                     <Button
                       variant="ghost"
                       size="sm"
                       icon={product.status === 'active' ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       onClick={() => handleToggleStatus(product.id, product.status)}
+                      title={product.status === 'active' ? "下架商品" : "上架商品"}
                     />
                     <Button
                       variant="ghost"
                       size="sm"
                       icon={<Edit className="w-4 h-4" />}
                       onClick={() => setEditingProduct(product)}
+                      title="编辑商品"
                     />
                     <Button
                       variant="ghost"
@@ -304,6 +307,7 @@ export default function ProductsPage({ user, handleBack, setCurrentView, showToa
                       icon={<Trash2 className="w-4 h-4" />}
                       onClick={() => handleDelete(product.id)}
                       className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                      title="删除商品"
                     />
                   </div>
                 </motion.div>

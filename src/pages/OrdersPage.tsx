@@ -395,23 +395,25 @@ export default function OrdersPage({ user, handleBack, showToast }: OrdersPagePr
                           {formatDate(order.created_at)}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              icon={<Eye className="w-4 h-4" />}
-                              onClick={() => setSelectedOrder(order)}
-                            />
-                            {isAdmin(user) && (
+                          <div className="flex items-center gap-1 sm:gap-2">
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                icon={<Trash2 className="w-4 h-4" />}
-                                onClick={() => handleDeleteOrder(order.id)}
-                                className="text-red-500 hover:text-red-600"
+                                icon={<Eye className="w-4 h-4" />}
+                                onClick={() => setSelectedOrder(order)}
+                                title="查看详情"
                               />
-                            )}
-                          </div>
+                              {isAdmin(user) && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  icon={<Trash2 className="w-4 h-4" />}
+                                  onClick={() => handleDeleteOrder(order.id)}
+                                  className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                                  title="删除订单"
+                                />
+                              )}
+                            </div>
                         </td>
                       </motion.tr>
                     );

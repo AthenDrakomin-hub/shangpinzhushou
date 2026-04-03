@@ -315,23 +315,25 @@ export default function UserManagePage({ user, showToast }: UserManagePageProps)
                     </div>
 
                     {/* 操作按钮 */}
-                    {isEditable && (
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          icon={<Edit2 className="w-4 h-4" />}
-                          onClick={() => setEditingUser(u)}
-                        />
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          icon={<Trash2 className="w-4 h-4" />}
-                          onClick={() => handleDeleteEmployee(u.id)}
-                          className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                        />
-                      </div>
-                    )}
+                      {isEditable && (
+                        <div className="flex items-center gap-1 sm:gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            icon={<Edit2 className="w-4 h-4" />}
+                            onClick={() => setEditingUser(u)}
+                            title="编辑成员信息"
+                          />
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            icon={<Trash2 className="w-4 h-4" />}
+                            onClick={() => handleDeleteEmployee(u.id)}
+                            className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                            title="删除成员"
+                          />
+                        </div>
+                      )}
                   </motion.div>
                 );
               })}
