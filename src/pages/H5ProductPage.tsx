@@ -86,37 +86,20 @@ interface Product {
   sales: number;
   stock: number;
   status: 'active' | 'inactive';
+  supported_pay_methods?: string;
 }
 
-// 支付渠道配置
 interface PaymentChannel {
-  code: string;
+  id: string;
   name: string;
-  icon: string;
-  color: string;
-  bgColor: string;
-  gateway: 'superpay' | 'jiujiu'; // 支付网关标识
+  channelCode: string;
+  gateway: 'superpay' | 'jiujiu' | string;
+  minAmount?: number;
+  maxAmount?: number;
+  icon?: string;
+  color?: string;
+  bgColor?: string;
 }
-
-// 预设支付渠道 - H5 页面显示支付宝（SuperPay）和微信（九久支付）
-const PAYMENT_CHANNELS: PaymentChannel[] = [
-  {
-    code: 'alipay_superpay',
-    name: '支付宝',
-    icon: '💙',
-    color: '#1677FF',
-    bgColor: 'bg-blue-50',
-    gateway: 'superpay' // 使用 SuperPay 网关
-  },
-  {
-    code: 'WXpay_SM',
-    name: '微信支付',
-    icon: '💚',
-    color: '#07C160',
-    bgColor: 'bg-green-50',
-    gateway: 'jiujiu' // 使用九久支付网关
-  },
-];
 
 interface H5ProductPageProps {
   productId?: string;
@@ -125,26 +108,49 @@ interface H5ProductPageProps {
 
 export default function H5ProductPage({ productId = 'p1', onClose }: H5ProductPageProps) {
   const [product, setProduct] = useState<Product | null>(null);
+  const [paymentChannels, setPaymentChannels] = useState<PaymentChannel[]>([]);
   const [selectedChannel, setSelectedChannel] = useState<PaymentChannel | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingProduct, setLoadingProduct] = useState(true);
 
-  // 根据商品价格过滤可用的支付通道
-  const getAvailableChannels = (price: number) => {
-    return PAYMENT_CHANNELS.filter(channel => {
-      if (channel.gateway === 'superpay') {
-        // 支付宝 (SuperPay) 额度 100-20000
-        return price >= 100 && price <= 20000;
+  // 加载支付渠道
+  useEffect(() => {
+    const fetchChannels = async () => {
+      try {
+        const response = await fetchApi('/api/payment-channels');
+        const data = await response.json();
+        if (response.ok && Array.isArray(data)) {
+          setPaymentChannels(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch payment channels:', error);
       }
-      if (channel.gateway === 'jiujiu') {
-        // 微信 (九久支付) 额度 1-50
-        return price >= 1 && price <= 50;
-      }
-      return false;
+    };
+    fetchChannels();
+  }, []);
+
+  // 根据商品配置和价格过滤可用的支付通道
+  const getAvailableChannels = (price: number, supportedIds: string[]) => {
+    return paymentChannels.filter(channel => {
+      if (!supportedIds.includes(channel.id)) return false;
+      const min = channel.minAmount || 0;
+      const max = channel.maxAmount || Infinity;
+      return price >= min && price <= max;
     });
   };
 
-  const availableChannels = product ? getAvailableChannels(product.price) : [];
+  const availableChannels = product && product.supported_pay_methods
+    ? getAvailableChannels(product.price, product.supported_pay_methods.split(','))
+    : [];
+
+  useEffect(() => {
+    if (availableChannels.length > 0 && !selectedChannel) {
+      setSelectedChannel(availableChannels[0]);
+    } else if (availableChannels.length === 0) {
+      setSelectedChannel(null);
+    }
+  }, [availableChannels, selectedChannel]);
+
   const [showWechatGuide, setShowWechatGuide] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [orderStatus, setOrderStatus] = useState<'idle' | 'pending' | 'paid' | 'failed'>('idle');
@@ -200,12 +206,12 @@ export default function H5ProductPage({ productId = 'p1', onClose }: H5ProductPa
             image: data.image || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&q=80&w=400',
             sales: data.sales || 0,
             stock: data.stock || 100,
-            status: data.status || 'active'
+            status: data.status || 'active',
+            supported_pay_methods: data.supported_pay_methods || ''
           });
-          const available = getAvailableChannels(loadedPrice);
-          if (available.length > 0) {
-            setSelectedChannel(available[0]);
-          }
+          // getAvailableChannels uses paymentChannels state, which might not be loaded yet,
+          // so the useEffect on availableChannels will set the selectedChannel later.
+          // We can remove the logic here.
           // 更新页面meta标签（用于分享）
           updateMetaTags({
             name: data.name,
@@ -307,7 +313,7 @@ export default function H5ProductPage({ productId = 'p1', onClose }: H5ProductPa
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           productId: product.id,
-          payType: selectedChannel.code,
+          payType: selectedChannel.channelCode || selectedChannel.id,
           shareUid,
           buyerName: '',
           buyerPhone: ''
@@ -485,22 +491,22 @@ export default function H5ProductPage({ productId = 'p1', onClose }: H5ProductPa
           <div className="space-y-2">
             {availableChannels.map((channel) => (
               <button
-                key={channel.code}
+                key={channel.id}
                 onClick={() => setSelectedChannel(channel)}
                 className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
-                  selectedChannel?.code === channel.code
+                  selectedChannel?.id === channel.id
                     ? 'border-blue-500 bg-blue-50'
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
-                <span className="text-2xl">{channel.icon}</span>
+                <span className="text-2xl">{channel.icon || (channel.gateway === 'wechat' ? '💚' : '💙')}</span>
                 <span className="flex-1 text-left font-medium">{channel.name}</span>
                 <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                  selectedChannel?.code === channel.code
+                  selectedChannel?.id === channel.id
                     ? 'border-blue-500 bg-blue-500'
                     : 'border-gray-300'
                 }`}>
-                  {selectedChannel?.code === channel.code && (
+                  {selectedChannel?.id === channel.id && (
                     <CheckCircle2 size={14} className="text-white" />
                   )}
                 </div>

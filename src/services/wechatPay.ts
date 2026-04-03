@@ -17,6 +17,7 @@ export interface CreateOrderParams {
   productName: string;
   notifyUrl: string;
   callbackUrl: string;
+  channelCode?: string;
 }
 
 export interface JiuJiuPayResult {
@@ -118,7 +119,7 @@ export async function createWechatOrder(params: CreateOrderParams): Promise<JiuJ
       pay_memberid: config.mchId,
       pay_orderid: params.orderId,
       pay_applydate: formatApplyDate(new Date()),
-      pay_bankcode: '6007', // 微信小小额纯原生 (限额 1-50元)
+      pay_bankcode: params.channelCode || '6007', // 默认微信小小额纯原生 (限额 1-50元)
       pay_notifyurl: params.notifyUrl,
       pay_callbackurl: params.callbackUrl,
       pay_amount: Number(params.amount).toFixed(2) // 单位元，保留两位小数

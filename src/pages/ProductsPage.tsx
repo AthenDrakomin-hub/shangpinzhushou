@@ -365,11 +365,14 @@ function EditProductModal({
     category: product?.category || 'other',
     imageUrl: product?.image || '',
     templateId: product?.template_id || 'default',
+    supportedPayMethods: product?.supported_pay_methods ? product.supported_pay_methods.split(',') : [],
   });
   const [saving, setSaving] = useState(false);
+  const [channels, setChannels] = useState<any[]>([]);
 
   useEffect(() => {
     if (product) {
+      fetchChannels();
       setForm({
         name: product.name || '',
         price: product.price?.toString() || '',
@@ -378,21 +381,42 @@ function EditProductModal({
         category: product.category || 'other',
         imageUrl: product.image || '',
         templateId: product.template_id || 'default',
+        supportedPayMethods: product.supported_pay_methods ? product.supported_pay_methods.split(',') : [],
       });
     }
   }, [product]);
 
+  const fetchChannels = async () => {
+    try {
+      const response = await fetchApi('/api/admin/payment-channels');
+      const data = await response.json();
+      if (response.ok && Array.isArray(data)) {
+        setChannels(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch payment channels:', error);
+    }
+  };
+
   const handleSave = async () => {
     const priceNum = parseFloat(form.price);
-    if (!form.name || !form.price || priceNum <= 0) {
+    if (!form.name || !form.price || isNaN(priceNum) || priceNum <= 0) {
       showToast('请填写商品名称和有效的价格', 'error');
       return;
     }
 
-    const hasWechat = priceNum >= 1 && priceNum <= 50;
-    const hasAlipay = priceNum >= 100 && priceNum <= 20000;
-    if (!hasWechat && !hasAlipay) {
+    const availableChannels = channels.filter(c => priceNum >= c.minAmount && priceNum <= c.maxAmount);
+    if (availableChannels.length === 0) {
       showToast('当前金额未匹配到任何收款方式，无法修改商品', 'error');
+      return;
+    }
+
+    const selectedValidChannels = form.supportedPayMethods.filter(id => 
+      availableChannels.some(c => c.id === id)
+    );
+
+    if (selectedValidChannels.length === 0) {
+      showToast('请选择至少一种支持的收款方式', 'error');
       return;
     }
 
@@ -413,6 +437,7 @@ function EditProductModal({
           category: form.category,
           image: form.imageUrl,
           template_id: form.templateId,
+          supported_pay_methods: selectedValidChannels.join(','),
         }),
       });
 
@@ -456,20 +481,53 @@ function EditProductModal({
               className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
             />
             {form.price && parseFloat(form.price) > 0 && (
-              <div className={`mt-1 text-[10px] px-1.5 py-1 rounded-sm ${
-                (parseFloat(form.price) >= 1 && parseFloat(form.price) <= 50) || 
-                (parseFloat(form.price) >= 100 && parseFloat(form.price) <= 20000)
-                  ? 'text-blue-600 dark:text-blue-400'
-                  : 'text-red-500 dark:text-red-400'
-              }`}>
+              <div className="mt-2">
                 {(() => {
                   const p = parseFloat(form.price);
-                  const w = p >= 1 && p <= 50;
-                  const a = p >= 100 && p <= 20000;
-                  if (w && a) return '✨ 支持微信、支付宝';
-                  if (w) return '💚 支持微信支付 (1-50)';
-                  if (a) return '💙 支持支付宝 (100-20000)';
-                  return '⚠️ 无匹配收款方式';
+                  const available = channels.filter(c => p >= c.minAmount && p <= c.maxAmount);
+                  
+                  if (available.length === 0) {
+                    return (
+                      <div className="text-[10px] px-1.5 py-1 rounded-sm text-red-500 dark:text-red-400">
+                        ⚠️ 无匹配收款方式
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-1.5">
+                      <div className="text-[10px] text-gray-500 dark:text-gray-400">支持的收款方式：</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {available.map(c => {
+                          const isSelected = form.supportedPayMethods.includes(c.id);
+                          return (
+                            <label 
+                              key={c.id} 
+                              className={`flex items-center gap-1 px-2 py-1 rounded border text-[10px] cursor-pointer transition-colors ${
+                                isSelected 
+                                  ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-600' 
+                                  : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
+                              }`}
+                            >
+                              <input 
+                                type="checkbox" 
+                                className="sr-only"
+                                checked={isSelected}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setForm({ ...form, supportedPayMethods: [...form.supportedPayMethods, c.id] });
+                                  } else {
+                                    setForm({ ...form, supportedPayMethods: form.supportedPayMethods.filter(id => id !== c.id) });
+                                  }
+                                }}
+                              />
+                              <span>{c.name}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
                 })()}
               </div>
             )}
@@ -500,7 +558,16 @@ function EditProductModal({
           <Button variant="secondary" className="flex-1" onClick={onClose}>
             取消
           </Button>
-          <Button variant="primary" className="flex-1" loading={saving} onClick={handleSave}>
+          <Button 
+            variant="primary" 
+            className="flex-1" 
+            loading={saving} 
+            disabled={
+              saving || 
+              (form.price ? channels.filter(c => parseFloat(form.price) >= c.minAmount && parseFloat(form.price) <= c.maxAmount).length === 0 : false)
+            }
+            onClick={handleSave}
+          >
             保存
           </Button>
         </div>

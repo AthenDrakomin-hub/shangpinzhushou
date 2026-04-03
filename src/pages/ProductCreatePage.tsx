@@ -3,7 +3,7 @@ import { fetchApi } from '../utils/apiClient';
  * 商品创建页面
  * 使用新布局和UI组件
  */
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, X, Image as ImageIcon } from 'lucide-react';
 import { Button, Input, Card, CardContent, PageHeader } from '../components/ui';
@@ -26,12 +26,30 @@ export default function ProductCreatePage({ user, handleBack, setCurrentView, sh
     imageUrl: '',
     category: 'other',
     templateId: 'default',
-    supportedPayMethods: ['wechat', 'alipay', 'bank'],
+    supportedPayMethods: [] as string[],
     isShared: true,
   });
   const [isLoading, setIsLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [channels, setChannels] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetchChannels();
+  }, []);
+
+  const fetchChannels = async () => {
+    try {
+      const response = await fetchApi('/api/admin/payment-channels');
+      const data = await response.json();
+      if (response.ok && Array.isArray(data)) {
+        setChannels(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch payment channels:', error);
+    }
+  };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -70,15 +88,23 @@ export default function ProductCreatePage({ user, handleBack, setCurrentView, sh
       return;
     }
     const priceNum = parseFloat(product.price);
-    if (!product.price || priceNum <= 0) {
+    if (!product.price || isNaN(priceNum) || priceNum <= 0) {
       showToast('请输入正确的价格', 'error');
       return;
     }
 
-    const hasWechat = priceNum >= 1 && priceNum <= 50;
-    const hasAlipay = priceNum >= 100 && priceNum <= 20000;
-    if (!hasWechat && !hasAlipay) {
+    const availableChannels = channels.filter(c => priceNum >= c.minAmount && priceNum <= c.maxAmount);
+    if (availableChannels.length === 0) {
       showToast('当前金额未匹配到任何收款方式，无法创建商品', 'error');
+      return;
+    }
+
+    const selectedValidChannels = product.supportedPayMethods.filter(id => 
+      availableChannels.some(c => c.id === id)
+    );
+
+    if (selectedValidChannels.length === 0) {
+      showToast('请选择至少一种支持的收款方式', 'error');
       return;
     }
 
@@ -99,7 +125,7 @@ export default function ProductCreatePage({ user, handleBack, setCurrentView, sh
           image: product.imageUrl,
           category: product.category,
           template_id: product.templateId,
-          supported_pay_methods: product.supportedPayMethods.join(','),
+          supported_pay_methods: selectedValidChannels.join(','),
           is_shared: product.isShared,
         }),
       });
@@ -230,20 +256,53 @@ export default function ProductCreatePage({ user, handleBack, setCurrentView, sh
                   />
                 </div>
                 {product.price && parseFloat(product.price) > 0 && (
-                  <div className={`mt-2 text-xs font-medium px-2 py-1.5 rounded-md flex items-center gap-1.5 ${
-                    (parseFloat(product.price) >= 1 && parseFloat(product.price) <= 50) || 
-                    (parseFloat(product.price) >= 100 && parseFloat(product.price) <= 20000)
-                      ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300'
-                      : 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400'
-                  }`}>
+                  <div className="mt-3">
                     {(() => {
                       const p = parseFloat(product.price);
-                      const w = p >= 1 && p <= 50;
-                      const a = p >= 100 && p <= 20000;
-                      if (w && a) return '✨ 当前金额可使用：微信、支付宝';
-                      if (w) return '💚 当前金额可使用：微信支付 (限额1-50)';
-                      if (a) return '💙 当前金额可使用：支付宝 (限额100-20000)';
-                      return '⚠️ 友情提示：未匹配到对应额度的收款方式，无法创建';
+                      const available = channels.filter(c => p >= c.minAmount && p <= c.maxAmount);
+                      
+                      if (available.length === 0) {
+                        return (
+                          <div className="text-xs font-medium px-2 py-1.5 rounded-md bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 flex items-center gap-1.5">
+                            ⚠️ 友情提示：未匹配到对应额度的收款方式，无法创建
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="space-y-2">
+                          <div className="text-xs text-gray-500 dark:text-gray-400">选择支持的收款方式（可多选）：</div>
+                          <div className="flex flex-wrap gap-2">
+                            {available.map(c => {
+                              const isSelected = product.supportedPayMethods.includes(c.id);
+                              return (
+                                <label 
+                                  key={c.id} 
+                                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-sm cursor-pointer transition-colors ${
+                                    isSelected 
+                                      ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-600' 
+                                      : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
+                                  }`}
+                                >
+                                  <input 
+                                    type="checkbox" 
+                                    className="sr-only"
+                                    checked={isSelected}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setProduct({ ...product, supportedPayMethods: [...product.supportedPayMethods, c.id] });
+                                      } else {
+                                        setProduct({ ...product, supportedPayMethods: product.supportedPayMethods.filter(id => id !== c.id) });
+                                      }
+                                    }}
+                                  />
+                                  <span>{c.name}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
                     })()}
                   </div>
                 )}
@@ -310,7 +369,11 @@ export default function ProductCreatePage({ user, handleBack, setCurrentView, sh
         <Button
           variant="primary"
           loading={isLoading}
-          disabled={isLoading || uploading}
+          disabled={
+            isLoading || 
+            uploading || 
+            (product.price ? channels.filter(c => parseFloat(product.price) >= c.minAmount && parseFloat(product.price) <= c.maxAmount).length === 0 : false)
+          }
           icon={<Plus className="w-4 h-4" />}
           onClick={handleCreate}
         >

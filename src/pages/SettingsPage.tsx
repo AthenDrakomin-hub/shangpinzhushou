@@ -25,7 +25,8 @@ import {
   Database,
   Plus,
   Trash2,
-  Edit2
+  Edit2,
+  List
 } from 'lucide-react';
 import { Card, CardHeader, CardContent, Button, Badge, PageHeader, Modal } from '../components/ui';
 import type { AuthUser } from '../services/authService';
@@ -223,12 +224,243 @@ function SystemConfigModal({ isOpen, onClose, showToast }: any) {
   );
 }
 
+// 动态通道管理弹窗
+function PaymentChannelsModal({
+  isOpen,
+  onClose,
+  showToast
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  showToast: (msg: string, type?: 'success' | 'error') => void;
+}) {
+  const [channels, setChannels] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(true);
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [formData, setFormData] = useState({
+    id: '',
+    name: '',
+    gateway: 'superpay',
+    channelCode: '',
+    minAmount: 0,
+    maxAmount: 0
+  });
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchChannels();
+    }
+  }, [isOpen]);
+
+  const fetchChannels = async () => {
+    setIsFetching(true);
+    try {
+      const response = await fetchApi('/api/admin/payment-channels');
+      const data = await response.json();
+      if (response.ok) {
+        setChannels(Array.isArray(data) ? data : []);
+      } else {
+        showToast(data.error || '获取动态通道失败', 'error');
+      }
+    } catch (error) {
+      showToast('网络错误，无法获取动态通道', 'error');
+    } finally {
+      setIsFetching(false);
+    }
+  };
+
+  const handleSaveChannels = async (updatedChannels: any[]) => {
+    setIsLoading(true);
+    try {
+      const response = await fetchApi('/api/admin/payment-channels', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedChannels)
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setChannels(updatedChannels);
+        showToast('通道保存成功', 'success');
+        setEditingId(null);
+      } else {
+        showToast(data.error || '保存失败', 'error');
+      }
+    } catch (error) {
+      showToast('网络错误，请重试', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSubmitForm = () => {
+    if (!formData.name || !formData.channelCode) {
+      showToast('请填写通道名称和代码', 'error');
+      return;
+    }
+    
+    let updated = [...channels];
+    if (editingId && editingId !== 'new') {
+      updated = updated.map(c => c.id === editingId ? { ...formData } : c);
+    } else {
+      updated.push({ ...formData, id: Date.now().toString() });
+    }
+    handleSaveChannels(updated);
+  };
+
+  const handleDelete = (id: string) => {
+    if (!confirm('确定删除此通道吗？')) return;
+    const updated = channels.filter(c => c.id !== id);
+    handleSaveChannels(updated);
+  };
+
+  const handleEdit = (channel: any) => {
+    setEditingId(channel.id);
+    setFormData({ ...channel });
+  };
+
+  const handleAddNew = () => {
+    setEditingId('new');
+    setFormData({
+      id: '',
+      name: '',
+      gateway: 'superpay',
+      channelCode: '',
+      minAmount: 0,
+      maxAmount: 10000
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="动态通道管理">
+      <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+        {isFetching ? (
+          <div className="text-center text-gray-500 py-4">加载中...</div>
+        ) : (
+          <>
+            {!editingId && (
+              <div className="flex justify-end mb-2">
+                <Button variant="primary" onClick={handleAddNew} className="flex items-center gap-1 text-sm">
+                  <Plus className="w-4 h-4" /> 添加通道
+                </Button>
+              </div>
+            )}
+
+            {editingId && (
+              <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg space-y-4 border border-gray-200 dark:border-gray-700">
+                <h3 className="font-medium text-sm text-gray-700 dark:text-gray-300">
+                  {editingId === 'new' ? '新增通道' : '编辑通道'}
+                </h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm text-gray-500 mb-1">通道名称 (Name)</label>
+                    <input
+                      type="text"
+                      value={formData.name}
+                      onChange={e => setFormData({ ...formData, name: e.target.value })}
+                      placeholder="例如: 支付宝扫码"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-500 mb-1">网关 (Gateway)</label>
+                    <select
+                      value={formData.gateway}
+                      onChange={e => setFormData({ ...formData, gateway: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    >
+                      <option value="superpay">SuperPay</option>
+                      <option value="jiujiu">JiuJiu</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-500 mb-1">通道代码 (Channel Code)</label>
+                    <input
+                      type="text"
+                      value={formData.channelCode}
+                      onChange={e => setFormData({ ...formData, channelCode: e.target.value })}
+                      placeholder="例如: 824"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <label className="block text-sm text-gray-500 mb-1">最小金额</label>
+                      <input
+                        type="number"
+                        value={formData.minAmount}
+                        onChange={e => setFormData({ ...formData, minAmount: Number(e.target.value) })}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-sm text-gray-500 mb-1">最大金额</label>
+                      <input
+                        type="number"
+                        value={formData.maxAmount}
+                        onChange={e => setFormData({ ...formData, maxAmount: Number(e.target.value) })}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <Button variant="secondary" className="flex-1 text-sm" onClick={handleCancelEdit}>取消</Button>
+                  <Button variant="primary" className="flex-1 text-sm" loading={isLoading} onClick={handleSubmitForm}>
+                    保存
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {!editingId && channels.length === 0 && (
+              <div className="text-center text-gray-500 py-8 text-sm">暂无通道数据，请添加</div>
+            )}
+
+            {!editingId && channels.length > 0 && (
+              <div className="space-y-3">
+                {channels.map((ch: any) => (
+                  <div key={ch.id} className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg flex justify-between items-start bg-white dark:bg-gray-800">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-gray-900 dark:text-white">{ch.name}</span>
+                        <Badge variant={ch.gateway === 'superpay' ? 'primary' : 'warning'}>{ch.gateway}</Badge>
+                      </div>
+                      <div className="text-sm text-gray-500 mt-1">代码: {ch.channelCode} | 限额: {ch.minAmount}-{ch.maxAmount}</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => handleEdit(ch)} className="text-blue-500 hover:bg-blue-50 p-1.5 rounded transition-colors" title="编辑">
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => handleDelete(ch.id)} className="text-red-500 hover:bg-red-50 p-1.5 rounded transition-colors" title="删除">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
 export default function SettingsPage({ user, showToast, onLogout }: SettingsPageProps) {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showSecurityModal, setShowSecurityModal] = useState(false);
   const [showPaymentConfigModal, setShowPaymentConfigModal] = useState(false);
+  const [showPaymentChannelsModal, setShowPaymentChannelsModal] = useState(false);
   const [showSystemConfigModal, setShowSystemConfigModal] = useState(false);
   const [showAboutModal, setShowAboutModal] = useState(false);
   const [notifications, setNotifications] = useState(true);
@@ -297,12 +529,19 @@ export default function SettingsPage({ user, showToast, onLogout }: SettingsPage
       ? [
           ...baseAccountSettings,
           {
-            id: 'payment_config',
-            icon: <CreditCard className="w-5 h-5" />,
-            title: '支付通道配置',
-            description: '设置收款账户、通道参数等',
-            onClick: () => setShowPaymentConfigModal(true),
-          }
+          id: 'payment_config',
+          icon: <CreditCard className="w-5 h-5" />,
+          title: '支付通道配置',
+          description: '设置收款账户、通道参数等',
+          onClick: () => setShowPaymentConfigModal(true),
+        },
+        {
+          id: 'payment_channels',
+          icon: <List className="w-5 h-5" />,
+          title: '动态通道管理',
+          description: '管理动态多通道列表',
+          onClick: () => setShowPaymentChannelsModal(true),
+        }
         ]
       : baseAccountSettings;
 
@@ -518,6 +757,15 @@ export default function SettingsPage({ user, showToast, onLogout }: SettingsPage
         <PaymentConfigModal
           isOpen={showPaymentConfigModal}
           onClose={() => setShowPaymentConfigModal(false)}
+          showToast={showToast}
+        />
+      )}
+
+      {/* 动态通道管理弹窗 */}
+      {showPaymentChannelsModal && (
+        <PaymentChannelsModal
+          isOpen={showPaymentChannelsModal}
+          onClose={() => setShowPaymentChannelsModal(false)}
           showToast={showToast}
         />
       )}

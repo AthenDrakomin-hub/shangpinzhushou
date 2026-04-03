@@ -61,8 +61,8 @@ const ProductCheckoutPage: React.FC<ProductCheckoutPageProps> = ({
   showToast
 }) => {
   const [product, setProduct] = useState<any>(null);
-  const [merchantPaymentMethods, setMerchantPaymentMethods] = useState<string[]>([]);
-  const [selectedMethod, setSelectedMethod] = useState<string>('');
+  const [payChannels, setPayChannels] = useState<any[]>([]);
+  const [selectedChannel, setSelectedChannel] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [paying, setPaying] = useState(false);
   const [payResult, setPayResult] = useState<any>(null);
@@ -70,9 +70,6 @@ const ProductCheckoutPage: React.FC<ProductCheckoutPageProps> = ({
   const [showWechatOverlay, setShowWechatOverlay] = useState(false);
   const [showUserAgreement, setShowUserAgreement] = useState(false);
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
-  
-  // 动态获取的支付渠道
-  const [payChannels, setPayChannels] = useState<{ code: string; name: string; minAmount?: number; maxAmount?: number }[]>([]);
   
   // 读取服务端注入的模板配置
   const [serverTemplate] = useState<BrandTemplate | null>(() => window.__TEMPLATE__ || null);
@@ -85,15 +82,10 @@ const ProductCheckoutPage: React.FC<ProductCheckoutPageProps> = ({
   // 加载支付渠道列表
   const loadPayChannels = async () => {
     try {
-      const res = await fetchApi('/api/pay/superpay/channels');
+      const res = await fetchApi('/api/payment-channels');
       const data = await res.json();
-      if (data.channels && Array.isArray(data.channels)) {
-        setPayChannels(data.channels.map((ch: any) => ({
-          code: ch.code,
-          name: ch.name,
-          minAmount: ch.min_amount ? parseFloat(ch.min_amount) : undefined,
-          maxAmount: ch.max_amount ? parseFloat(ch.max_amount) : undefined,
-        })));
+      if (Array.isArray(data)) {
+        setPayChannels(data);
       }
     } catch (error) {
       console.error('Failed to load pay channels:', error);
@@ -113,15 +105,6 @@ const ProductCheckoutPage: React.FC<ProductCheckoutPageProps> = ({
       }
       
       setProduct(productData);
-
-      // 获取商户可用的下单方式
-      const methodsRes = await fetchApi(`/api/merchant/${productData.user_id}/payment-methods`);
-      const methodsData = await methodsRes.json();
-      
-      setMerchantPaymentMethods(methodsData.methods || []);
-      if (methodsData.methods?.length > 0) {
-        setSelectedMethod(methodsData.methods[0]);
-      }
     } catch (error) {
       console.error('Load product error:', error);
       showToast('加载商品失败', 'error');
@@ -129,6 +112,30 @@ const ProductCheckoutPage: React.FC<ProductCheckoutPageProps> = ({
       setIsLoading(false);
     }
   };
+
+  // 根据商品配置和价格过滤可用的支付通道
+  const getAvailableChannels = () => {
+    if (!product) return [];
+    const supportedIds = product.supported_pay_methods ? product.supported_pay_methods.split(',') : [];
+    const priceNum = typeof product.price === 'number' ? product.price : parseFloat(product.price);
+    
+    return payChannels.filter(channel => {
+      if (!supportedIds.includes(channel.id)) return false;
+      const min = channel.minAmount || 0;
+      const max = channel.maxAmount || Infinity;
+      return priceNum >= min && priceNum <= max;
+    });
+  };
+
+  const availableChannels = getAvailableChannels();
+
+  useEffect(() => {
+    if (availableChannels.length > 0 && !selectedChannel) {
+      setSelectedChannel(availableChannels[0]);
+    } else if (availableChannels.length === 0) {
+      setSelectedChannel(null);
+    }
+  }, [payChannels, product]);
 
   // 更新 OG 标签和页面标题
   useEffect(() => {
@@ -174,15 +181,15 @@ const ProductCheckoutPage: React.FC<ProductCheckoutPageProps> = ({
   }, [product]);
 
   const handlePay = async () => {
-    if (!selectedMethod) {
+    if (!selectedChannel) {
       showToast('请选择下单方式', 'error');
       return;
     }
 
     const isInWechat = isWechatBrowser();
-    const isUsdtMethod = selectedMethod === 'usdt';
+    const isBank = selectedChannel.gateway === 'bank';
 
-    if (isInWechat && selectedMethod !== 'bank') {
+    if (isInWechat && !isBank) {
       setShowWechatOverlay(true);
       return;
     }
@@ -190,7 +197,7 @@ const ProductCheckoutPage: React.FC<ProductCheckoutPageProps> = ({
     setPaying(true);
     try {
       // 银行卡转账
-      if (selectedMethod === 'bank') {
+      if (isBank) {
         const response = await fetchApi('/api/pay/create-order', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -218,27 +225,12 @@ const ProductCheckoutPage: React.FC<ProductCheckoutPageProps> = ({
         return;
       }
 
-      // SuperPay 支付
-      let channelCode = CHANNEL_CODE_MAP[selectedMethod]?.code;
-      const channelTypeCode = CHANNEL_CODE_MAP[selectedMethod]?.typeCode;
-      
-      if (payChannels.length > 0) {
-        channelCode = payChannels[0].code;
-        
-        const amountYuan = product.price / 100;
-        const channel = payChannels.find(ch => {
-          if (ch.minAmount && amountYuan < ch.minAmount) return false;
-          if (ch.maxAmount && amountYuan > ch.maxAmount) return false;
-          return true;
-        });
-        
-        if (channel) {
-          channelCode = channel.code;
-        }
-      }
+      // SuperPay 或 其他支付
+      const channelCode = selectedChannel.channelCode;
+      const channelTypeCode = undefined; // 假设在通道配置中如果需要typeCode可以通过另外的字段维护
       
       if (!channelCode) {
-        showToast('暂无可用支付渠道', 'error');
+        showToast('无效的支付渠道配置', 'error');
         return;
       }
 
@@ -493,80 +485,41 @@ const ProductCheckoutPage: React.FC<ProductCheckoutPageProps> = ({
       </div>
 
       <div className="px-6 py-8">
-        {merchantPaymentMethods.length === 0 ? (
+        {availableChannels.length === 0 ? (
           <div className="bg-orange-50 rounded-3xl p-6 text-center border border-orange-100">
             <AlertCircle className="w-12 h-12 text-orange-400 mx-auto mb-4" />
-            <p className="text-orange-800 font-bold">商户暂未配置下单方式</p>
-            <p className="text-xs text-orange-600 mt-2">请联系商户完成下单配置</p>
+            <p className="text-orange-800 font-bold">商品暂无可用下单方式</p>
+            <p className="text-xs text-orange-600 mt-2">请联系商户完成下单配置或调整金额</p>
           </div>
         ) : (
           <>
             <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4 ml-1">选择下单方式</p>
             <div className="space-y-3">
-              {merchantPaymentMethods.includes('wechat') && (
+              {availableChannels.map(channel => (
                 <button 
-                  onClick={() => setSelectedMethod('wechat')}
-                  className={`w-full flex items-center justify-between p-5 rounded-[24px] border-2 transition-all ${selectedMethod === 'wechat' ? 'border-green-600 bg-green-50/30' : 'border-gray-50 bg-gray-50/50'}`}
+                  key={channel.id}
+                  onClick={() => setSelectedChannel(channel)}
+                  className={`w-full flex items-center justify-between p-5 rounded-[24px] border-2 transition-all ${selectedChannel?.id === channel.id ? 'border-blue-500 bg-blue-50/30' : 'border-gray-50 bg-gray-50/50'}`}
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg bg-green-600">
-                      <MessageSquare className="w-6 h-6" />
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg ${channel.gateway === 'wechat' ? 'bg-green-600' : channel.gateway === 'bank' ? 'bg-orange-500' : 'bg-blue-500'}`}>
+                      {channel.gateway === 'wechat' ? <MessageSquare className="w-6 h-6" /> : channel.gateway === 'bank' ? <CreditCard className="w-6 h-6" /> : <Smartphone className="w-6 h-6" />}
                     </div>
                     <div className="text-left">
-                      <h4 className="font-black text-gray-900">微信扫码</h4>
-                      <p className="text-[10px] text-gray-400 font-medium">扫码下单，即时到账</p>
+                      <h4 className="font-black text-gray-900">{channel.name}</h4>
+                      <p className="text-[10px] text-gray-400 font-medium">{channel.gateway === 'wechat' ? '扫码下单，即时到账' : channel.gateway === 'bank' ? '线下转账，商户确认' : '网页下单，安全便捷'}</p>
                     </div>
                   </div>
-                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${selectedMethod === 'wechat' ? 'border-green-600' : 'border-gray-200'}`}>
-                    {selectedMethod === 'wechat' && <div className="w-3 h-3 bg-green-600 rounded-full" />}
+                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${selectedChannel?.id === channel.id ? 'border-blue-500' : 'border-gray-200'}`}>
+                    {selectedChannel?.id === channel.id && <div className="w-3 h-3 bg-blue-500 rounded-full" />}
                   </div>
                 </button>
-              )}
-              
-              {merchantPaymentMethods.includes('alipay') && (
-                <button 
-                  onClick={() => setSelectedMethod('alipay')}
-                  className={`w-full flex items-center justify-between p-5 rounded-[24px] border-2 transition-all ${selectedMethod === 'alipay' ? 'border-blue-500 bg-blue-50/30' : 'border-gray-50 bg-gray-50/50'}`}
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg bg-blue-500">
-                      <Smartphone className="w-6 h-6" />
-                    </div>
-                    <div className="text-left">
-                      <h4 className="font-black text-gray-900">扫码支付</h4>
-                      <p className="text-[10px] text-gray-400 font-medium">网页下单，安全便捷</p>
-                    </div>
-                  </div>
-                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${selectedMethod === 'alipay' ? 'border-blue-500' : 'border-gray-200'}`}>
-                    {selectedMethod === 'alipay' && <div className="w-3 h-3 bg-blue-500 rounded-full" />}
-                  </div>
-                </button>
-              )}
-              
-              {merchantPaymentMethods.includes('bank') && (
-                <button 
-                  onClick={() => setSelectedMethod('bank')}
-                  className={`w-full flex items-center justify-between p-5 rounded-[24px] border-2 transition-all ${selectedMethod === 'bank' ? 'border-orange-500 bg-orange-50/30' : 'border-gray-50 bg-gray-50/50'}`}
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg bg-orange-500">
-                      <CreditCard className="w-6 h-6" />
-                    </div>
-                    <div className="text-left">
-                      <h4 className="font-black text-gray-900">银行卡转账</h4>
-                      <p className="text-[10px] text-gray-400 font-medium">线下转账，商户确认</p>
-                    </div>
-                  </div>
-                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${selectedMethod === 'bank' ? 'border-orange-500' : 'border-gray-200'}`}>
-                    {selectedMethod === 'bank' && <div className="w-3 h-3 bg-orange-500 rounded-full" />}
-                  </div>
-                </button>
-              )}
+              ))}
             </div>
 
             <button 
               onClick={handlePay}
-              disabled={paying || !selectedMethod}
+              disabled={paying || !selectedChannel}
               className="w-full mt-8 py-6 text-white rounded-[24px] font-black text-sm uppercase tracking-widest shadow-2xl shadow-black/20 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-3 brand-button"
               style={serverTemplate ? {
                 background: `linear-gradient(135deg, ${serverTemplate.gradientFrom} 0%, ${serverTemplate.gradientTo} 100%)`

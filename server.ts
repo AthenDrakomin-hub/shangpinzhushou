@@ -780,7 +780,7 @@ app.get('/api/products/:id', async (req: Request, res: Response) => {
         views, stock, sales, status, created_at, updated_at
       FROM public.products WHERE id = $1
     `, [req.params.id]);
-    
+
     if (result.rows.length === 0) {
       return res.status(404).json({ error: '商品不存在' });
     }
@@ -789,6 +789,30 @@ app.get('/api/products/:id', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Get product error:', error);
     res.status(500).json({ error: '获取商品失败' });
+  }
+});
+
+// 获取公共支付通道配置
+app.get('/api/payment-channels', async (_req: Request, res: Response) => {
+  try {
+    const result = await pool.query(`
+      SELECT value FROM public.system_configs WHERE key = 'payment_channels' LIMIT 1
+    `);
+    
+    let channels = [];
+    if (result.rows.length > 0) {
+      try {
+        channels = JSON.parse(result.rows[0].value);
+      } catch (e) {
+        console.error('Failed to parse payment channels', e);
+      }
+    }
+    
+    // 只返回启用的通道（如果通道有状态的话，这里假设返回全部，前端过滤，或者如果有 status 字段可以过滤）
+    res.json(channels);
+  } catch (error) {
+    console.error('Get public payment channels error:', error);
+    res.status(500).json({ error: '获取支付通道失败' });
   }
 });
 
@@ -1223,9 +1247,38 @@ app.post('/api/orders', async (req: Request, res: Response) => {
 
     const orderId = `O${Date.now()}${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
     
+    // 获取支付通道配置
+    const channelsResult = await pool.query(`
+      SELECT value FROM public.system_configs WHERE key = 'payment_channels' LIMIT 1
+    `);
+    
+    let channels = [];
+    if (channelsResult.rows.length > 0) {
+      try {
+        channels = JSON.parse(channelsResult.rows[0].value);
+      } catch (e) {
+        console.error('Failed to parse payment channels', e);
+      }
+    }
+    
+    const channel = channels.find((c: any) => c.id === payType);
+    if (!channel) {
+      return res.status(400).json({ error: '支付通道不存在或已关闭' });
+    }
+
+    const orderAmount = parseFloat(product.price);
+    
+    // 检查金额范围
+    if (channel.minAmount && orderAmount < parseFloat(channel.minAmount)) {
+      return res.status(400).json({ error: `该通道最小支付金额为 ${channel.minAmount} 元` });
+    }
+    if (channel.maxAmount && orderAmount > parseFloat(channel.maxAmount)) {
+      return res.status(400).json({ error: `该通道最大支付金额为 ${channel.maxAmount} 元` });
+    }
+
     // 判断支付网关类型
-    const isSuperPay = payType === 'alipay_superpay'; // 支付宝使用 SuperPay
-    const isJiuJiu = payType === 'WXpay_SM'; // 微信使用九久支付
+    const isSuperPay = channel.gateway === 'superpay';
+    const isJiuJiu = channel.gateway === 'jiujiu';
     
     let payUrl = '';
     let formHtml = '';
@@ -1244,15 +1297,7 @@ app.post('/api/orders', async (req: Request, res: Response) => {
         return res.status(400).json({ error: 'SuperPay 支付配置未设置，请检查环境变量' });
       }
       
-      const orderAmount = parseFloat(product.price);
-      let channelCode = '824'; // 默认使用正式通道
-
-      // 支付宝只允许 100-20000 范围，走正式小混通道 824
-      if (orderAmount >= 100 && orderAmount <= 20000) {
-        channelCode = '824'; // 正式小混通道 (限额 100~20000)
-      } else {
-        return res.status(400).json({ error: '支付宝支付金额需在 100-20000 元之间' });
-      }
+      const channelCode = channel.channelCode || '824'; // 默认使用正式通道
 
       console.log('[SuperPay] 使用渠道编码:', channelCode);
       
@@ -1282,11 +1327,6 @@ app.post('/api/orders', async (req: Request, res: Response) => {
 
       console.log('[订单创建] 使用九久支付微信');
       
-      const orderAmount = parseFloat(product.price);
-      if (orderAmount < 1 || orderAmount > 50) {
-        return res.status(400).json({ error: '微信支付金额需在 1-50 元之间' });
-      }
-
       const returnUrl = `${projectDomain}/payment/result?orderId=${orderId}`;
       const wechatNotifyUrl = `${projectDomain}/api/orders/wechat/callback`;
       
@@ -1296,6 +1336,7 @@ app.post('/api/orders', async (req: Request, res: Response) => {
         productName: product.name,
         notifyUrl: wechatNotifyUrl,
         callbackUrl: returnUrl,
+        channelCode: channel.channelCode,
       });
       
       if (!payResult.success) {
@@ -1308,7 +1349,7 @@ app.post('/api/orders', async (req: Request, res: Response) => {
       console.log('[九久支付] 订单创建成功:', { orderId, payUrl: payUrl ? payUrl.substring(0, 50) + '...' : 'N/A' });
       
     } else {
-      return res.status(400).json({ error: '不支持的支付方式' });
+      return res.status(400).json({ error: '不支持的支付网关' });
     }
 
     const finalBuyerName = buyerName || '匿名买家';
@@ -2492,6 +2533,52 @@ app.put('/api/admin/payment-config', authMiddleware, adminMiddleware, async (req
   } catch (error) {
     console.error('Update payment config error:', error);
     res.status(500).json({ error: '更新支付配置失败' });
+  }
+});
+
+// 获取支付通道列表
+app.get('/api/admin/payment-channels', authMiddleware, adminMiddleware, async (_req: AuthRequest, res: Response) => {
+  try {
+    const result = await pool.query(`
+      SELECT value FROM public.system_configs WHERE key = 'payment_channels' LIMIT 1
+    `);
+    
+    let channels = [];
+    if (result.rows.length > 0) {
+      try {
+        channels = JSON.parse(result.rows[0].value);
+      } catch (e) {
+        console.error('Failed to parse payment channels', e);
+      }
+    }
+    res.json(channels);
+  } catch (error) {
+    console.error('Get payment channels error:', error);
+    res.status(500).json({ error: '获取支付通道失败' });
+  }
+});
+
+// 更新支付通道列表
+app.put('/api/admin/payment-channels', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const channels = req.body;
+    if (!Array.isArray(channels)) {
+      return res.status(400).json({ error: '数据格式错误，应为数组' });
+    }
+
+    const value = JSON.stringify(channels);
+    await pool.query(
+      `INSERT INTO public.system_configs (key, value, description) 
+       VALUES ($1, $2, $3) 
+       ON CONFLICT (key) DO UPDATE 
+       SET value = EXCLUDED.value, description = EXCLUDED.description, updated_at = NOW()`,
+      ['payment_channels', value, '动态支付通道配置']
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Update payment channels error:', error);
+    res.status(500).json({ error: '更新支付通道失败' });
   }
 });
 
