@@ -1027,7 +1027,16 @@ function PaymentConfigModal({
       });
       const data = await response.json();
       if (response.ok && data.success) {
-        if (data.pay_url) {
+        if (data.formHtml) {
+          showToast('测试订单(1.00元)创建成功，正在打开支付页面...', 'success');
+          setTimeout(() => {
+            const newWin = window.open('', '_blank');
+            if (newWin) {
+              newWin.document.write(data.formHtml);
+              newWin.document.close();
+            }
+          }, 1500);
+        } else if (data.pay_url) {
           showToast('测试订单(1.00元)创建成功，正在打开支付页面...', 'success');
           setTimeout(() => window.open(data.pay_url, '_blank'), 1500);
         } else {

@@ -293,7 +293,7 @@ export default function H5ProductPage({ productId = 'p1', onClose }: H5ProductPa
         setOrderId(data.orderId);
         setPayUrl(data.payUrl);
         setOrderStatus('pending');
-        
+
         // 保存支付信息（用于微信跳转后恢复）
         savePaymentInfo({
           payUrl: data.payUrl,
@@ -301,9 +301,18 @@ export default function H5ProductPage({ productId = 'p1', onClose }: H5ProductPa
           productId: product.id,
           amount: product.price
         });
-        
-        // 跳转到支付页面
-        window.location.href = data.payUrl;
+
+        // 如果后端返回了 formHtml，说明需要表单 POST 提交（例如九久支付）
+        if (data.formHtml) {
+          const newWin = window.open('', '_self');
+          if (newWin) {
+            newWin.document.write(data.formHtml);
+            newWin.document.close();
+          }
+        } else if (data.payUrl) {
+          // 跳转到支付页面
+          window.location.href = data.payUrl;
+        }
       } else {
         const error = await response.json();
         console.error('Order creation failed:', error);

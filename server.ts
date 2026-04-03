@@ -1228,6 +1228,7 @@ app.post('/api/orders', async (req: Request, res: Response) => {
     const isJiuJiu = payType === 'WXpay_SM'; // 微信使用九久支付
     
     let payUrl = '';
+    let formHtml = '';
     const projectDomain = process.env.COZE_PROJECT_DOMAIN_DEFAULT || `http://localhost:${config.port}`;
     const notifyUrl = `${projectDomain}/api/orders/callback`;
     
@@ -1300,6 +1301,7 @@ app.post('/api/orders', async (req: Request, res: Response) => {
       }
       
       payUrl = payResult.payUrl || '';
+      formHtml = payResult.formHtml || '';
       console.log('[九久支付] 订单创建成功:', { orderId, payUrl: payUrl ? payUrl.substring(0, 50) + '...' : 'N/A' });
       
     } else {
@@ -1318,6 +1320,7 @@ app.post('/api/orders', async (req: Request, res: Response) => {
     res.status(201).json({
       orderId,
       payUrl: payUrl,
+      formHtml: formHtml,
       amount: product.price,
     });
   } catch (error) {
@@ -2517,13 +2520,13 @@ app.post('/api/settings/test-superpay', authMiddleware, adminMiddleware, async (
     const projectDomain = process.env.COZE_PROJECT_DOMAIN_DEFAULT || `http://localhost:${config.port}`;
     const testOrderId = `TEST${Date.now()}`;
 
-    // 使用测试通道1，金额 1.00
+    // 使用支付宝小混通道824，金额 100.00 以确保用户看到支付宝页面
     const payResult = await createSuperPayOrder({
       merchantOn,
       merchantKey,
-      amount: '1.00',
+      amount: '100.00',
       orderSn: testOrderId,
-      channelCode: '1',
+      channelCode: '824',
       notifyUrl: `${projectDomain}/api/orders/callback`,
       returnUrl: `${projectDomain}/payment/result?orderId=${testOrderId}`,
       uid: 'test_uid'
@@ -2581,7 +2584,8 @@ app.post('/api/settings/test-jiujiu', authMiddleware, adminMiddleware, async (re
       if (payResult.success) {
         res.json({
           success: true,
-          pay_url: payResult.codeUrl // 可能是扫码链接或跳转链接
+          pay_url: payResult.payUrl, // 修复：之前这里是 codeUrl 导致前端报错无链接
+          formHtml: payResult.formHtml
         });
       } else {
         res.json({
