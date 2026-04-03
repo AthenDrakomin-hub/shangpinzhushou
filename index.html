@@ -124,6 +124,7 @@
           <a href="#roles" class="nav-link font-medium text-sm">职责与权限</a>
           <a href="#revenue" class="nav-link font-medium text-sm">收益机制</a>
           <a href="#usage" class="nav-link font-medium text-sm">使用说明</a>
+          <a href="#evaluation" class="nav-link font-medium text-sm font-bold text-orange-600">商业评估</a>
           <a href="#tech" class="nav-link font-medium text-sm">技术架构</a>
         </div>
       </div>
@@ -480,6 +481,94 @@ git push origin main
         </div>
 
       </div>
+    </div>
+  </section>
+
+  <!-- Market Evaluation -->
+  <section id="evaluation" class="py-20 bg-gradient-to-br from-orange-50 to-amber-50 border-t border-orange-100">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-16">
+        <h2 class="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight mb-4">项目商业价值与研发成本评估</h2>
+        <p class="text-lg text-slate-600 max-w-2xl mx-auto">基于 2026 年市场行情，对本系统的核心价值、外包研发成本及维护费用进行保守基准测算。</p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- 研发成本 -->
+        <div class="bg-white rounded-2xl shadow-sm border border-orange-200 p-8 transform transition-transform hover:-translate-y-1">
+          <div class="w-14 h-14 bg-orange-100 rounded-xl flex items-center justify-center text-orange-600 mb-6">
+            <i data-lucide="coins" class="w-7 h-7"></i>
+          </div>
+          <h3 class="text-xl font-bold text-slate-900 mb-2">整包研发估价 (保守)</h3>
+          <div class="text-4xl font-black text-orange-600 mb-4">￥58,000 <span class="text-base font-normal text-slate-500">起</span></div>
+          <p class="text-slate-600 text-sm mb-6 border-b border-slate-100 pb-6">
+            基于市场下限估算（￥5万~￥8万）。若交由外包团队从零开发，需产品经理、UI、前端、后端至少3人团队进行1.5~2个月的高强度研发。
+          </p>
+          <ul class="space-y-3 text-sm text-slate-700">
+            <li class="flex items-start gap-2"><i data-lucide="check" class="w-4 h-4 text-orange-500 mt-0.5 shrink-0"></i> <span>复杂RBAC权限与树状分销系统设计</span></li>
+            <li class="flex items-start gap-2"><i data-lucide="check" class="w-4 h-4 text-orange-500 mt-0.5 shrink-0"></i> <span>聚合支付网关及动态路由架构研发</span></li>
+            <li class="flex items-start gap-2"><i data-lucide="check" class="w-4 h-4 text-orange-500 mt-0.5 shrink-0"></i> <span>Canvas商品海报与UI交互精调</span></li>
+            <li class="flex items-start gap-2"><i data-lucide="check" class="w-4 h-4 text-orange-500 mt-0.5 shrink-0"></i> <span>前后端联调与高并发性能测试</span></li>
+          </ul>
+        </div>
+
+        <!-- 核心价值点 -->
+        <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-orange-200 p-8">
+          <h3 class="text-2xl font-bold text-slate-900 mb-6 flex items-center gap-2">
+            <i data-lucide="gem" class="w-6 h-6 text-amber-500"></i> 系统核心商业价值点
+          </h3>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-slate-50 rounded-xl p-5 border border-slate-100">
+              <h4 class="font-bold text-slate-800 mb-2 flex items-center gap-2">
+                <span class="w-6 h-6 rounded bg-blue-100 text-blue-600 flex items-center justify-center text-xs">1</span>
+                企业级四级权限管控
+              </h4>
+              <p class="text-sm text-slate-600 leading-relaxed">突破常规单商户限制，支持“首席-经理-主管-员工”严密的隔离机制。自带按层级截留的自动化分润算法，完美契合中大型团队的销售体系。</p>
+            </div>
+
+            <div class="bg-slate-50 rounded-xl p-5 border border-slate-100">
+              <h4 class="font-bold text-slate-800 mb-2 flex items-center gap-2">
+                <span class="w-6 h-6 rounded bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs">2</span>
+                智能聚合支付网关引擎
+              </h4>
+              <p class="text-sm text-slate-600 leading-relaxed">支持底层解耦的三方支付路由（SuperPay/九久）。通过在后台动态配置通道集合与金额区间，实现前端收银台智能展现与风控拦截，极大降低被平台风控的概率。</p>
+            </div>
+
+            <div class="bg-slate-50 rounded-xl p-5 border border-slate-100">
+              <h4 class="font-bold text-slate-800 mb-2 flex items-center gap-2">
+                <span class="w-6 h-6 rounded bg-purple-100 text-purple-600 flex items-center justify-center text-xs">3</span>
+                全链路自动化财务核算
+              </h4>
+              <p class="text-sm text-slate-600 leading-relaxed">从买家付款、Webhook 回调自动记账，到各级员工佣金实时到账，再到钱包提现与经理审批，构建了100%无人工干预的财务闭环。</p>
+            </div>
+
+            <div class="bg-slate-50 rounded-xl p-5 border border-slate-100">
+              <h4 class="font-bold text-slate-800 mb-2 flex items-center gap-2">
+                <span class="w-6 h-6 rounded bg-rose-100 text-rose-600 flex items-center justify-center text-xs">4</span>
+                极具前瞻性的技术选型
+              </h4>
+              <p class="text-sm text-slate-600 leading-relaxed">采用 React 18 与 Tailwind 打造现代化流畅 UI，Node.js 承载高并发订单处理，配套 GitHub Actions CI/CD 流水线，后续二次开发极具扩展性。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 维护成本 -->
+      <div class="mt-8 bg-slate-900 rounded-2xl p-8 flex flex-col md:flex-row items-center justify-between gap-6 border border-slate-800 shadow-lg">
+        <div>
+          <h3 class="text-xl font-bold text-white mb-2 flex items-center gap-2">
+            <i data-lucide="wrench" class="w-5 h-5 text-slate-400"></i> 月度基础运维费用预估
+          </h3>
+          <p class="text-slate-400 text-sm max-w-2xl">
+            常规包含：云服务器及数据库实例租赁、日常数据冷备份、支付通道接口的例行监测更新、以及系统突发 Bug 的排查与修复。
+          </p>
+        </div>
+        <div class="shrink-0 text-right">
+          <div class="text-3xl font-black text-white">￥1,500 <span class="text-base font-normal text-slate-500">/ 月</span></div>
+          <div class="text-xs text-slate-500 mt-1">（约占总研发成本的 2.5% ~ 3%）</div>
+        </div>
+      </div>
+
     </div>
   </section>
 
