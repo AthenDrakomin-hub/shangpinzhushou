@@ -1,10 +1,7 @@
 /**
  * 九久支付（微信收款）封装
- * 
- * 配置从环境变量读取：
- * - JIUJIU_MCH_ID: 商户号
- * - JIUJIU_APP_SECRET: 商户密钥 (APIKEY)
- * - JIUJIU_API_URL: 网关地址 (如 http://bayq.hanyin.9jiupay.com)
+ *
+ * 根据最新 API 文档重构
  */
 import crypto from 'crypto';
 
@@ -12,12 +9,11 @@ export interface JiuJiuPayConfig {
   mchId: string;
   appSecret: string;
   apiUrl: string;
-  notifyUrl?: string;
 }
 
 export interface CreateOrderParams {
   orderId: string;
-  amount: number;
+  amount: number | string; // 单位：元
   productName: string;
   notifyUrl: string;
   callbackUrl: string;
@@ -34,22 +30,17 @@ export interface JiuJiuPayResult {
  * 获取九久支付配置
  */
 export function getJiujiuConfig(): JiuJiuPayConfig {
-  // 如果 server.ts 中通过 import 或其他方式将 config 注入，可以通过 global 或传入参数的方式
-  // 这里为了兼容并确保实时读取到最新的配置，可以动态去尝试获取 server.ts 里的 config
   let dynamicMchId = process.env.JIUJIU_MCH_ID || '';
   let dynamicAppSecret = process.env.JIUJIU_APP_SECRET || '';
   const apiUrl = process.env.JIUJIU_API_URL || 'http://bayq.hanyin.9jiupay.com';
 
   try {
-    // 尝试读取全局可能注入的变量（在 server.ts 中可把 config 挂在 global 上）
     if ((global as any).paymentConfig) {
       const gConfig = (global as any).paymentConfig;
       if (gConfig.jiujiuMchId) dynamicMchId = gConfig.jiujiuMchId;
       if (gConfig.jiujiuAppSecret) dynamicAppSecret = gConfig.jiujiuAppSecret;
     }
-  } catch (e) {
-    // 忽略
-  }
+  } catch (e) {}
 
   return {
     mchId: dynamicMchId,
@@ -59,23 +50,29 @@ export function getJiujiuConfig(): JiuJiuPayConfig {
 }
 
 /**
- * 生成签名
- * @param params - 要签名的参数对象
+ * 格式化时间为 YYYY-MM-DD HH:mm:ss
+ */
+function formatApplyDate(date: Date): string {
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+}
+
+/**
+ * 生成签名 (MD5)
+ * @param params - 参与签名的参数
  * @param appSecret - 商户密钥
  */
 function generateSign(params: Record<string, any>, appSecret: string): string {
-  // 按字母排序
-  const sortedKeys = Object.keys(params).sort();
+  // 只过滤非空的参数，并且排序
+  const sortedKeys = Object.keys(params).filter(k => params[k] !== undefined && params[k] !== null && params[k] !== '').sort();
   let signStr = '';
-  
+
   for (const key of sortedKeys) {
-    if (params[key] !== undefined && params[key] !== null && params[key] !== '') {
-      signStr += `${key}=${params[key]}&`;
-    }
+    signStr += `${key}=${params[key]}&`;
   }
-  
+
   signStr += `key=${appSecret}`;
-  
+
   // MD5 加密并转大写
   return crypto.createHash('md5').update(signStr).digest('hex').toUpperCase();
 }
@@ -87,59 +84,67 @@ function generateSign(params: Record<string, any>, appSecret: string): string {
  */
 export function verifyCallbackSign(params: Record<string, any>, sign: string): boolean {
   const config = getJiujiuConfig();
-  const generatedSign = generateSign(params, config.appSecret);
+  // 参与回调签名的字段：memberid, orderid, amount, transaction_id, datetime, returncode
+  const signParams: Record<string, any> = {};
+  const signKeys = ['memberid', 'orderid', 'amount', 'transaction_id', 'datetime', 'returncode'];
+  
+  for (const key of signKeys) {
+    if (params[key] !== undefined) {
+      signParams[key] = params[key];
+    }
+  }
+  
+  const generatedSign = generateSign(signParams, config.appSecret);
   return generatedSign === sign;
 }
 
 /**
- * 创建支付订单（微信扫码支付）
- * 使用表单提交方式跳转到支付网关
+ * 创建支付订单
  * @param params - 订单参数
  */
 export async function createWechatOrder(params: CreateOrderParams): Promise<JiuJiuPayResult> {
   try {
     const config = getJiujiuConfig();
-    
-    if (!config.mchId || !config.appSecret || !config.apiUrl) {
+
+    if (!config.mchId || !config.appSecret) {
       return {
         success: false,
-        error: '九久支付配置不完整，请检查环境变量 JIUJIU_MCH_ID、JIUJIU_APP_SECRET、JIUJIU_API_URL'
+        error: '九久支付配置不完整，请检查商户号和秘钥'
       };
     }
 
-    // 构建请求参数（表单方式）
-    const requestParams: Record<string, any> = {
-      mchId: config.mchId,
-      outTradeNo: params.orderId,
-      totalAmount: (params.amount * 100).toFixed(0), // 单位：分
-      body: params.productName,
-      notifyUrl: params.notifyUrl,
-      returnUrl: params.callbackUrl,
-      payType: 'WX_NATIVE', // 微信扫码支付
-      timestamp: Date.now().toString()
+    // 构建参与签名的请求参数
+    const signParams: Record<string, any> = {
+      pay_memberid: config.mchId,
+      pay_orderid: params.orderId,
+      pay_applydate: formatApplyDate(new Date()),
+      pay_bankcode: '902', // 微信扫码，如果贵平台有特殊编码，请修改此值
+      pay_notifyurl: params.notifyUrl,
+      pay_callbackurl: params.callbackUrl,
+      pay_amount: Number(params.amount).toFixed(2) // 单位元，保留两位小数
     };
 
-    // 生成签名
-    const sign = generateSign(requestParams, config.appSecret);
-    
-    // 完整的请求参数
+    // 生成 MD5 签名
+    const sign = generateSign(signParams, config.appSecret);
+
+    // 完整的请求参数（包含不参与签名的参数）
     const fullParams = {
-      ...requestParams,
-      sign
+      ...signParams,
+      pay_productname: params.productName,
+      pay_md5sign: sign
     };
 
     console.log('Creating JiuJiu Pay order:', {
       ...fullParams,
-      appSecret: '***'
+      pay_md5sign: '***'
     });
 
-    // 构建支付网关URL和表单HTML
     const gatewayUrl = `${config.apiUrl}/Pay_Index.html`;
-    
-    // 生成自动提交的表单HTML，前端可以直接使用
+
+    // 生成自动提交的表单HTML
     const formHtml = `
       <form id="jiujiu-pay-form" action="${gatewayUrl}" method="POST" style="display:none;">
-        ${Object.entries(fullParams).map(([key, value]) => 
+        ${Object.entries(fullParams).map(([key, value]) =>
           `<input type="hidden" name="${key}" value="${value}">`
         ).join('\n        ')}
       </form>
@@ -167,24 +172,25 @@ export async function createWechatOrder(params: CreateOrderParams): Promise<JiuJ
 export async function queryWechatOrder(outTradeNo: string): Promise<any> {
   try {
     const config = getJiujiuConfig();
-    
-    const requestParams = {
-      mchId: config.mchId,
-      outTradeNo,
-      timestamp: Date.now().toString()
+
+    const signParams = {
+      pay_memberid: config.mchId,
+      pay_orderid: outTradeNo
     };
 
-    const sign = generateSign(requestParams, config.appSecret);
+    const sign = generateSign(signParams, config.appSecret);
 
-    const response = await fetch(`${config.apiUrl}/order/query`, {
+    const fullParams = {
+      ...signParams,
+      pay_md5sign: sign
+    };
+
+    const response = await fetch(`${config.apiUrl}/Pay_Trade_query.html`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/x-www-form-urlencoded'
       },
-      body: JSON.stringify({
-        ...requestParams,
-        sign
-      })
+      body: new URLSearchParams(fullParams).toString()
     });
 
     return response.json();

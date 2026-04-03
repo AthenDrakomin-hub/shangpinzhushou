@@ -1460,16 +1460,17 @@ app.post('/api/orders/wechat/callback', async (req: Request, res: Response) => {
     }
 
     // 获取订单号
-    const orderId = params.outTradeNo || params.order_sn || params.out_trade_no;
-    if (!orderId) {
-      console.error('No order ID found in callback');
-      return res.status(400).send('fail');
-    }
+      const orderId = params.orderid || params.outTradeNo || params.order_sn || params.out_trade_no;
+      if (!orderId) {
+        console.error('No order ID found in callback');
+        return res.status(400).send('fail');
+      }
 
-    // 判断状态
-    const status = params.status || params.tradeStatus || params.trade_status || params.state;
-    // 九久支付通常回调就代表成功，如果有明确的状态字段，可以进一步判断
-    const isSuccess = status ? (String(status).toUpperCase() === 'SUCCESS' || String(status) === '1' || String(status) === '3') : true;
+      // 判断状态：文档明确说明 returncode 为 "00" 代表成功
+      const returnCode = params.returncode;
+      const status = params.status || params.tradeStatus || params.trade_status || params.state;
+      
+      const isSuccess = returnCode === '00' || (status ? (String(status).toUpperCase() === 'SUCCESS' || String(status) === '1' || String(status) === '3') : true);
 
     const client = await pool.connect();
     try {
@@ -1485,11 +1486,11 @@ app.post('/api/orders/wechat/callback', async (req: Request, res: Response) => {
       const order = orderResult.rows[0];
 
       // 幂等性校验
-      if (order.status === 'paid' || order.status === 'failed') {
-        await client.query('ROLLBACK');
-        console.log('Wechat Order already processed:', orderId, 'Current status:', order.status);
-        return res.send('success');
-      }
+        if (order.status === 'paid' || order.status === 'failed') {
+          await client.query('ROLLBACK');
+          console.log('Wechat Order already processed:', orderId, 'Current status:', order.status);
+          return res.send('OK');
+        }
 
       if (isSuccess) {
         // 金额校验 (九久回调的金额通常是以元为单位)
@@ -1525,20 +1526,20 @@ app.post('/api/orders/wechat/callback', async (req: Request, res: Response) => {
         await client.query(`UPDATE public.orders SET status = 'failed', updated_at = NOW() WHERE id = $1`, [orderId]);
         await client.query('COMMIT');
         console.log('Wechat Order failed:', orderId);
-      }
+        }
 
-      res.send('success');
+        res.send('OK');
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
     } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
+      console.error('Wechat Order callback error:', error);
+      res.status(500).send('fail');
     }
-  } catch (error) {
-    console.error('Wechat Order callback error:', error);
-    res.status(500).send('fail');
-  }
-});
+  });
 
 // 查询订单状态
 app.get('/api/orders/:id/status', async (req: Request, res: Response) => {
