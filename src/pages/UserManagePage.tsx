@@ -42,8 +42,9 @@ interface UserData {
 }
 
 const ROLE_CONFIG = {
+  chief_engineer: { label: '首席工程师', color: 'primary' as const },
   manager: { label: '经理', color: 'primary' as const },
-  admin: { label: '经理', color: 'primary' as const },
+  admin: { label: '管理员', color: 'primary' as const },
   supervisor: { label: '主管', color: 'success' as const },
   director: { label: '主管', color: 'success' as const },
   employee: { label: '员工', color: 'default' as const },
@@ -493,7 +494,7 @@ function EditUserModal({
 }) {
   const [form, setForm] = useState({
     display_name: user?.display_name || user?.name || '',
-    role: (user?.role || 'employee') as 'manager' | 'supervisor' | 'employee',
+    role: (user?.role === 'staff' as any ? 'employee' : user?.role || 'employee') as 'manager' | 'supervisor' | 'employee',
     status: (user?.status || 'active') as 'active' | 'inactive' | 'pending',
     profit_share_rate: user?.profit_share_rate || 0,
     password: '',
@@ -505,7 +506,7 @@ function EditUserModal({
     if (user) {
       setForm({
         display_name: user.display_name || user.name || '',
-        role: user.role || 'employee',
+        role: user.role === 'staff' as any ? 'employee' : user.role || 'employee',
         status: user.status || 'active',
         profit_share_rate: user.profit_share_rate || 0,
         password: '',

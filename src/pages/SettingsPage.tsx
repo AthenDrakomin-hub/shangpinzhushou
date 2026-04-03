@@ -75,13 +75,13 @@ export default function SettingsPage({ user, showToast, onLogout }: SettingsPage
       case 'admin':
         return '经理';
       case 'supervisor':
-      case 'director':
         return '主管';
+      case 'chief_engineer':
+        return '首席工程师';
       case 'employee':
       case 'staff':
-        return '员工';
       default:
-        return '未知角色';
+        return '员工';
     }
   };
 
