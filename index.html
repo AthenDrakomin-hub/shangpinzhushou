@@ -215,18 +215,24 @@
         系统采用基于角色的访问控制（RBAC）结合数据隔离策略。不同层级的用户拥有不同的页面访问权和数据操作权。
       </p>
 
-      <div class="space-y-6">
+      <div class="space-y-12">
         <!-- 首席工程师 -->
-        <div class="role-card bg-white p-8 rounded-2xl border border-blue-100 shadow-sm flex flex-col md:flex-row gap-8 items-start relative overflow-hidden">
+        <div class="role-card bg-white p-8 rounded-2xl border border-blue-100 shadow-sm flex flex-col lg:flex-row gap-8 items-start relative overflow-hidden">
           <div class="absolute top-0 right-0 bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-bl-lg uppercase tracking-wider">
             最高权限 / 上帝视角
           </div>
-          <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center shrink-0 text-blue-600">
-            <i data-lucide="crown" class="w-8 h-8"></i>
-          </div>
-          <div class="flex-1">
-            <h3 class="text-2xl font-bold text-slate-900 mb-2">首席工程师 (Chief Engineer)</h3>
-            <p class="text-slate-600 mb-4">系统的终极管理者，拥有全部开发与运维级别的控制权限，无视所有数据隔离限制。</p>
+          
+          <div class="flex-1 flex flex-col gap-4">
+            <div class="flex gap-4 items-start">
+              <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center shrink-0 text-blue-600">
+                <i data-lucide="crown" class="w-8 h-8"></i>
+              </div>
+              <div>
+                <h3 class="text-2xl font-bold text-slate-900 mb-2">首席工程师 (Chief Engineer)</h3>
+                <p class="text-slate-600 mb-4">系统的终极管理者，拥有全部开发与运维级别的控制权限，无视所有数据隔离限制。</p>
+              </div>
+            </div>
+            
             <ul class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-slate-700">
               <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-blue-500"></i> 查看全平台所有数据（包含所有商户、员工、订单）</li>
               <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-blue-500"></i> 员工管理：全量增删改查所有账号（树状图/列表切换）</li>
@@ -234,6 +240,33 @@
               <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-blue-500"></i> 系统管理：配置全局环境变量、字典与核心密钥</li>
               <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-blue-500"></i> 支付配置：设置系统级收款通道参数</li>
             </ul>
+          </div>
+          
+          <div class="lg:w-1/2 w-full grid grid-cols-2 gap-4 mt-6 lg:mt-0">
+            <div class="group relative rounded-xl overflow-hidden shadow-md border border-slate-100 bg-slate-50 aspect-video">
+              <img src="images/dashboard.png" alt="首席工程师大盘" class="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500">
+              <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
+                <span class="text-white text-sm font-medium">系统监控大盘</span>
+              </div>
+            </div>
+            <div class="group relative rounded-xl overflow-hidden shadow-md border border-slate-100 bg-slate-50 aspect-video">
+              <img src="images/database.png" alt="数据库管理" class="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500">
+              <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
+                <span class="text-white text-sm font-medium">数据库与SQL管理</span>
+              </div>
+            </div>
+            <div class="group relative rounded-xl overflow-hidden shadow-md border border-slate-100 bg-slate-50 aspect-video">
+              <img src="images/employees.png" alt="员工管理" class="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500">
+              <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
+                <span class="text-white text-sm font-medium">全量员工管理</span>
+              </div>
+            </div>
+            <div class="group relative rounded-xl overflow-hidden shadow-md border border-slate-100 bg-slate-50 aspect-video">
+              <img src="images/system.png" alt="系统设置" class="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500">
+              <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
+                <span class="text-white text-sm font-medium">全局系统配置</span>
+              </div>
+            </div>
           </div>
         </div>
 
