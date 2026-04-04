@@ -401,7 +401,7 @@ export default function AppLayout({
           </header>
 
           {/* 内容区 */}
-          <main className="flex-1 overflow-y-auto p-4 lg:p-6 bg-gray-50 dark:bg-gray-900">
+          <main className="flex-1 overflow-y-auto overflow-x-hidden min-w-0 p-4 lg:p-6 bg-gray-50 dark:bg-gray-900">
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentView}

@@ -89,6 +89,7 @@ export function Card({ children, className = '', hover = false, onClick }: CardP
       className={`
         bg-white dark:bg-gray-800 rounded-xl shadow-card
         border border-gray-100 dark:border-gray-700
+        overflow-hidden break-words
         ${hover ? 'cursor-pointer transition-shadow' : ''}
         ${className}
       `}
@@ -299,9 +300,9 @@ export function StatCard({ title, value, change, icon, iconBgColor, color = 'blu
   return (
     <Card className={`p-6 ${className}`}>
       <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <p className="text-sm text-gray-500 dark:text-gray-400">{title}</p>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{value}</p>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{title}</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1 truncate">{value}</p>
           {change && (
             <div className="flex items-center gap-1 mt-2">
               <span

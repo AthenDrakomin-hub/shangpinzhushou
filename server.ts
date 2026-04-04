@@ -2629,7 +2629,7 @@ app.post('/api/settings/test-superpay', authMiddleware, adminMiddleware, async (
     if (payResult.success) {
       res.json({
         success: true,
-        pay_url: payResult.jumpUrl
+        payUrl: payResult.jumpUrl
       });
     } else {
       res.json({
@@ -2676,7 +2676,7 @@ app.post('/api/settings/test-jiujiu', authMiddleware, adminMiddleware, async (re
       if (payResult.success) {
         res.json({
           success: true,
-          pay_url: payResult.payUrl, // 修复：之前这里是 codeUrl 导致前端报错无链接
+          payUrl: payResult.payUrl, // 修复：之前这里是 codeUrl 导致前端报错无链接
           formHtml: payResult.formHtml
         });
       } else {

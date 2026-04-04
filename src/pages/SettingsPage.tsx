@@ -608,11 +608,11 @@ export default function SettingsPage({ user, showToast, onLogout }: SettingsPage
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold">
               {user?.displayName?.[0] || user?.email?.[0]?.toUpperCase() || 'U'}
             </div>
-            <div className="flex-1">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+            <div className="flex-1 min-w-0">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white truncate">
                 {user?.displayName || '用户'}
               </h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400">{user?.email}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{user?.email}</p>
               <div className="flex items-center gap-2 mt-1">
                 <Badge variant="primary">{getRoleName(user?.role)}</Badge>
               </div>
@@ -636,9 +636,9 @@ export default function SettingsPage({ user, showToast, onLogout }: SettingsPage
               <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-400">
                 {item.icon}
               </div>
-              <div className="flex-1">
-                <p className="font-medium text-gray-900 dark:text-white">{item.title}</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">{item.description}</p>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-gray-900 dark:text-white truncate">{item.title}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{item.description}</p>
               </div>
               {item.action || <ChevronRight className="w-5 h-5 text-gray-400" />}
             </div>
@@ -663,7 +663,7 @@ export default function SettingsPage({ user, showToast, onLogout }: SettingsPage
               <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-400">
                 {item.icon}
               </div>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <p className="font-medium text-gray-900 dark:text-white">{item.title}</p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">{item.description}</p>
               </div>
@@ -688,10 +688,10 @@ export default function SettingsPage({ user, showToast, onLogout }: SettingsPage
                 <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-400">
                   {item.icon}
                 </div>
-                <div className="flex-1">
-                  <p className="font-medium text-gray-900 dark:text-white">{item.title}</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">{item.description}</p>
-                </div>
+                <div className="flex-1 min-w-0">
+                <p className="font-medium text-gray-900 dark:text-white">{item.title}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{item.description}</p>
+              </div>
                 <ChevronRight className="w-5 h-5 text-gray-400" />
               </div>
             ))}
@@ -714,10 +714,10 @@ export default function SettingsPage({ user, showToast, onLogout }: SettingsPage
                   <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 dark:text-blue-400">
                     {item.icon}
                   </div>
-                  <div className="flex-1">
-                    <p className="font-medium text-gray-900 dark:text-white">{item.title}</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{item.description}</p>
-                  </div>
+                  <div className="flex-1 min-w-0">
+                <p className="font-medium text-gray-900 dark:text-white">{item.title}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{item.description}</p>
+              </div>
                   <ChevronRight className="w-5 h-5 text-gray-400" />
                 </div>
               ))}
