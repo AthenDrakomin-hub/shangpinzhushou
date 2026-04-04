@@ -15,6 +15,7 @@ import {
   Eye,
   EyeOff,
   Image as ImageIcon,
+  X,
 } from 'lucide-react';
 import { Card, CardContent, Button, Badge, StatCard, PageHeader, Modal } from '../components/ui';
 import type { AuthUser } from '../services/authService';
@@ -365,14 +366,44 @@ function EditProductModal({
     category: product?.category || 'other',
     imageUrl: product?.image || '',
     templateId: product?.template_id || 'default',
-    supportedPayMethods: product?.supported_pay_methods ? product.supported_pay_methods.split(',') : [],
   });
   const [saving, setSaving] = useState(false);
-  const [channels, setChannels] = useState<any[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const response = await fetchApi('/api/upload/image', {
+        method: 'POST',
+        headers: {
+
+        },
+        body: formData,
+      });
+
+      const data = await response.json();
+      if (response.ok && data.url) {
+        setForm({ ...form, imageUrl: data.url });
+      } else {
+        showToast(data.error || '上传失败，请检查图片格式和大小', 'error');
+      }
+    } catch (error) {
+      showToast('上传出错，请稍后重试', 'error');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   useEffect(() => {
     if (product) {
-      fetchChannels();
       setForm({
         name: product.name || '',
         price: product.price?.toString() || '',
@@ -381,42 +412,13 @@ function EditProductModal({
         category: product.category || 'other',
         imageUrl: product.image || '',
         templateId: product.template_id || 'default',
-        supportedPayMethods: product.supported_pay_methods ? product.supported_pay_methods.split(',') : [],
       });
     }
   }, [product]);
 
-  const fetchChannels = async () => {
-    try {
-      const response = await fetchApi('/api/admin/payment-channels');
-      const data = await response.json();
-      if (response.ok && Array.isArray(data)) {
-        setChannels(data);
-      }
-    } catch (error) {
-      console.error('Failed to fetch payment channels:', error);
-    }
-  };
-
   const handleSave = async () => {
-    const priceNum = parseFloat(form.price);
-    if (!form.name || !form.price || isNaN(priceNum) || priceNum <= 0) {
-      showToast('请填写商品名称和有效的价格', 'error');
-      return;
-    }
-
-    const availableChannels = channels.filter(c => priceNum >= c.minAmount && priceNum <= c.maxAmount);
-    if (availableChannels.length === 0) {
-      showToast('当前金额未匹配到任何收款方式，无法修改商品', 'error');
-      return;
-    }
-
-    const selectedValidChannels = form.supportedPayMethods.filter(id => 
-      availableChannels.some(c => c.id === id)
-    );
-
-    if (selectedValidChannels.length === 0) {
-      showToast('请选择至少一种支持的收款方式', 'error');
+    if (!form.name || !form.price) {
+      showToast('请填写商品名称和价格', 'error');
       return;
     }
 
@@ -437,7 +439,6 @@ function EditProductModal({
           category: form.category,
           image: form.imageUrl,
           template_id: form.templateId,
-          supported_pay_methods: selectedValidChannels.join(','),
         }),
       });
 
@@ -480,57 +481,6 @@ function EditProductModal({
               onChange={(e) => setForm({ ...form, price: e.target.value })}
               className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
             />
-            {form.price && parseFloat(form.price) > 0 && (
-              <div className="mt-2">
-                {(() => {
-                  const p = parseFloat(form.price);
-                  const available = channels.filter(c => p >= c.minAmount && p <= c.maxAmount);
-                  
-                  if (available.length === 0) {
-                    return (
-                      <div className="text-[10px] px-1.5 py-1 rounded-sm text-red-500 dark:text-red-400">
-                        ⚠️ 无匹配收款方式
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <div className="space-y-1.5">
-                      <div className="text-[10px] text-gray-500 dark:text-gray-400">支持的收款方式：</div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {available.map(c => {
-                          const isSelected = form.supportedPayMethods.includes(c.id);
-                          return (
-                            <label 
-                              key={c.id} 
-                              className={`flex items-center gap-1 px-2 py-1 rounded border text-[10px] cursor-pointer transition-colors ${
-                                isSelected 
-                                  ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-600' 
-                                  : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
-                              }`}
-                            >
-                              <input 
-                                type="checkbox" 
-                                className="sr-only"
-                                checked={isSelected}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setForm({ ...form, supportedPayMethods: [...form.supportedPayMethods, c.id] });
-                                  } else {
-                                    setForm({ ...form, supportedPayMethods: form.supportedPayMethods.filter(id => id !== c.id) });
-                                  }
-                                }}
-                              />
-                              <span>{c.name}</span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">原价 (元)</label>
@@ -554,20 +504,59 @@ function EditProductModal({
           />
         </div>
 
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">商品图片</label>
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept="image/*"
+            onChange={handleImageUpload}
+            className="hidden"
+          />
+
+          {form.imageUrl ? (
+            <div className="relative">
+              <img
+                src={form.imageUrl}
+                alt="商品图片"
+                className="w-full h-48 object-cover rounded-xl"
+              />
+              <button
+                onClick={() => setForm({ ...form, imageUrl: '' })}
+                className="absolute top-2 right-2 p-2 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="w-full h-48 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl flex flex-col items-center justify-center gap-3 hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-900/20 transition-all"
+            >
+              {uploading ? (
+                <>
+                  <div className="w-8 h-8 border-3 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                  <span className="text-sm text-gray-500 dark:text-gray-400">上传中...</span>
+                </>
+              ) : (
+                <>
+                  <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-xl flex items-center justify-center">
+                    <ImageIcon className="w-6 h-6 text-gray-400 dark:text-gray-500" />
+                  </div>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">点击上传图片</span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500">支持所有主流图片格式</span>
+                </>
+              )}
+            </button>
+          )}
+        </div>
+
         <div className="flex gap-3 pt-4">
           <Button variant="secondary" className="flex-1" onClick={onClose}>
             取消
           </Button>
-          <Button 
-            variant="primary" 
-            className="flex-1" 
-            loading={saving} 
-            disabled={
-              saving || 
-              (form.price ? channels.filter(c => parseFloat(form.price) >= c.minAmount && parseFloat(form.price) <= c.maxAmount).length === 0 : false)
-            }
-            onClick={handleSave}
-          >
+          <Button variant="primary" className="flex-1" loading={saving} onClick={handleSave}>
             保存
           </Button>
         </div>

@@ -63,18 +63,20 @@ const storage = multer.diskStorage({
     if (file.mimetype === 'image/png') safeExt = '.png';
     if (file.mimetype === 'image/gif') safeExt = '.gif';
     if (file.mimetype === 'image/webp') safeExt = '.webp';
+    if (file.mimetype === 'image/heic') safeExt = '.heic';
+    if (file.mimetype === 'image/heif') safeExt = '.heif';
+    if (file.mimetype === 'image/svg+xml') safeExt = '.svg';
     cb(null, `${uniqueSuffix}${safeExt}`);
   }
 });
 
 // 文件过滤器
 const fileFilter = (_req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-  // 只允许图片文件
-  const allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-  if (allowedMimes.includes(file.mimetype)) {
+  // 允许所有图片格式，防止手机原图（如 heic）或特殊格式报错
+  if (file.mimetype.startsWith('image/')) {
     cb(null, true);
   } else {
-    cb(new Error('只支持 JPG、PNG、GIF、WEBP 格式的图片'));
+    cb(new Error('不支持的格式：仅允许上传图片文件'));
   }
 };
 
@@ -82,7 +84,7 @@ const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024, // 限制 5MB
+    fileSize: 20 * 1024 * 1024, // 放宽限制到 20MB，支持高清手机原图
   }
 });
 
@@ -2852,7 +2854,13 @@ app.get('*', (req: Request, res: Response, next: NextFunction) => {
 // ==================== 错误处理 ====================
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   console.error('Server error:', err);
-  res.status(500).json({ error: '服务器错误' });
+  if (err.name === 'MulterError') {
+    const mErr = err as any;
+    if (mErr.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ error: '图片过大，请上传小于 20MB 的照片' });
+    }
+  }
+  res.status(500).json({ error: err.message || '服务器内部错误' });
 });
 
 // ==================== 启动服务 ====================

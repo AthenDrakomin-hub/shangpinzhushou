@@ -70,13 +70,13 @@ export default function ProductCreatePage({ user, handleBack, setCurrentView, sh
       });
 
       const data = await response.json();
-      if (data.url) {
+      if (response.ok && data.url) {
         setProduct({ ...product, imageUrl: data.url });
       } else {
-        showToast('上传失败', 'error');
+        showToast(data.error || '上传失败，请检查图片格式和大小', 'error');
       }
     } catch (error) {
-      showToast('上传失败', 'error');
+      showToast('上传出错，请稍后重试', 'error');
     } finally {
       setUploading(false);
     }
@@ -204,7 +204,7 @@ export default function ProductCreatePage({ user, handleBack, setCurrentView, sh
                       <ImageIcon className="w-7 h-7 text-gray-400 dark:text-gray-500" />
                     </div>
                     <span className="text-sm text-gray-500 dark:text-gray-400">点击上传图片</span>
-                    <span className="text-xs text-gray-400 dark:text-gray-500">支持 JPG、PNG 格式</span>
+                    <span className="text-xs text-gray-400 dark:text-gray-500">支持所有主流图片格式</span>
                   </>
                 )}
               </button>
