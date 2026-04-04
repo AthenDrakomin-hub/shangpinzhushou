@@ -63,18 +63,26 @@
 
 /* ==================== 基础样式 ==================== */
 @layer base {
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+  }
+
   html {
     scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    overscroll-behavior-y: none;
+    overscroll-behavior: none;
   }
 
   body {
     background-color: #f9fafb;
     color: #111827;
     font-family: var(--font-sans);
-    overscroll-behavior-y: none;
+    overscroll-behavior: none;
   }
   
   .dark body {

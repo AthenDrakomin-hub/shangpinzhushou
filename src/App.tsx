@@ -293,7 +293,7 @@ export default function App() {
   const isAuthenticatedPages: View[] = ['dashboard', 'chief_dashboard', 'db_admin', 'products', 'product_create', 'orders', 'wallet', 'earnings', 'withdraw', 'withdrawals', 'merchant_employees', 'merchant_withdrawals', 'settings'];
 
   return (
-    <div className="min-h-screen bg-[#F2F3F5] font-sans selection:bg-blue-500/30 overflow-x-hidden">
+    <div className="h-screen w-screen bg-[#F2F3F5] font-sans selection:bg-blue-500/30 overflow-hidden flex flex-col">
       {/* 未登录页面 */}
       {currentView === 'landing' && <LoginPage key="landing" handleLogin={handleLogin} isAuthLoading={isAuthLoading} authError={authError} onForgotPassword={() => setCurrentView('forgot_password')} />}
       {currentView === 'forgot_password' && <ForgotPasswordPage key="forgot_password" handleBack={handleBack} showToast={showToast} />}
