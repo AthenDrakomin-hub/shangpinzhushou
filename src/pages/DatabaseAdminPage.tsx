@@ -194,8 +194,6 @@ export default function DatabaseAdminPage() {
                   <div className="flex justify-center items-center h-64">
                     <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
                   </div>
-                ) : tableData.data.length === 0 ? (
-                  <div className="flex justify-center items-center h-64 text-gray-500">表为空</div>
                 ) : (
                   <table className="min-w-full text-left text-sm whitespace-nowrap">
                     <thead className="bg-gray-50 dark:bg-gray-800/80 sticky top-0 z-10 shadow-sm">
@@ -211,15 +209,23 @@ export default function DatabaseAdminPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                      {tableData.data.map((row, i) => (
-                        <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                          {tableData.columns.map(col => (
-                            <td key={col.column_name} className="px-4 py-2 text-gray-700 dark:text-gray-300 max-w-[200px] truncate">
-                              {formatCellValue(row[col.column_name])}
-                            </td>
-                          ))}
+                      {tableData.data.length === 0 ? (
+                        <tr>
+                          <td colSpan={tableData.columns.length || 1} className="px-4 py-12 text-center text-gray-500 dark:text-gray-400">
+                            表为空
+                          </td>
                         </tr>
-                      ))}
+                      ) : (
+                        tableData.data.map((row, i) => (
+                          <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                            {tableData.columns.map(col => (
+                              <td key={col.column_name} className="px-4 py-2 text-gray-700 dark:text-gray-300 max-w-[200px] truncate">
+                                {formatCellValue(row[col.column_name])}
+                              </td>
+                            ))}
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 )}
