@@ -58,7 +58,7 @@ const WechatPayQrCode: React.FC<WechatPayQrCodeProps> = ({
 
     const pollInterval = setInterval(async () => {
       try {
-        const response = await fetchApi(`/api/pay/order/status/${orderId}`);
+        const response = await fetchApi(`/api/orders/${orderId}/status`);
         const data = await response.json();
         
         if (data.status === 'paid') {

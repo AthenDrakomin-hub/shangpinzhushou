@@ -66,7 +66,7 @@ const SuperPayWaitingPage: React.FC<SuperPayWaitingPageProps> = ({
 
     const pollInterval = setInterval(async () => {
       try {
-        const response = await fetchApi(`/api/pay/superpay/query/${orderId}`);
+        const response = await fetchApi(`/api/orders/${orderId}/status`);
         const data = await response.json();
         
         if (data.status === 'paid') {

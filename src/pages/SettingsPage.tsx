@@ -1242,9 +1242,9 @@ function PaymentConfigModal({
       });
       const data = await response.json();
       if (response.ok && data.success) {
-        if (data.pay_url) {
+        if (data.payUrl) {
           showToast('测试订单(1.00元)创建成功，正在跳转...', 'success');
-          setTimeout(() => window.open(data.pay_url, '_blank'), 1500);
+          setTimeout(() => window.open(data.payUrl, '_blank'), 1500);
         } else {
           showToast('通道可用！(测试响应无支付链接)', 'success');
         }
@@ -1284,9 +1284,9 @@ function PaymentConfigModal({
               newWin.document.close();
             }
           }, 1500);
-        } else if (data.pay_url) {
+        } else if (data.payUrl) {
           showToast('测试订单(1.00元)创建成功，正在打开支付页面...', 'success');
-          setTimeout(() => window.open(data.pay_url, '_blank'), 1500);
+          setTimeout(() => window.open(data.payUrl, '_blank'), 1500);
         } else {
           showToast('通道可用！(测试响应无支付链接)', 'success');
         }

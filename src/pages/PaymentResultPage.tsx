@@ -33,7 +33,7 @@ const PaymentResultPage: React.FC<PaymentResultPageProps> = ({ orderId }) => {
 
   const loadOrderInfo = async () => {
     try {
-      const response = await fetchApi(`/api/pay/order/status/${orderId}`);
+      const response = await fetchApi(`/api/orders/${orderId}/status`);
       const data = await response.json();
       setOrderInfo(data);
     } catch (error) {

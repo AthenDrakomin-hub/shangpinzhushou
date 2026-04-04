@@ -226,39 +226,53 @@ const ProductCheckoutPage: React.FC<ProductCheckoutPageProps> = ({
       }
 
       // SuperPay 或 其他支付
-      const channelCode = selectedChannel.channelCode;
-      const channelTypeCode = undefined; // 假设在通道配置中如果需要typeCode可以通过另外的字段维护
-      
+      const channelCode = selectedChannel.channelCode || selectedChannel.id;
+
       if (!channelCode) {
         showToast('无效的支付渠道配置', 'error');
         return;
       }
 
-      const response = await fetchApi('/api/pay/superpay/create', {
+      // 从 URL 获取分享者 ID
+      const searchParams = new URLSearchParams(window.location.search);
+      const shareUid = searchParams.get('uid');
+
+      const response = await fetchApi('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          product_id: productId,
-          channel_code: channelCode,
-          channel_type_code: channelTypeCode,
+          productId: productId,
+          payType: channelCode,
+          shareUid,
+          buyerName: '',
+          buyerPhone: ''
         }),
       });
 
       const data = await response.json();
-      
-      if (!data.success) {
+
+      if (!response.ok || !data.orderId) {
         showToast(data.error || '创建订单失败', 'error');
         return;
       }
 
+      // 处理九久支付或类似网关返回的 HTML 表单
+      if (data.formHtml) {
+        const newWin = window.open('', '_self');
+        if (newWin) {
+          newWin.document.write(data.formHtml);
+          newWin.document.close();
+        }
+        return;
+      }
+
+      // 处理常规 JSON 跳转链接
       setPayResult({
-        type: 'superpay',
+        type: selectedChannel.gateway === 'superpay' ? 'superpay' : 'wechat',
         payUrl: data.payUrl,
         orderId: data.orderId,
-        amount: data.amount,
-        endTime: data.endTime,
-        isUsdt: data.isUsdt,
-        usdtAddress: data.usdtAddress,
+        amount: product.price,
+        endTime: new Date(Date.now() + 15 * 60000).toISOString(),
         isInWechat,
       });
     } catch (error) {

@@ -83,29 +83,28 @@ export default function App() {
     const path = window.location.pathname;
     
     // 匹配 H5 页面路由
-    const h5Match = path.match(/^\/h5\/([a-zA-Z0-9_-]+)$/);
+    const h5Match = path.match(/^\/h5\/([a-zA-Z0-9_-]+)\/?$/i);
     if (h5Match) {
       setCheckoutProductId(h5Match[1]);
       setCurrentView('h5_product');
       return;
     }
-    
-    const checkoutMatch = path.match(/^\/checkout\/([a-zA-Z0-9_-]+)$/);
+
+    const checkoutMatch = path.match(/^\/checkout\/([a-zA-Z0-9_-]+)\/?$/i);
     if (checkoutMatch) {
       setCheckoutProductId(checkoutMatch[1]);
       setCurrentView('product_checkout');
       return;
     }
-    
+
     // Handle payment result route
-    const resultMatch = path.match(/^\/payment\/result$/);
+    const resultMatch = path.match(/^\/payment\/result\/?$/i);
     if (resultMatch) {
       const params = new URLSearchParams(window.location.search);
-      const orderId = params.get('orderId');
-      if (orderId) {
-        setPaymentResultOrderId(orderId);
-        setCurrentView('payment_result');
-      }
+      const orderId = params.get('orderId') || params.get('orderid') || params.get('order_sn') || params.get('out_trade_no') || 'unknown';
+      setPaymentResultOrderId(orderId);
+      setCurrentView('payment_result');
+      return;
     }
   }, []);
 
