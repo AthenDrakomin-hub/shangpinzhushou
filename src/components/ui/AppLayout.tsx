@@ -270,20 +270,20 @@ export default function AppLayout({
             {!sidebarCollapsed ? (
               <div className="flex items-center gap-3 p-2 rounded-lg bg-gray-50 dark:bg-gray-700/50">
                 <div className="w-9 h-9 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white font-medium">
-                  {user?.displayName?.[0] || user?.email?.[0] || 'U'}
+                  {getRoleIcon(user?.role, "w-4 h-4")}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                     {user?.displayName || '用户'}
                   </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                     {getRoleName(user?.role || 'employee')}
                   </p>
                 </div>
               </div>
             ) : (
               <div className="w-9 h-9 mx-auto bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white font-medium">
-                {user?.displayName?.[0] || user?.email?.[0] || 'U'}
+                {getRoleIcon(user?.role, "w-4 h-4")}
               </div>
             )}
           </div>

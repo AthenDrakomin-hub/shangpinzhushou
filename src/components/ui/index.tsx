@@ -2,9 +2,9 @@
  * 通用UI组件库
  * 统一的设计风格和交互效果
  */
-import React from 'react';
+import React, { useRef } from 'react';
 import { motion } from 'motion/react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
 // ==================== Button 组件 ====================
 type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'success';
@@ -46,6 +46,21 @@ export function Button({
   type = 'button',
 }: ButtonProps) {
   const isDisabled = disabled || loading;
+  const isDebouncing = useRef(false);
+
+  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (isDisabled || isDebouncing.current) return;
+    
+    // Add simple debounce for all buttons (500ms)
+    isDebouncing.current = true;
+    setTimeout(() => {
+      isDebouncing.current = false;
+    }, 500);
+
+    if (onClick) {
+      onClick(e);
+    }
+  };
 
   return (
     <motion.button
@@ -61,7 +76,7 @@ export function Button({
         ${className}
       `}
       disabled={isDisabled}
-      onClick={onClick}
+      onClick={handleClick}
     >
       {loading && <Loader2 className="w-4 h-4 animate-spin" />}
       {icon && iconPosition === 'left' && !loading && icon}

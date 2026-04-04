@@ -26,7 +26,10 @@ import {
   Plus,
   Trash2,
   Edit2,
-  List
+  List,
+  Crown,
+  Briefcase,
+  Shield
 } from 'lucide-react';
 import { Card, CardHeader, CardContent, Button, Badge, PageHeader, Modal } from '../components/ui';
 import type { AuthUser } from '../services/authService';
@@ -36,6 +39,18 @@ interface SettingsPageProps {
   showToast: (msg: string, type?: 'success' | 'error') => void;
   onLogout: () => void;
 }
+
+const getRoleIcon = (role: string | undefined, className = "w-5 h-5") => {
+  switch (role) {
+    case 'chief_engineer': return <Crown className={className} />;
+    case 'admin':
+    case 'manager': return <Briefcase className={className} />;
+    case 'supervisor': return <Shield className={className} />;
+    case 'employee':
+    case 'staff':
+    default: return <User className={className} />;
+  }
+};
 
 interface SettingItem {
   id: string;
@@ -606,7 +621,7 @@ export default function SettingsPage({ user, showToast, onLogout }: SettingsPage
         <CardContent className="p-6">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-2xl font-bold">
-              {user?.displayName?.[0] || user?.email?.[0]?.toUpperCase() || 'U'}
+              {getRoleIcon(user?.role, "w-8 h-8")}
             </div>
             <div className="flex-1 min-w-0">
               <h2 className="text-xl font-bold text-gray-900 dark:text-white truncate">
