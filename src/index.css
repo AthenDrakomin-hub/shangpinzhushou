@@ -67,12 +67,14 @@
     scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    overscroll-behavior-y: none;
   }
-  
+
   body {
     background-color: #f9fafb;
     color: #111827;
     font-family: var(--font-sans);
+    overscroll-behavior-y: none;
   }
   
   .dark body {
