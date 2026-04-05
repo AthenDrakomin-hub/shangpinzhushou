@@ -848,10 +848,10 @@ app.post('/api/products', authMiddleware, async (req: AuthRequest, res: Response
 // 更新商品
 app.put('/api/products/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const { name, price, original_price, description, image, stock, status, is_shared } = req.body;
+    const { name, price, original_price, description, image, stock, status, is_shared, category, template_id, supported_pay_methods } = req.body;
 
     const existingResult = await pool.query('SELECT * FROM public.products WHERE id = $1', [req.params.id]);
-    
+
     if (existingResult.rows.length === 0) {
       return res.status(404).json({ error: '商品不存在' });
     }
@@ -871,13 +871,16 @@ app.put('/api/products/:id', authMiddleware, async (req: AuthRequest, res: Respo
         stock = COALESCE($6, stock),
         status = COALESCE($7, status),
         is_shared = COALESCE($8, is_shared),
+        category = COALESCE($9, category),
+        template_id = COALESCE($10, template_id),
+        supported_pay_methods = COALESCE($11, supported_pay_methods),
         updated_at = NOW()
-      WHERE id = $9
+      WHERE id = $12
       RETURNING id, user_id, name, image, price, original_price,
         description, category, template_id, is_shared,
         supported_pay_methods,
         views, stock, sales, status, created_at, updated_at
-    `, [name, price, original_price, description, image, stock, status, is_shared, req.params.id]);
+    `, [name, price, original_price, description, image, stock, status, is_shared, category, template_id, supported_pay_methods, req.params.id]);
 
     res.json(result.rows[0]);
   } catch (error) {
