@@ -557,6 +557,35 @@ async function getVisibleUserIds(userId: string, role: string): Promise<string[]
   return [userId];
 }
 
+// 获取当前用户所属的“部门”（即最高级 manager 的整个树的所有 user_id）
+async function getDepartmentUserIds(userId: string): Promise<string[]> {
+  // 1. 向上找寻当前用户的最高 manager
+  const managerRes = await pool.query(`
+    WITH RECURSIVE superiors AS (
+      SELECT id, created_by, role FROM public.users WHERE id = $1
+      UNION
+      SELECT u.id, u.created_by, u.role FROM public.users u
+      INNER JOIN superiors s ON s.created_by = u.id
+    )
+    SELECT id FROM superiors WHERE role = 'manager' OR role = 'admin' LIMIT 1;
+  `, [userId]);
+
+  const rootId = managerRes.rows.length > 0 ? managerRes.rows[0].id : userId;
+
+  // 2. 向下获取该 rootId 的所有子节点
+  const deptUsersRes = await pool.query(`
+    WITH RECURSIVE subordinates AS (
+      SELECT id FROM public.users WHERE id = $1
+      UNION
+      SELECT u.id FROM public.users u
+      INNER JOIN subordinates s ON u.created_by = s.id
+    )
+    SELECT id FROM subordinates;
+  `, [rootId]);
+  
+  return deptUsersRes.rows.map(r => r.id);
+}
+
 // 获取当前用户信息
 app.get('/api/auth/me', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
@@ -733,33 +762,35 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
 app.get('/api/products', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const visibleUserIds = await getVisibleUserIds(req.user.id, req.user.role);
-    
+    const departmentUserIds = await getDepartmentUserIds(req.user.id);
+
     let query = `
-      SELECT 
+      SELECT
         id, user_id, name, image, price, original_price,
         description, category, template_id, is_shared,
         supported_pay_methods,
         views, stock, sales, status, created_at, updated_at
-      FROM public.products 
-      WHERE is_shared = true
+      FROM public.products
+      WHERE (is_shared = true AND user_id = ANY($1))
     `;
-    let params: any[] = [];
+    let params: any[] = [departmentUserIds];
 
     if (visibleUserIds === null) {
       // admin看全库
       query = `
-        SELECT 
+        SELECT
           id, user_id, name, image, price, original_price,
           description, category, template_id, is_shared,
           supported_pay_methods,
           views, stock, sales, status, created_at, updated_at
         FROM public.products
       `;
+      params = [];
     } else {
-      query += ` OR user_id = ANY($1)`;
+      query += ` OR user_id = ANY($2)`;
       params.push(visibleUserIds);
     }
-    
+
     query += ` ORDER BY created_at DESC`;
 
     const result = await pool.query(query, params);
@@ -1089,9 +1120,11 @@ app.get('/api/dashboard/stats', authMiddleware, async (req: AuthRequest, res: Re
     // 获取可见的用户ID列表
     const visibleUserIds = await getVisibleUserIds(userId, role);
 
+    const departmentUserIds = await getDepartmentUserIds(userId);
+
     // 构造通用过滤条件
-    const productFilter = visibleUserIds === null ? '1=1' : `(user_id = ANY($1) OR is_shared = true)`;
-    const params = visibleUserIds === null ? [] : [visibleUserIds];
+    const productFilter = visibleUserIds === null ? '1=1' : `(user_id = ANY($1) OR (is_shared = true AND user_id = ANY($2)))`;
+    const params = visibleUserIds === null ? [] : [visibleUserIds, departmentUserIds];
     const orderFilter = visibleUserIds === null ? '1=1' : `o.user_id = ANY($1)`;
 
     // 商品数量
