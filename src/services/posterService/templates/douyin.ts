@@ -5,11 +5,11 @@
 
 import { Canvas, CanvasRenderingContext2D, Image } from 'canvas';
 import { PosterData } from '../types';
-import { safeLoadImage, drawImageError, drawHeavyText, drawNormalText, roundRect, truncateText } from '../utils';
+import { safeLoadImage, drawImageError, drawHeavyText, drawNormalText, roundRect, truncateText, drawImageCover } from '../utils';
 import path from 'path';
 
 const POSTER_WIDTH = 640;
-const POSTER_HEIGHT = 900;
+  const POSTER_HEIGHT = 1140;
 
 // Logo路径
 const LOGO_PATH = path.join(process.cwd(), 'public/logos/douyin.png');
@@ -52,73 +52,73 @@ export async function renderDouyinTemplate(
   // 商品图片卡片
   try {
     const img: any = await safeLoadImage(data.image);
-    
+
     // 白色外框
     ctx.fillStyle = '#FFFFFF';
-    roundRect(ctx, 20, 20, w - 40, 380, 20);
+    roundRect(ctx, 20, 20, w - 40, w - 40, 20);
     ctx.fill();
-    
+
     ctx.save();
-    roundRect(ctx, 28, 28, w - 56, 364, 16);
+    roundRect(ctx, 28, 28, w - 56, w - 56, 16);
     ctx.clip();
-    ctx.drawImage(img as Image, 28, 28, w - 56, 364);
+    drawImageCover(ctx, img, 28, 28, w - 56, w - 56);
     ctx.restore();
-    
+
     // 霓虹边框
-    drawNeonBorder(ctx, 18, 18, w - 36, 384, '#FE2C55');
+    drawNeonBorder(ctx, 18, 18, w - 36, w - 36, '#FE2C55');
   } catch (e) {
-    drawImageError(ctx, 20, 20, w - 40, 380, data.image);
+    drawImageError(ctx, 20, 20, w - 40, w - 40, data.image);
   }
+
+  const contentStartY = 20 + (w - 40) + 30;
 
   // 抖音 Logo
   try {
     const logoImg: any = await safeLoadImage(LOGO_PATH);
-    ctx.drawImage(logoImg as Image, 30, 420, 160, 50);
+    ctx.drawImage(logoImg as Image, 30, contentStartY, 160, 50);
   } catch (e) {
-    ctx.fillStyle = '#000000';
-    roundRect(ctx, 30, 420, 160, 50, 25);
+    ctx.fillStyle = '#FE2C55';
+    roundRect(ctx, 30, contentStartY, 120, 44, 22);
     ctx.fill();
-    drawHeavyText(ctx, '抖音好物', 50, 452, '#FFFFFF', 22);
+    drawHeavyText(ctx, '抖音好物', 90, contentStartY + 24, '#FFFFFF', 18, 'center');
   }
 
   // 商品名称
-  drawHeavyText(ctx, truncateText(ctx, data.name || '潮流好物', w - 60), 30, 510, '#FFFFFF', 32);
-  
+  drawHeavyText(ctx, truncateText(ctx, data.name || '潮流好物', w - 60), 30, contentStartY + 90, '#FFFFFF', 36);
+
   // 价格 - 霓虹效果
   ctx.shadowColor = '#FE2C55';
   ctx.shadowBlur = 20;
-  drawHeavyText(ctx, `¥${data.price.toFixed(2)}`, 30, 580, '#FE2C55', 56);
+  drawHeavyText(ctx, `¥${data.price.toFixed(2)}`, 30, contentStartY + 160, '#FE2C55', 56);
   ctx.shadowBlur = 0;
 
   // 二维码区域
-  ctx.fillStyle = '#000000';
-  roundRect(ctx, 20, 630, w - 40, 250, 20);
+  const bottomCardY = contentStartY + 210;
+  ctx.fillStyle = '#1A1A2E';
+  roundRect(ctx, 20, bottomCardY, w - 40, 200, 20);
   ctx.fill();
-  
-  // 霓虹边框
-  drawNeonBorder(ctx, 22, 632, w - 44, 246, '#00F0FF');
-  
+
   try {
     const qr: any = await safeLoadImage(data.qrUrl);
     // 白色二维码背景
     ctx.fillStyle = '#FFFFFF';
-    roundRect(ctx, 40, 650, 140, 140, 12);
+    roundRect(ctx, 40, bottomCardY + 20, 160, 160, 12);
     ctx.fill();
-    ctx.drawImage(qr as Image, 50, 660, 120, 120);
+    ctx.drawImage(qr as Image, 50, bottomCardY + 30, 140, 140);
   } catch (e) { /* 图片加载失败 */ }
-  
+
   // 扫码提示
-  drawHeavyText(ctx, '扫码抢购', 210, 700, '#FFFFFF', 28);
-  drawNormalText(ctx, '限量秒杀', 210, 735, '#FE2C55', 18);
-  drawNormalText(ctx, '手慢无', 210, 760, '#00F0FF', 18);
-  
+  drawHeavyText(ctx, '扫码抢购', 230, bottomCardY + 70, '#FFFFFF', 28);
+  drawNormalText(ctx, '限量秒杀', 230, bottomCardY + 115, '#FE2C55', 18);
+  drawNormalText(ctx, '手慢无', 230, bottomCardY + 145, '#00F0FF', 18);
+
   // 底部装饰线
-  const lineGrad = ctx.createLinearGradient(30, 860, w - 30, 860);
+  const lineGrad = ctx.createLinearGradient(30, POSTER_HEIGHT - 30, w - 30, POSTER_HEIGHT - 30);
   lineGrad.addColorStop(0, '#FE2C55');
   lineGrad.addColorStop(0.5, '#00F0FF');
   lineGrad.addColorStop(1, '#FE2C55');
   ctx.fillStyle = lineGrad;
-  ctx.fillRect(30, 855, w - 60, 4);
+  ctx.fillRect(30, POSTER_HEIGHT - 35, w - 60, 4);
 
   return canvas.toBuffer('image/png');
 }

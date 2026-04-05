@@ -238,6 +238,37 @@ export function truncateText(ctx: CanvasRenderingContext2D, text: string, maxWid
 }
 
 /**
+ * 模拟 CSS object-fit: cover 绘制图片
+ */
+export function drawImageCover(
+  ctx: CanvasRenderingContext2D,
+  img: any,
+  x: number,
+  y: number,
+  w: number,
+  h: number
+) {
+  const imgRatio = img.width / img.height;
+  const targetRatio = w / h;
+  let drawW = img.width;
+  let drawH = img.height;
+  let sx = 0;
+  let sy = 0;
+
+  if (imgRatio > targetRatio) {
+    // 图片偏宽，以高为基准裁剪两边
+    drawW = img.height * targetRatio;
+    sx = (img.width - drawW) / 2;
+  } else {
+    // 图片偏高，以宽为基准裁剪上下
+    drawH = img.width / targetRatio;
+    sy = (img.height - drawH) / 2;
+  }
+
+  ctx.drawImage(img, sx, sy, drawW, drawH, x, y, w, h);
+}
+
+/**
  * 创建画布
  */
 export function createPosterCanvas(width: number = 640, height: number = 900): {
