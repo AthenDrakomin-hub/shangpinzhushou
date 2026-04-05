@@ -15,7 +15,6 @@ import {
   Eye,
   EyeOff,
   Image as ImageIcon,
-  X,
 } from 'lucide-react';
 import { Card, CardContent, Button, Badge, StatCard, PageHeader, Modal } from '../components/ui';
 import type { AuthUser } from '../services/authService';
@@ -65,10 +64,8 @@ export default function ProductsPage({ user, handleBack, setCurrentView, showToa
   }, [user]);
 
   const fetchProducts = async () => {
-    if (!user?.id) return;
     setIsLoading(true);
     try {
-      const token = localStorage.getItem('auth_token');
       const response = await fetchApi('/api/products', {
         headers: { }
       });
@@ -368,39 +365,6 @@ function EditProductModal({
     templateId: product?.template_id || 'default',
   });
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
-
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploading(true);
-    try {
-      const token = localStorage.getItem('auth_token');
-      const formData = new FormData();
-      formData.append('image', file);
-
-      const response = await fetchApi('/api/upload/image', {
-        method: 'POST',
-        headers: {
-
-        },
-        body: formData,
-      });
-
-      const data = await response.json();
-      if (response.ok && data.url) {
-        setForm({ ...form, imageUrl: data.url });
-      } else {
-        showToast(data.error || '上传失败，请检查图片格式和大小', 'error');
-      }
-    } catch (error) {
-      showToast('上传出错，请稍后重试', 'error');
-    } finally {
-      setUploading(false);
-    }
-  };
 
   useEffect(() => {
     if (product) {
@@ -502,54 +466,6 @@ function EditProductModal({
             rows={3}
             className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
           />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">商品图片</label>
-          <input
-            type="file"
-            ref={fileInputRef}
-            accept="image/*"
-            onChange={handleImageUpload}
-            className="hidden"
-          />
-
-          {form.imageUrl ? (
-            <div className="relative">
-              <img
-                src={form.imageUrl}
-                alt="商品图片"
-                className="w-full h-48 object-cover rounded-xl"
-              />
-              <button
-                onClick={() => setForm({ ...form, imageUrl: '' })}
-                className="absolute top-2 right-2 p-2 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-              className="w-full h-48 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl flex flex-col items-center justify-center gap-3 hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-900/20 transition-all"
-            >
-              {uploading ? (
-                <>
-                  <div className="w-8 h-8 border-3 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                  <span className="text-sm text-gray-500 dark:text-gray-400">上传中...</span>
-                </>
-              ) : (
-                <>
-                  <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-xl flex items-center justify-center">
-                    <ImageIcon className="w-6 h-6 text-gray-400 dark:text-gray-500" />
-                  </div>
-                  <span className="text-sm text-gray-500 dark:text-gray-400">点击上传图片</span>
-                  <span className="text-xs text-gray-400 dark:text-gray-500">支持所有主流图片格式</span>
-                </>
-              )}
-            </button>
-          )}
         </div>
 
         <div className="flex gap-3 pt-4">
