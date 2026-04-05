@@ -405,7 +405,11 @@ function EditProductModal({
     }
 
     const priceNum = parseFloat(form.price);
-    const availableChannels = channels.filter(c => priceNum >= c.minAmount && priceNum <= c.maxAmount);
+    const availableChannels = channels.filter(c => {
+      const min = Number(c.minAmount) || 0;
+      const max = Number(c.maxAmount) || Infinity;
+      return priceNum >= min && priceNum <= max;
+    });
     
     const selectedValidChannels = form.supportedPayMethods.filter(id =>
       availableChannels.some(c => c.id === id)
@@ -507,7 +511,9 @@ function EditProductModal({
                 <div className="flex flex-wrap gap-2">
                   {channels.map(c => {
                     const priceNum = parseFloat(form.price) || 0;
-                    const isAvailable = priceNum >= c.minAmount && priceNum <= c.maxAmount;
+                    const min = Number(c.minAmount) || 0;
+                    const max = Number(c.maxAmount) || Infinity;
+                    const isAvailable = priceNum >= min && priceNum <= max;
                     const isSelected = form.supportedPayMethods.includes(c.id);
                     
                     return (
@@ -520,7 +526,7 @@ function EditProductModal({
                               ? 'border-blue-500 bg-blue-50 text-blue-700 cursor-pointer dark:bg-blue-900/30 dark:text-blue-400'
                               : 'border-gray-200 bg-white text-gray-700 cursor-pointer hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
                         }`}
-                        title={!isAvailable ? `该通道限额: ¥${c.minAmount} - ¥${c.maxAmount}` : ''}
+                        title={!isAvailable ? `该通道限额: ¥${min} - ¥${max}` : ''}
                       >
                         <input
                           type="checkbox"
@@ -544,7 +550,11 @@ function EditProductModal({
                   <div className="mt-2">
                     {(() => {
                       const p = parseFloat(form.price);
-                      const available = channels.filter(c => p >= c.minAmount && p <= c.maxAmount);
+                      const available = channels.filter(c => {
+                        const min = Number(c.minAmount) || 0;
+                        const max = Number(c.maxAmount) || Infinity;
+                        return p >= min && p <= max;
+                      });
                       
                       if (available.length === 0) {
                         return (

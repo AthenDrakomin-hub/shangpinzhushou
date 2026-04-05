@@ -2612,7 +2612,7 @@ app.post('/api/settings/test-superpay', authMiddleware, adminMiddleware, async (
     const projectDomain = process.env.COZE_PROJECT_DOMAIN_DEFAULT || `http://localhost:${config.port}`;
     const testOrderId = `TEST${Date.now()}`;
 
-    // 使用支付宝小混通道824，金额 100.00 以确保用户看到支付宝页面
+    // 使用支付宝小混通道824，金额改为 100.00 以满足大部分通道的最低限额
     const payResult = await createSuperPayOrder({
       merchantOn,
       merchantKey,
@@ -2667,7 +2667,7 @@ app.post('/api/settings/test-jiujiu', authMiddleware, adminMiddleware, async (re
       
       const payResult = await createWechatOrder({
         orderId,
-        amount: 1.00,
+        amount: 100.00, // 修改为 100.00，以匹配大部分原生通道的限额限制
         productName: '九久支付通道连通性测试',
         notifyUrl: `${projectDomain}/api/orders/wechat/callback`,
         callbackUrl: `${projectDomain}/payment/result?orderId=${orderId}`,

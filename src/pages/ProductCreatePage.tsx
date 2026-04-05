@@ -93,7 +93,11 @@ export default function ProductCreatePage({ user, handleBack, setCurrentView, sh
       return;
     }
 
-    const availableChannels = channels.filter(c => priceNum >= c.minAmount && priceNum <= c.maxAmount);
+    const availableChannels = channels.filter(c => {
+      const min = Number(c.minAmount) || 0;
+      const max = Number(c.maxAmount) || Infinity;
+      return priceNum >= min && priceNum <= max;
+    });
     if (availableChannels.length === 0) {
       showToast('请至少勾选一种收款方式', 'error');
       return;
@@ -259,7 +263,11 @@ export default function ProductCreatePage({ user, handleBack, setCurrentView, sh
                   <div className="mt-3">
                     {(() => {
                       const p = parseFloat(product.price);
-                      const available = channels.filter(c => p >= c.minAmount && p <= c.maxAmount);
+                      const available = channels.filter(c => {
+                        const min = Number(c.minAmount) || 0;
+                        const max = Number(c.maxAmount) || Infinity;
+                        return p >= min && p <= max;
+                      });
                       
                       if (available.length === 0) {
                         return (
@@ -276,8 +284,8 @@ export default function ProductCreatePage({ user, handleBack, setCurrentView, sh
                             {available.map(c => {
                               const isSelected = product.supportedPayMethods.includes(c.id);
                               return (
-                                <label 
-                                  key={c.id} 
+                                <label
+                                  key={c.id}
                                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-sm cursor-pointer transition-colors ${
                                     isSelected 
                                       ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-600' 
@@ -372,7 +380,12 @@ export default function ProductCreatePage({ user, handleBack, setCurrentView, sh
           disabled={
             isLoading || 
             uploading || 
-            (product.price ? channels.filter(c => parseFloat(product.price) >= c.minAmount && parseFloat(product.price) <= c.maxAmount).length === 0 : false)
+            (product.price ? channels.filter(c => {
+              const p = parseFloat(product.price);
+              const min = Number(c.minAmount) || 0;
+              const max = Number(c.maxAmount) || Infinity;
+              return p >= min && p <= max;
+            }).length === 0 : false)
           }
           icon={<Plus className="w-4 h-4" />}
           onClick={handleCreate}

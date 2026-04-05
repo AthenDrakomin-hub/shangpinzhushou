@@ -133,8 +133,8 @@ export default function H5ProductPage({ productId = 'p1', onClose }: H5ProductPa
   const getAvailableChannels = (price: number, supportedIds: string[]) => {
     return paymentChannels.filter(channel => {
       if (!supportedIds.includes(channel.id)) return false;
-      const min = channel.minAmount || 0;
-      const max = channel.maxAmount || Infinity;
+      const min = Number(channel.minAmount) || 0;
+      const max = Number(channel.maxAmount) || Infinity;
       return price >= min && price <= max;
     });
   };

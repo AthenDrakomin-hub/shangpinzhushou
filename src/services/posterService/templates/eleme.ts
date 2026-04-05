@@ -5,7 +5,7 @@
 
 import { Canvas, CanvasRenderingContext2D, Image } from 'canvas';
 import { PosterData } from '../types';
-import { safeLoadImage, drawImageError, drawHeavyText, drawNormalText, drawMultiLineText, roundRect } from '../utils';
+import { safeLoadImage, drawImageError, drawHeavyText, drawNormalText, drawMultiLineText, roundRect, drawImageCover } from '../utils';
 
 const POSTER_WIDTH = 750;
 const POSTER_HEIGHT = 1200;
@@ -39,16 +39,8 @@ export async function renderElemeTemplate(
     ctx.save();
     roundRect(ctx, 60, 200, w - 120, w - 120, 24);
     ctx.clip();
-    
-    const imgW = (img as Image).width;
-    const imgH = (img as Image).height;
-    const scale = Math.max((w - 120) / imgW, (w - 120) / imgH);
-    const drawW = imgW * scale;
-    const drawH = imgH * scale;
-    const dx = 60 + ((w - 120) - drawW) / 2;
-    const dy = 200 + ((w - 120) - drawH) / 2;
-    
-    ctx.drawImage(img as Image, dx, dy, drawW, drawH);
+
+    drawImageCover(ctx, img, 60, 200, w - 120, w - 120);
     ctx.restore();
   } catch (e) {
     drawImageError(ctx, 60, 200, w - 120, w - 120, data.image);
