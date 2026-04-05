@@ -1090,14 +1090,14 @@ app.get('/api/dashboard/stats', authMiddleware, async (req: AuthRequest, res: Re
     const visibleUserIds = await getVisibleUserIds(userId, role);
 
     // 构造通用过滤条件
-    const userFilter = visibleUserIds === null ? '1=1' : `user_id = ANY($1)`;
+    const productFilter = visibleUserIds === null ? '1=1' : `(user_id = ANY($1) OR is_shared = true)`;
     const params = visibleUserIds === null ? [] : [visibleUserIds];
     const orderFilter = visibleUserIds === null ? '1=1' : `o.user_id = ANY($1)`;
 
     // 商品数量
     const productsResult = await pool.query(`
-      SELECT COUNT(*) as count FROM public.products 
-      WHERE ${userFilter}
+      SELECT COUNT(*) as count FROM public.products
+      WHERE ${productFilter}
     `, params);
 
     // 订单统计
