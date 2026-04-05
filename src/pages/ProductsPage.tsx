@@ -363,8 +363,25 @@ function EditProductModal({
     category: product?.category || 'other',
     imageUrl: product?.image || '',
     templateId: product?.template_id || 'default',
+    supportedPayMethods: product?.supported_pay_methods ? product.supported_pay_methods.split(',') : ([] as string[]),
   });
   const [saving, setSaving] = useState(false);
+  const [channels, setChannels] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchChannels = async () => {
+      try {
+        const response = await fetchApi('/api/admin/payment-channels');
+        const data = await response.json();
+        if (response.ok && Array.isArray(data)) {
+          setChannels(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch payment channels:', error);
+      }
+    };
+    fetchChannels();
+  }, []);
 
   useEffect(() => {
     if (product) {
@@ -376,6 +393,7 @@ function EditProductModal({
         category: product.category || 'other',
         imageUrl: product.image || '',
         templateId: product.template_id || 'default',
+        supportedPayMethods: product.supported_pay_methods ? product.supported_pay_methods.split(',') : [],
       });
     }
   }, [product]);
@@ -386,23 +404,29 @@ function EditProductModal({
       return;
     }
 
+    const priceNum = parseFloat(form.price);
+    const availableChannels = channels.filter(c => priceNum >= c.minAmount && priceNum <= c.maxAmount);
+    
+    const selectedValidChannels = form.supportedPayMethods.filter(id =>
+      availableChannels.some(c => c.id === id)
+    );
+
     setSaving(true);
     try {
-      const token = localStorage.getItem('auth_token');
       const response = await fetchApi(`/api/products/${product?.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          
         },
         body: JSON.stringify({
           name: form.name,
-          price: parseFloat(form.price),
+          price: priceNum,
           original_price: form.original_price ? parseFloat(form.original_price) : undefined,
           description: form.description,
           category: form.category,
           image: form.imageUrl,
           template_id: form.templateId,
+          supported_pay_methods: selectedValidChannels.join(','),
         }),
       });
 
@@ -466,6 +490,85 @@ function EditProductModal({
             rows={3}
             className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
           />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            支持的收款方式
+            <span className="text-xs text-gray-500 font-normal ml-2">自动根据价格筛选符合额度的通道</span>
+          </label>
+          <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
+            {channels.length === 0 ? (
+              <div className="text-center py-4 text-gray-500 text-sm">
+                暂无支付通道，请先在系统设置中配置
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  {channels.map(c => {
+                    const priceNum = parseFloat(form.price) || 0;
+                    const isAvailable = priceNum >= c.minAmount && priceNum <= c.maxAmount;
+                    const isSelected = form.supportedPayMethods.includes(c.id);
+                    
+                    return (
+                      <label
+                        key={c.id}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-sm transition-colors ${
+                          !isAvailable 
+                            ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed dark:border-gray-700 dark:bg-gray-800 dark:text-gray-500'
+                            : isSelected
+                              ? 'border-blue-500 bg-blue-50 text-blue-700 cursor-pointer dark:bg-blue-900/30 dark:text-blue-400'
+                              : 'border-gray-200 bg-white text-gray-700 cursor-pointer hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
+                        }`}
+                        title={!isAvailable ? `该通道限额: ¥${c.minAmount} - ¥${c.maxAmount}` : ''}
+                      >
+                        <input
+                          type="checkbox"
+                          className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
+                          checked={isSelected && isAvailable}
+                          disabled={!isAvailable}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setForm({ ...form, supportedPayMethods: [...form.supportedPayMethods, c.id] });
+                            } else {
+                              setForm({ ...form, supportedPayMethods: form.supportedPayMethods.filter(id => id !== c.id) });
+                            }
+                          }}
+                        />
+                        <span>{c.name}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                {form.price && parseFloat(form.price) > 0 && (
+                  <div className="mt-2">
+                    {(() => {
+                      const p = parseFloat(form.price);
+                      const available = channels.filter(c => p >= c.minAmount && p <= c.maxAmount);
+                      
+                      if (available.length === 0) {
+                        return (
+                          <div className="text-xs font-medium px-2 py-1.5 rounded-md bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400">
+                            ⚠️ 未匹配到对应额度的收款方式，买家将无法付款
+                          </div>
+                        );
+                      }
+                      
+                      const selectedAvailable = available.filter(c => form.supportedPayMethods.includes(c.id));
+                      if (selectedAvailable.length === 0) {
+                        return (
+                          <div className="text-xs font-medium px-2 py-1.5 rounded-md bg-orange-50 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400">
+                            ⚠️ 请至少勾选一个收款方式
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="flex gap-3 pt-4">
