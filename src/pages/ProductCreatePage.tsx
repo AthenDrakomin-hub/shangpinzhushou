@@ -94,8 +94,8 @@ export default function ProductCreatePage({ user, handleBack, setCurrentView, sh
     }
 
     const availableChannels = channels.filter(c => {
-      const min = Number(c.minAmount) || 0;
-      const max = Number(c.maxAmount) || Infinity;
+      const min = Number(c.minAmount ?? c.min_amount) || 0;
+      const max = Number(c.maxAmount ?? c.max_amount) || Infinity;
       return priceNum >= min && priceNum <= max;
     });
     if (availableChannels.length === 0) {
@@ -264,8 +264,8 @@ export default function ProductCreatePage({ user, handleBack, setCurrentView, sh
                     {(() => {
                       const p = parseFloat(product.price);
                       const available = channels.filter(c => {
-                        const min = Number(c.minAmount) || 0;
-                        const max = Number(c.maxAmount) || Infinity;
+                        const min = Number(c.minAmount ?? c.min_amount) || 0;
+                        const max = Number(c.maxAmount ?? c.max_amount) || Infinity;
                         return p >= min && p <= max;
                       });
                       
@@ -382,8 +382,8 @@ export default function ProductCreatePage({ user, handleBack, setCurrentView, sh
             uploading || 
             (product.price ? channels.filter(c => {
               const p = parseFloat(product.price);
-              const min = Number(c.minAmount) || 0;
-              const max = Number(c.maxAmount) || Infinity;
+              const min = Number(c.minAmount ?? c.min_amount) || 0;
+              const max = Number(c.maxAmount ?? c.max_amount) || Infinity;
               return p >= min && p <= max;
             }).length === 0 : false)
           }

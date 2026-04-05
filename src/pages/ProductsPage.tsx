@@ -406,8 +406,8 @@ function EditProductModal({
 
     const priceNum = parseFloat(form.price);
     const availableChannels = channels.filter(c => {
-      const min = Number(c.minAmount) || 0;
-      const max = Number(c.maxAmount) || Infinity;
+      const min = Number(c.minAmount ?? c.min_amount) || 0;
+      const max = Number(c.maxAmount ?? c.max_amount) || Infinity;
       return priceNum >= min && priceNum <= max;
     });
     
@@ -511,8 +511,8 @@ function EditProductModal({
                 <div className="flex flex-wrap gap-2">
                   {channels.map(c => {
                     const priceNum = parseFloat(form.price) || 0;
-                    const min = Number(c.minAmount) || 0;
-                    const max = Number(c.maxAmount) || Infinity;
+                    const min = Number(c.minAmount ?? c.min_amount) || 0;
+                    const max = Number(c.maxAmount ?? c.max_amount) || Infinity;
                     const isAvailable = priceNum >= min && priceNum <= max;
                     const isSelected = form.supportedPayMethods.includes(c.id);
                     
@@ -551,8 +551,8 @@ function EditProductModal({
                     {(() => {
                       const p = parseFloat(form.price);
                       const available = channels.filter(c => {
-                        const min = Number(c.minAmount) || 0;
-                        const max = Number(c.maxAmount) || Infinity;
+                        const min = Number(c.minAmount ?? c.min_amount) || 0;
+                        const max = Number(c.maxAmount ?? c.max_amount) || Infinity;
                         return p >= min && p <= max;
                       });
                       
