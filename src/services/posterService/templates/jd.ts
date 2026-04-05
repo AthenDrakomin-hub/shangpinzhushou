@@ -5,7 +5,7 @@
 
 import { Canvas, CanvasRenderingContext2D, Image } from 'canvas';
 import { PosterData } from '../types';
-import { safeLoadImage, drawImageError, drawHeavyText, drawNormalText, roundRect, truncateText, drawImageCover } from '../utils';
+import { safeLoadImage, drawImageError, drawHeavyText, drawNormalText, roundRect, truncateText, drawImageCover, drawImageSmart } from '../utils';
 import path from 'path';
 
 const POSTER_WIDTH = 640;
@@ -91,7 +91,7 @@ export async function renderJdTemplate(
     ctx.save();
     roundRect(ctx, 20, 105, w - 40, w - 40, 16);
     ctx.clip();
-    drawImageCover(ctx, img, 20, 105, w - 40, w - 40);
+    drawImageSmart(ctx, img, 20, 105, w - 40, w - 40);
     ctx.restore();
 
     // 重置阴影

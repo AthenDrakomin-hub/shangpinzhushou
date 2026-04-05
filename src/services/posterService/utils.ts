@@ -268,6 +268,65 @@ export function drawImageCover(
   ctx.drawImage(img, sx, sy, drawW, drawH, x, y, w, h);
 }
 
+export function drawImageContain(
+  ctx: CanvasRenderingContext2D,
+  img: any,
+  x: number,
+  y: number,
+  w: number,
+  h: number
+) {
+  const imgRatio = img.width / img.height;
+  const targetRatio = w / h;
+  let drawW = w;
+  let drawH = h;
+  let dx = x;
+  let dy = y;
+
+  if (imgRatio > targetRatio) {
+    // 图片偏宽，以宽为基准，上下留白
+    drawH = w / imgRatio;
+    dy = y + (h - drawH) / 2;
+  } else {
+    // 图片偏高，以高为基准，左右留白
+    drawW = h * imgRatio;
+    dx = x + (w - drawW) / 2;
+  }
+
+  ctx.drawImage(img, dx, dy, drawW, drawH);
+}
+
+/**
+ * 智能绘制商品图（带模糊氛围底色 + 居中自适应）
+ * 解决长图被压扁或被严重裁剪的问题
+ */
+export function drawImageSmart(
+  ctx: CanvasRenderingContext2D,
+  img: any,
+  x: number,
+  y: number,
+  w: number,
+  h: number
+) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x, y, w, h);
+  ctx.clip();
+  
+  // 1. 画模糊底色 (放大一点防止边缘白边)
+  ctx.filter = 'blur(40px) brightness(0.9)';
+  drawImageCover(ctx, img, x - 40, y - 40, w + 80, h + 80);
+  ctx.filter = 'none';
+
+  // 2. 覆盖一层极淡的白色半透明，让背景不要太喧宾夺主
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+  ctx.fillRect(x, y, w, h);
+  
+  // 3. 画原图 (contain)
+  drawImageContain(ctx, img, x, y, w, h);
+  ctx.restore();
+}
+
 /**
  * 创建画布
  */

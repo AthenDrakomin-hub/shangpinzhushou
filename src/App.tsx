@@ -299,7 +299,7 @@ export default function App() {
       {currentView === 'forgot_password' && <ForgotPasswordPage key="forgot_password" handleBack={handleBack} showToast={showToast} />}
       {currentView === 'reset_password' && <ResetPasswordPage key="reset_password" handleBack={handleBack} showToast={showToast} onSuccess={() => setCurrentView('landing')} />}
       {currentView === 'product_checkout' && checkoutProductId && <ProductCheckoutPage key="product_checkout" productId={checkoutProductId} handleBack={() => window.history.back()} showToast={showToast} />}
-      {currentView === 'h5_product' && checkoutProductId && <H5ProductPage key="h5_product" productId={checkoutProductId} onClose={() => window.history.back()} />}
+      {currentView === 'h5_product' && checkoutProductId && <H5ProductPage key="h5_product" productId={checkoutProductId} />}
       {currentView === 'payment_result' && paymentResultOrderId && <PaymentResultPage key="payment_result" orderId={paymentResultOrderId} />}
 
       {/* 登录后的页面 - 使用 AppLayout 包裹 */}

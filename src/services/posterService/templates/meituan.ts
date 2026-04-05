@@ -5,7 +5,7 @@
 
 import { Canvas, CanvasRenderingContext2D, Image } from 'canvas';
 import { PosterData } from '../types';
-import { safeLoadImage, drawImageError, drawHeavyText, drawNormalText, roundRect, truncateText, drawImageCover } from '../utils';
+import { safeLoadImage, drawImageError, drawHeavyText, drawNormalText, roundRect, truncateText, drawImageCover, drawImageSmart } from '../utils';
 import path from 'path';
 
 const POSTER_WIDTH = 640;
@@ -87,7 +87,7 @@ export async function renderMeituanTemplate(
   // 商品图片 - 全宽
   try {
     const img: any = await safeLoadImage(data.image);
-    drawImageCover(ctx, img, 0, 10, w, 380);
+    drawImageSmart(ctx, img, 0, 10, w, 380);
 
     // 图片底部渐变遮罩
     const imgGrad = ctx.createLinearGradient(0, 320, 0, 390);

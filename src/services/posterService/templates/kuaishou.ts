@@ -5,7 +5,7 @@
 
 import { Canvas, CanvasRenderingContext2D, Image } from 'canvas';
 import { PosterData } from '../types';
-import { safeLoadImage, drawImageError, drawHeavyText, drawNormalText, roundRect, truncateText, drawImageCover } from '../utils';
+import { safeLoadImage, drawImageError, drawHeavyText, drawNormalText, roundRect, truncateText, drawImageCover, drawImageSmart } from '../utils';
 import path from 'path';
 
 const POSTER_WIDTH = 640;
@@ -82,7 +82,7 @@ export async function renderKuaishouTemplate(
     ctx.save();
     roundRect(ctx, 30, 30, w - 60, w - 60, 20);
     ctx.clip();
-    drawImageCover(ctx, img, 30, 30, w - 60, w - 60);
+    drawImageSmart(ctx, img, 30, 30, w - 60, w - 60);
     ctx.restore();
   } catch (e) {
     drawImageError(ctx, 30, 30, w - 60, w - 60, data.image);

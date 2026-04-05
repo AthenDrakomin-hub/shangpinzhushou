@@ -5,7 +5,7 @@
 
 import { Canvas, CanvasRenderingContext2D, Image } from 'canvas';
 import { PosterData } from '../types';
-import { safeLoadImage, drawImageError, drawHeavyText, drawNormalText, roundRect, truncateText, drawImageCover } from '../utils';
+import { safeLoadImage, drawImageError, drawHeavyText, drawNormalText, roundRect, truncateText, drawImageCover, drawImageSmart } from '../utils';
 import path from 'path';
 
 const POSTER_WIDTH = 640;
@@ -88,7 +88,7 @@ export async function renderDaifuTemplate(
     ctx.beginPath();
     ctx.arc(w/2, 295, 90, 0, Math.PI * 2);
     ctx.clip();
-    drawImageCover(ctx, img, w/2 - 90, 205, 180, 180);
+    drawImageSmart(ctx, img, w/2 - 90, 205, 180, 180);
     ctx.restore();
 
     // 金色边框

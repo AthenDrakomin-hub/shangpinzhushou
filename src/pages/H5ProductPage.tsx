@@ -388,12 +388,6 @@ export default function H5ProductPage({ productId = 'p1', onClose }: H5ProductPa
         <div className="text-center">
           <AlertCircle size={48} className="mx-auto text-gray-400 mb-4" />
           <p className="text-gray-500">商品不存在或已下架</p>
-          <button 
-            onClick={() => window.history.back()} 
-            className="mt-4 text-blue-600 text-sm"
-          >
-            返回上一页
-          </button>
         </div>
       </div>
     );

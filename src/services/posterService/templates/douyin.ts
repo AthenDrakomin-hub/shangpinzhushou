@@ -5,7 +5,7 @@
 
 import { Canvas, CanvasRenderingContext2D, Image } from 'canvas';
 import { PosterData } from '../types';
-import { safeLoadImage, drawImageError, drawHeavyText, drawNormalText, roundRect, truncateText, drawImageCover } from '../utils';
+import { safeLoadImage, drawImageError, drawHeavyText, drawNormalText, roundRect, truncateText, drawImageCover, drawImageSmart } from '../utils';
 import path from 'path';
 
 const POSTER_WIDTH = 640;
@@ -61,7 +61,7 @@ export async function renderDouyinTemplate(
     ctx.save();
     roundRect(ctx, 28, 28, w - 56, w - 56, 16);
     ctx.clip();
-    drawImageCover(ctx, img, 28, 28, w - 56, w - 56);
+    drawImageSmart(ctx, img, 28, 28, w - 56, w - 56);
     ctx.restore();
 
     // 霓虹边框

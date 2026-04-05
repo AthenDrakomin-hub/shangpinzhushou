@@ -5,7 +5,7 @@
 
 import { Canvas, CanvasRenderingContext2D, Image } from 'canvas';
 import { PosterData } from '../types';
-import { safeLoadImage, drawImageError, drawHeavyText, drawNormalText, drawMultiLineText, roundRect, truncateText, drawImageCover } from '../utils';
+import { safeLoadImage, drawImageError, drawHeavyText, drawNormalText, drawMultiLineText, roundRect, truncateText, drawImageCover, drawImageSmart } from '../utils';
 import path from 'path';
 
 const POSTER_WIDTH = 750;
@@ -39,7 +39,7 @@ export async function renderCtripTemplate(
     roundRect(ctx, 40, 60, w - 80, 700, 32);
     ctx.clip();
     
-    drawImageCover(ctx, img, 40, 60, w - 80, 700);
+    drawImageSmart(ctx, img, 40, 60, w - 80, 700);
     ctx.restore();
 
     // 底部渐变遮罩 (让文字更清晰)
