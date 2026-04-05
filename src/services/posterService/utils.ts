@@ -293,6 +293,7 @@ export function drawImageContain(
     dx = x + (w - drawW) / 2;
   }
 
+  // 为保证图片本身不带有透明或半透明边缘的混合瑕疵，可以不加特殊处理，直接绘制
   ctx.drawImage(img, dx, dy, drawW, drawH);
 }
 
@@ -313,10 +314,13 @@ export function drawImageSmart(
   ctx.rect(x, y, w, h);
   ctx.clip();
   
-  // 1. 画模糊底色 (放大一点防止边缘白边)
+  // 1. 画模糊底色
+  ctx.save();
   ctx.filter = 'blur(40px) brightness(0.9)';
-  drawImageCover(ctx, img, x - 40, y - 40, w + 80, h + 80);
-  ctx.filter = 'none';
+  // 向四周扩散放大绘制，避免边缘出现白色的发光边框（因为blur会将边缘和外侧透明像素混合）
+  const pad = 60;
+  drawImageCover(ctx, img, x - pad, y - pad, w + pad * 2, h + pad * 2);
+  ctx.restore();
 
   // 2. 覆盖一层极淡的白色半透明，让背景不要太喧宾夺主
   ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
