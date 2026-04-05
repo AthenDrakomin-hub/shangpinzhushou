@@ -263,9 +263,9 @@ const ProductCheckoutPage: React.FC<ProductCheckoutPageProps> = ({
       }
 
       // SuperPay 或 其他支付
-      const channelCode = selectedChannel.channelCode || selectedChannel.id;
+      const channelId = selectedChannel.id;
 
-      if (!channelCode) {
+      if (!channelId) {
         showToast('无效的支付渠道配置', 'error');
         return;
       }
@@ -279,7 +279,7 @@ const ProductCheckoutPage: React.FC<ProductCheckoutPageProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           productId: productId,
-          payType: channelCode,
+          payType: channelId,
           shareUid,
           buyerName: '',
           buyerPhone: ''

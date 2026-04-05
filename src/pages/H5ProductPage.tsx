@@ -344,7 +344,7 @@ export default function H5ProductPage({ productId = 'p1', onClose }: H5ProductPa
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           productId: product.id,
-          payType: selectedChannel.channelCode || selectedChannel.id,
+          payType: selectedChannel.id,
           shareUid,
           buyerName: '',
           buyerPhone: ''
@@ -379,6 +379,7 @@ export default function H5ProductPage({ productId = 'p1', onClose }: H5ProductPa
       } else {
         const error = await response.json();
         console.error('Order creation failed:', error);
+        alert(error.error || '下单失败，请稍后再试');
         setOrderStatus('failed');
       }
       
