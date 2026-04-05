@@ -23,18 +23,18 @@ export async function generatePoster(
   data: PosterData,
   template: PosterTemplate = 'default'
 ): Promise<Buffer> {
-  let width = 640;
-  let height = 900;
+  let width = 750;
+  let height = 1200;
 
   switch (template) {
-    case 'daifu': height = 900; break;
-    case 'meituan': height = 900; break;
-    case 'eleme': height = 1200; break;
-    case 'jd': height = 1140; break;
-    case 'ctrip': height = 1334; break;
-    case 'douyin': height = 1140; break;
-    case 'kuaishou': height = 1140; break;
-    default: height = 1200; break; // default
+    case 'daifu': width = 640; height = 900; break;
+    case 'meituan': width = 640; height = 900; break;
+    case 'eleme': width = 750; height = 1200; break;
+    case 'jd': width = 640; height = 1140; break;
+    case 'ctrip': width = 750; height = 1334; break;
+    case 'douyin': width = 640; height = 1140; break;
+    case 'kuaishou': width = 640; height = 1240; break;
+    default: width = 750; height = 1200; break; // default
   }
 
   const { canvas, ctx } = createPosterCanvas(width, height);

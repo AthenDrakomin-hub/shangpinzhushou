@@ -9,7 +9,7 @@ import { safeLoadImage, drawImageError, drawHeavyText, drawNormalText, roundRect
 import path from 'path';
 
 const POSTER_WIDTH = 640;
-const POSTER_HEIGHT = 1140;
+const POSTER_HEIGHT = 1240;
 
 // Logo路径
 const LOGO_PATH = path.join(process.cwd(), 'public/logos/kuaishou.png');
