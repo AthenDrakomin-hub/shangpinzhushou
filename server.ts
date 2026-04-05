@@ -1124,14 +1124,15 @@ app.get('/api/dashboard/stats', authMiddleware, async (req: AuthRequest, res: Re
 
     // 构造通用过滤条件
     const productFilter = visibleUserIds === null ? '1=1' : `(user_id = ANY($1) OR (is_shared = true AND user_id = ANY($2)))`;
-    const params = visibleUserIds === null ? [] : [visibleUserIds, departmentUserIds];
+    const productParams = visibleUserIds === null ? [] : [visibleUserIds, departmentUserIds];
     const orderFilter = visibleUserIds === null ? '1=1' : `o.user_id = ANY($1)`;
+    const orderParams = visibleUserIds === null ? [] : [visibleUserIds];
 
     // 商品数量
     const productsResult = await pool.query(`
       SELECT COUNT(*) as count FROM public.products
       WHERE ${productFilter}
-    `, params);
+    `, productParams);
 
     // 订单统计
     const ordersResult = await pool.query(`
@@ -1140,7 +1141,7 @@ app.get('/api/dashboard/stats', authMiddleware, async (req: AuthRequest, res: Re
              COALESCE(SUM(amount) FILTER (WHERE status = 'paid'), 0) as revenue
       FROM public.orders o
       WHERE ${orderFilter}
-    `, params);
+    `, orderParams);
 
     // 钱包余额 (只看自己的)
     const walletResult = await pool.query(`
@@ -1159,9 +1160,9 @@ app.get('/api/dashboard/stats', authMiddleware, async (req: AuthRequest, res: Re
       WHERE status = 'paid'
         AND created_at >= NOW() - INTERVAL '7 days'
         AND ${orderFilter}
-      GROUP BY DATE(created_at) 
+      GROUP BY DATE(created_at)
       ORDER BY date
-    `, params);
+    `, orderParams);
 
     // 最近订单
     const recentOrdersResult = await pool.query(`
@@ -1169,24 +1170,24 @@ app.get('/api/dashboard/stats', authMiddleware, async (req: AuthRequest, res: Re
       FROM public.orders o
       LEFT JOIN public.products p ON o.product_id = p.id
       WHERE ${orderFilter}
-      ORDER BY o.created_at DESC 
+      ORDER BY o.created_at DESC
       LIMIT 5
-    `, params);
+    `, orderParams);
 
     // 热销商品（通过订单数计算销量）
     let topProductsResult = { rows: [] };
     try {
       topProductsResult = await pool.query(`
-        SELECT p.id, p.name, p.price, 
+        SELECT p.id, p.name, p.price,
                COALESCE(p.image, '') as image,
                COALESCE(SUM(CASE WHEN o.status = 'paid' THEN 1 ELSE 0 END), 0) as sales
         FROM public.products p
         LEFT JOIN public.orders o ON o.product_id = p.id
-        WHERE p.${userFilter}
-        GROUP BY p.id, p.name, p.price, p.image 
-        ORDER BY sales DESC 
+        WHERE p.${productFilter.replace(/user_id/g, 'user_id')}
+        GROUP BY p.id, p.name, p.price, p.image
+        ORDER BY sales DESC
         LIMIT 5
-      `, params);
+      `, productParams);
     } catch (e) {
       console.error('Top products query error:', e);
     }
