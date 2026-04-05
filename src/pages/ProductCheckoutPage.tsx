@@ -74,6 +74,43 @@ const ProductCheckoutPage: React.FC<ProductCheckoutPageProps> = ({
   // 读取服务端注入的模板配置
   const [serverTemplate] = useState<BrandTemplate | null>(() => window.__TEMPLATE__ || null);
 
+  // 获取渠道显示名称
+  const getChannelDisplayName = (channel: any) => {
+    if (channel.name.includes('微信')) return '微信支付';
+    if (channel.name.includes('支付宝')) return '支付宝';
+    return channel.name;
+  };
+
+  const getChannelIcon = (channel: any) => {
+    const isWechat = channel.icon === 'wechat' || channel.gateway === 'wechat' || channel.name.includes('微信');
+    const isAlipay = channel.icon === 'alipay' || channel.gateway === 'alipay' || channel.name.includes('支付宝');
+
+    if (isWechat) {
+      return (
+        <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg bg-[#07c160]">
+          <svg viewBox="0 0 1024 1024" width="24" height="24" fill="white">
+            <path d="M683.5 358.5c-20.5 0-38.5 13-43.5 32-1.5 5 0 10.5 3.5 14.5 10 11 16 26.5 16 43 0 35.5-32 64.5-71.5 64.5-22 0-42-9-54.5-24-3.5-4-8-5.5-13-4-19 5.5-38.5 8.5-59.5 8.5-115 0-208-81.5-208-181.5 0-100.5 93-181.5 208-181.5 115 0 208 81 208 181.5 0 18.5-3 36-9 53zM724.5 456.5c115 0 208 81 208 181.5s-93 181.5-208 181.5c-21 0-40.5-3-59.5-8.5-5-1.5-9.5 0-13 4-12.5 15-32.5 24-54.5 24-39.5 0-71.5-29-71.5-64.5 0-16.5 6-32 16-43 3.5-4 5-9.5 3.5-14.5-5-19-23-32-43.5-32-27.5 0-50-22.5-50-50 0-100.5 93-181.5 208-181.5z" />
+          </svg>
+        </div>
+      );
+    }
+    if (isAlipay) {
+      return (
+        <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg bg-[#1677ff]">
+          <svg viewBox="0 0 1024 1024" width="24" height="24" fill="white">
+            <path d="M853.333 170.667h-682.666c-47.104 0-85.334 38.23-85.334 85.333v682.667c0 47.104 38.23 85.333 85.334 85.333h682.666c47.104 0 85.334-38.23 85.334-85.333v-682.667c0-47.104-38.23-85.333-85.334-85.333z m-543.146 267.733h127.018v-82.944h-95.274c-14.123 0-25.6-11.477-25.6-25.6s11.477-25.6 25.6-25.6h95.274v-44.544c0-14.123 11.478-25.6 25.6-25.6s25.6 11.477 25.6 25.6v44.544h125.824c14.123 0 25.6 11.477 25.6 25.6s-11.477 25.6-25.6 25.6h-125.824v82.944h157.056c14.123 0 25.6 11.477 25.6 25.6s-11.477 25.6-25.6 25.6h-152.022c-13.824 43.179-36.437 83.2-65.962 118.102 43.776 28.33 92.501 50.176 144.17 64.682 13.611 3.84 21.547 18.006 17.707 31.616-3.115 11.051-13.099 18.262-24.064 18.262-2.517 0-5.077-0.384-7.552-1.11-56.15-15.146-109.141-38.656-156.501-69.717-41.984 34.005-89.856 61.184-142.123 80.555-13.312 4.906-27.818-1.92-32.725-15.232-4.906-13.312 1.92-27.818 15.232-32.725 46.72-17.28 89.515-41.514 127.147-71.936a462.848 462.848 0 0 1-76.544-106.837v159.232c0 14.123-11.478 25.6-25.6 25.6s-25.6-11.477-25.6-25.6v-207.744c0-14.123 11.477-25.6 25.6-25.6z m287.403 169.259a412.8 412.8 0 0 0 47.573-94.72h-157.056c0.853 10.325 2.133 20.565 3.84 30.634 3.03 17.835-11.904 33.792-29.355 33.792-2.048 0-4.138-0.213-6.272-0.64-16.768-3.328-26.666-18.73-25.216-35.37-1.11-6.102-1.963-12.288-2.603-18.475-0.64-5.632-1.066-11.264-1.322-16.981-0.256-5.803-0.342-11.648-0.342-17.494v-25.77h184.747c14.123 0 25.6 11.477 25.6 25.6 0 1.28-0.085 2.56-0.298 3.84a357.547 357.547 0 0 1-44.544 94.464c-8.491 11.306-24.832 13.568-36.139 5.077-11.264-8.49-13.525-24.832-5.077-36.139z"/>
+          </svg>
+        </div>
+      );
+    }
+    
+    return (
+      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg ${channel.gateway === 'wechat' ? 'bg-[#07c160]' : channel.gateway === 'bank' ? 'bg-orange-500' : 'bg-blue-500'}`}>
+        {channel.gateway === 'wechat' ? <MessageSquare className="w-6 h-6" /> : channel.gateway === 'bank' ? <CreditCard className="w-6 h-6" /> : <Smartphone className="w-6 h-6" />}
+      </div>
+    );
+  };
+
   useEffect(() => {
     loadProductAndPaymentMethods();
     loadPayChannels();
@@ -510,17 +547,15 @@ const ProductCheckoutPage: React.FC<ProductCheckoutPageProps> = ({
             <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4 ml-1">选择下单方式</p>
             <div className="space-y-3">
               {availableChannels.map(channel => (
-                <button 
+                <button
                   key={channel.id}
                   onClick={() => setSelectedChannel(channel)}
                   className={`w-full flex items-center justify-between p-5 rounded-[24px] border-2 transition-all ${selectedChannel?.id === channel.id ? 'border-blue-500 bg-blue-50/30' : 'border-gray-50 bg-gray-50/50'}`}
                 >
                   <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg ${channel.gateway === 'wechat' ? 'bg-green-600' : channel.gateway === 'bank' ? 'bg-orange-500' : 'bg-blue-500'}`}>
-                      {channel.gateway === 'wechat' ? <MessageSquare className="w-6 h-6" /> : channel.gateway === 'bank' ? <CreditCard className="w-6 h-6" /> : <Smartphone className="w-6 h-6" />}
-                    </div>
+                    {getChannelIcon(channel)}
                     <div className="text-left">
-                      <h4 className="font-black text-gray-900">{channel.name}</h4>
+                      <h4 className="font-black text-gray-900">{getChannelDisplayName(channel)}</h4>
                       <p className="text-[10px] text-gray-400 font-medium">{channel.gateway === 'wechat' ? '扫码下单，即时到账' : channel.gateway === 'bank' ? '线下转账，商户确认' : '网页下单，安全便捷'}</p>
                     </div>
                   </div>
