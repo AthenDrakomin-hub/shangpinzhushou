@@ -23,7 +23,21 @@ export async function generatePoster(
   data: PosterData,
   template: PosterTemplate = 'default'
 ): Promise<Buffer> {
-  const { canvas, ctx } = createPosterCanvas();
+  let width = 640;
+  let height = 900;
+
+  switch (template) {
+    case 'daifu': height = 900; break;
+    case 'meituan': height = 900; break;
+    case 'eleme': height = 1200; break;
+    case 'jd': height = 1140; break;
+    case 'ctrip': height = 1334; break;
+    case 'douyin': height = 1140; break;
+    case 'kuaishou': height = 1140; break;
+    default: height = 1200; break; // default
+  }
+
+  const { canvas, ctx } = createPosterCanvas(width, height);
 
   switch (template) {
     case 'daifu': return renderDaifuTemplate(ctx, canvas, data);
