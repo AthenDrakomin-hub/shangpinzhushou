@@ -385,6 +385,7 @@ export default function H5ProductPage({ productId = 'p1', onClose }: H5ProductPa
       
     } catch (error) {
       console.error('Payment error:', error);
+      alert('网络请求失败或服务器错误，请稍后再试');
       setOrderStatus('failed');
     } finally {
       setLoading(false);
