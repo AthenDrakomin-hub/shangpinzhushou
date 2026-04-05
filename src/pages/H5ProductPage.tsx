@@ -484,7 +484,11 @@ export default function H5ProductPage({ productId = 'p1', onClose }: H5ProductPa
             <AlertCircle className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
             <div>
               <p className="text-orange-800 font-medium text-sm">该商品暂无可用支付通道</p>
-              <p className="text-orange-600 text-xs mt-1">当前金额 (¥{product.price.toFixed(2)}) 未匹配到任何商户收款渠道额度限制，无法下单。</p>
+              <p className="text-orange-600 text-xs mt-1">当前金额 (¥{product.price.toFixed(2)}) 无法下单，可能原因：</p>
+              <p className="text-orange-600 text-xs mt-2 text-left">
+                1. 商品未配置或未勾选任何支付通道。<br/>
+                2. 商品金额未达到商户支付通道的最低/最高限额。
+              </p>
             </div>
           </div>
         ) : (

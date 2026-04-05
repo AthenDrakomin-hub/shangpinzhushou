@@ -95,7 +95,7 @@ export default function ProductCreatePage({ user, handleBack, setCurrentView, sh
 
     const availableChannels = channels.filter(c => priceNum >= c.minAmount && priceNum <= c.maxAmount);
     if (availableChannels.length === 0) {
-      showToast('当前金额未匹配到任何收款方式，无法创建商品', 'error');
+      showToast('请至少勾选一种收款方式', 'error');
       return;
     }
 
