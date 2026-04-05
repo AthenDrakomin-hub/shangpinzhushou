@@ -1183,7 +1183,7 @@ app.get('/api/dashboard/stats', authMiddleware, async (req: AuthRequest, res: Re
                COALESCE(SUM(CASE WHEN o.status = 'paid' THEN 1 ELSE 0 END), 0) as sales
         FROM public.products p
         LEFT JOIN public.orders o ON o.product_id = p.id
-        WHERE p.${productFilter.replace(/user_id/g, 'user_id')}
+        WHERE ${productFilter.replace(/user_id/g, 'p.user_id').replace(/is_shared/g, 'p.is_shared')}
         GROUP BY p.id, p.name, p.price, p.image
         ORDER BY sales DESC
         LIMIT 5
