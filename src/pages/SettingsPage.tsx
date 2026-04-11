@@ -1327,7 +1327,7 @@ function PaymentConfigModal({
           <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
           <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
               <div className="flex justify-between items-center mb-1">
                 <h3 className="font-medium text-blue-900">SuperPay 支付宝配置</h3>
