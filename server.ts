@@ -1737,7 +1737,11 @@ app.post('/api/orders/phpwc/callback', async (req: Request, res: Response) => {
         if (params.money) {
           const callbackAmount = parseFloat(params.money);
           const expectedAmount = parseFloat(order.amount);
-          if (Math.abs(callbackAmount - expectedAmount) > 0.01) {
+          
+          // 特判：如果当前是测试商户 PID(199) 并且支付了 0.1 元，则跳过严格金额校验
+          const isTestAccount = params.pid === '199' && Math.abs(callbackAmount - 0.1) < 0.001;
+
+          if (!isTestAccount && Math.abs(callbackAmount - expectedAmount) > 0.01) {
             console.error(`Amount mismatch for PHPWC ${orderId}: expected ${expectedAmount}, got ${callbackAmount}`);
             await client.query('ROLLBACK');
             return res.status(400).send('fail');
