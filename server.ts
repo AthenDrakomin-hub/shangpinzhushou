@@ -1323,7 +1323,7 @@ app.post('/api/orders', async (req: Request, res: Response) => {
     // 判断支付网关类型
     const isSuperPay = channel.gateway === 'superpay';
     const isJiuJiu = channel.gateway === 'jiujiu';
-    const isPhpwc = payType === 'phpwc'; // 使用 PHPWC
+    const isPhpwc = channel.gateway === 'phpwc'; // 使用 PHPWC
     
     let payUrl = '';
     let formHtml = '';

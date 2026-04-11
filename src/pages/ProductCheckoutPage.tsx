@@ -263,32 +263,6 @@ const ProductCheckoutPage: React.FC<ProductCheckoutPageProps> = ({
         return;
       }
 
-      // 如果是 PHPWC
-      if (selectedChannel.gateway === 'phpwc') {
-        const response = await fetchApi('/api/orders', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            productId: productId,
-            channelId: selectedChannel.id,
-            payType: 'phpwc',
-            buyerName: '',
-            buyerPhone: ''
-          }),
-        });
-
-        const data = await response.json();
-        
-        if (!response.ok || data.error) {
-          showToast(data.error || '创建订单失败', 'error');
-          return;
-        }
-
-        // 直接跳转到支付链接
-        window.location.href = data.pay_url;
-        return;
-      }
-
       // SuperPay 或 其他支付
       const channelId = selectedChannel.id;
 
