@@ -1322,6 +1322,40 @@ function PaymentConfigModal({
     }
   };
 
+  const handleTestPhpwc = async () => {
+    if (!config.phpwcPid || !config.phpwcSecretKey || !config.phpwcApiUrl) {
+      showToast('请先填写接口域名、商户ID和密钥', 'error');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const response = await fetchApi('/api/settings/test-phpwc', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pid: config.phpwcPid,
+          secretKey: config.phpwcSecretKey,
+          apiUrl: config.phpwcApiUrl
+        })
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        if (data.pay_url) {
+          showToast('测试订单创建成功，正在跳转...', 'success');
+          setTimeout(() => window.open(data.pay_url, '_blank'), 1500);
+        } else {
+          showToast('通道可用！(测试响应无支付链接)', 'success');
+        }
+      } else {
+        showToast(data.error || '测试失败：通道配置有误', 'error');
+      }
+    } catch (error) {
+      showToast('网络错误，请重试', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="支付通道配置">
       {isFetching ? (
@@ -1409,6 +1443,9 @@ function PaymentConfigModal({
             <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
               <div className="flex justify-between items-center mb-1">
                 <h3 className="font-medium text-purple-900">PHPWC (易支付) 配置</h3>
+                <Button variant="outline" className="!py-1 !text-xs !bg-white" onClick={handleTestPhpwc} disabled={isLoading}>
+                  测试通道
+                </Button>
               </div>
               <p className="text-xs text-purple-700 mb-4">如果不填写则不启用 PHPWC 通道</p>
               <div className="space-y-3">

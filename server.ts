@@ -2901,6 +2901,52 @@ app.post('/api/settings/test-jiujiu', authMiddleware, adminMiddleware, async (re
   }
 });
 
+// 测试 PHPWC (易支付) 支付通道连通性
+app.post('/api/settings/test-phpwc', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const { pid, secretKey, apiUrl } = req.body;
+
+    if (!pid || !secretKey) {
+      return res.status(400).json({ error: '请提供商户PID和密钥' });
+    }
+
+    const { createPhpwcOrder } = await import('./src/services/phpwcPay.js');
+
+    const projectDomain = process.env.COZE_PROJECT_DOMAIN_DEFAULT || `http://localhost:${config.port}`;
+    const testOrderId = `TEST${Date.now()}`;
+    
+    // PHPWC 测试账号(199) 特判金额，其他账号统一 1.00 测试
+    const testMoney = pid === '199' ? '0.1' : '1.00';
+
+    const payResult = await createPhpwcOrder({
+      pid,
+      secretKey,
+      apiUrl,
+      type: 'alipay', // 默认用支付宝扫码做测试
+      outTradeNo: testOrderId,
+      notifyUrl: `${projectDomain}/api/orders/phpwc/callback`,
+      returnUrl: `${projectDomain}/payment/result?orderId=${testOrderId}`,
+      name: 'PHPWC易支付通道连通性测试',
+      money: testMoney
+    });
+
+    console.log('PHPWC test response:', JSON.stringify(payResult));
+
+    if (payResult.success) {
+      res.json({
+        success: true,
+        pay_url: payResult.payUrl
+      });
+    } else {
+      res.json({ success: false, error: payResult.error || '测试失败：请检查配置是否正确' });
+    }
+
+  } catch (error) {
+    console.error('PHPWC test error:', error);
+    res.status(500).json({ error: '测试请求异常，请查看服务器日志' });
+  }
+});
+
 // 获取 SuperPay 渠道编码
 app.get('/api/superpay/channels', authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
