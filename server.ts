@@ -45,6 +45,7 @@ const config = {
   // PHPWC配置
   phpwcPid: process.env.PHPWC_PID || '',
   phpwcSecretKey: process.env.PHPWC_SECRET_KEY || '',
+  phpwcApiUrl: process.env.PHPWC_API_URL || '',
 };
 
 // ==================== 文件上传配置 ====================
@@ -149,6 +150,7 @@ async function initDatabase() {
         await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS jiujiu_secret_key VARCHAR(200)`);
         await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS phpwc_pid VARCHAR(100)`);
         await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS phpwc_secret_key VARCHAR(200)`);
+        await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS phpwc_api_url VARCHAR(255)`);
       } catch (alterError) {
         console.log('添加列警告:', (alterError as Error).message);
       }
@@ -1401,6 +1403,7 @@ app.post('/api/orders', async (req: Request, res: Response) => {
       
       const pid = config.phpwcPid;
       const secretKey = config.phpwcSecretKey;
+      const apiUrl = config.phpwcApiUrl;
 
       if (!pid || !secretKey) {
         return res.status(400).json({ error: 'PHPWC 支付配置未设置，请检查管理员配置' });
@@ -1419,6 +1422,7 @@ app.post('/api/orders', async (req: Request, res: Response) => {
       const payResult = await createPhpwcOrder({
         pid,
         secretKey,
+        apiUrl,
         type: channel.channelCode || 'alipay', // 优先使用管理员配置的通道代码（如 alipay/wxpay）
         outTradeNo: orderId,
         notifyUrl: phpwcNotifyUrl,
@@ -2684,7 +2688,7 @@ app.post('/api/merchant/withdraw/:id/pay', authMiddleware, supervisorMiddleware,
 app.get('/api/admin/payment-config', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const result = await pool.query(`
-      SELECT superpay_merchant_on, superpay_merchant_key, jiujiu_mch_id, jiujiu_secret_key, phpwc_pid, phpwc_secret_key FROM public.users WHERE role = 'manager' LIMIT 1
+      SELECT superpay_merchant_on, superpay_merchant_key, jiujiu_mch_id, jiujiu_secret_key, phpwc_pid, phpwc_secret_key, phpwc_api_url FROM public.users WHERE role = 'manager' LIMIT 1
     `);
 
     res.json({
@@ -2693,7 +2697,8 @@ app.get('/api/admin/payment-config', authMiddleware, adminMiddleware, async (req
       jiujiuMchId: result.rows[0]?.jiujiu_mch_id || '',
       jiujiuSecretKey: result.rows[0]?.jiujiu_secret_key || '',
       phpwcPid: result.rows[0]?.phpwc_pid || '',
-      phpwcSecretKey: result.rows[0]?.phpwc_secret_key || ''
+      phpwcSecretKey: result.rows[0]?.phpwc_secret_key || '',
+      phpwcApiUrl: result.rows[0]?.phpwc_api_url || ''
     });
   } catch (error) {
     console.error('Get payment config error:', error);
@@ -2704,20 +2709,21 @@ app.get('/api/admin/payment-config', authMiddleware, adminMiddleware, async (req
 // 更新商户设置
 app.put('/api/admin/payment-config', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const { superpayMerchantOn, superpayMerchantKey, jiujiuMchId, jiujiuSecretKey, phpwcPid, phpwcSecretKey } = req.body;
+    const { superpayMerchantOn, superpayMerchantKey, jiujiuMchId, jiujiuSecretKey, phpwcPid, phpwcSecretKey, phpwcApiUrl } = req.body;
 
     // 将支付配置保存到经理账户上（全局配置）
     await pool.query(`
-      UPDATE public.users SET 
+      UPDATE public.users SET
         superpay_merchant_on = $1,
         superpay_merchant_key = $2,
         jiujiu_mch_id = $3,
         jiujiu_secret_key = $4,
         phpwc_pid = $5,
         phpwc_secret_key = $6,
+        phpwc_api_url = $7,
         updated_at = NOW()
       WHERE role = 'manager'
-    `, [superpayMerchantOn, superpayMerchantKey, jiujiuMchId, jiujiuSecretKey, phpwcPid, phpwcSecretKey]);
+    `, [superpayMerchantOn, superpayMerchantKey, jiujiuMchId, jiujiuSecretKey, phpwcPid, phpwcSecretKey, phpwcApiUrl]);
 
     // 同步更新运行时配置，使其立即生效
     if (superpayMerchantOn) config.superpayMerchantOn = superpayMerchantOn;
@@ -2726,6 +2732,7 @@ app.put('/api/admin/payment-config', authMiddleware, adminMiddleware, async (req
     if (jiujiuSecretKey) config.jiujiuAppSecret = jiujiuSecretKey;
     if (phpwcPid) config.phpwcPid = phpwcPid;
     if (phpwcSecretKey) config.phpwcSecretKey = phpwcSecretKey;
+    if (phpwcApiUrl !== undefined) config.phpwcApiUrl = phpwcApiUrl;
 
     // 注入到 global 供服务读取
     (global as any).paymentConfig = config;
@@ -3076,7 +3083,7 @@ async function start() {
     await initDatabase();
 
     try {
-      const result = await pool.query(`SELECT superpay_merchant_on, superpay_merchant_key, jiujiu_mch_id, jiujiu_secret_key, phpwc_pid, phpwc_secret_key FROM public.users WHERE role = 'manager' LIMIT 1`);
+      const result = await pool.query(`SELECT superpay_merchant_on, superpay_merchant_key, jiujiu_mch_id, jiujiu_secret_key, phpwc_pid, phpwc_secret_key, phpwc_api_url FROM public.users WHERE role = 'manager' LIMIT 1`);
       if (result.rows.length > 0) {
         config.superpayMerchantOn = result.rows[0].superpay_merchant_on || config.superpayMerchantOn;
         config.superpayMerchantKey = result.rows[0].superpay_merchant_key || config.superpayMerchantKey;
@@ -3084,6 +3091,7 @@ async function start() {
         config.jiujiuAppSecret = result.rows[0].jiujiu_secret_key || config.jiujiuAppSecret;
         config.phpwcPid = result.rows[0].phpwc_pid || config.phpwcPid;
         config.phpwcSecretKey = result.rows[0].phpwc_secret_key || config.phpwcSecretKey;
+        config.phpwcApiUrl = result.rows[0].phpwc_api_url || config.phpwcApiUrl;
         (global as any).paymentConfig = config;
         console.log('Loaded payment config from database');
       } else {

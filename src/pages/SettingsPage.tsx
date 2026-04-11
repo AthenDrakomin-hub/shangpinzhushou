@@ -1185,7 +1185,8 @@ function PaymentConfigModal({
     jiujiuMchId: '',
     jiujiuSecretKey: '',
     phpwcPid: '',
-    phpwcSecretKey: ''
+    phpwcSecretKey: '',
+    phpwcApiUrl: ''
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
@@ -1210,7 +1211,8 @@ function PaymentConfigModal({
           jiujiuMchId: data.jiujiuMchId || '',
           jiujiuSecretKey: data.jiujiuSecretKey || '',
           phpwcPid: data.phpwcPid || '',
-          phpwcSecretKey: data.phpwcSecretKey || ''
+          phpwcSecretKey: data.phpwcSecretKey || '',
+          phpwcApiUrl: data.phpwcApiUrl || ''
         });
       }
     } catch (error) {
@@ -1410,6 +1412,16 @@ function PaymentConfigModal({
               </div>
               <p className="text-xs text-purple-700 mb-4">如果不填写则不启用 PHPWC 通道</p>
               <div className="space-y-3">
+                <div>
+                  <label className="block text-sm text-gray-700 mb-1">接口域名 (API URL)</label>
+                  <input
+                    type="text"
+                    value={config.phpwcApiUrl}
+                    onChange={e => setConfig({...config, phpwcApiUrl: e.target.value})}
+                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                    placeholder="例如: https://pay.phpwc.com/"
+                  />
+                </div>
                 <div>
                   <label className="block text-sm text-gray-700 mb-1">商户 ID (PID)</label>
                   <input

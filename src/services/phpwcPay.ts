@@ -57,8 +57,12 @@ export async function createPhpwcOrder(params: PhpwcOrderParams): Promise<{ succ
     data.sign = generatePhpwcSign(data, params.secretKey);
     data.sign_type = 'MD5';
 
-    // 默认网关地址
-    const baseUrl = params.apiUrl || 'https://pay.phpwc.com/submit.php';
+    // 默认网关地址处理
+    let baseUrl = params.apiUrl || 'https://pay.phpwc.com/';
+    if (!baseUrl.endsWith('/submit.php') && !baseUrl.includes('submit.php')) {
+      baseUrl = baseUrl.endsWith('/') ? `${baseUrl}submit.php` : `${baseUrl}/submit.php`;
+    }
+
     const queryString = new URLSearchParams(data).toString();
     const payUrl = `${baseUrl}?${queryString}`;
 
