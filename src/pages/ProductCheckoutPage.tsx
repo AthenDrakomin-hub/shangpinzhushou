@@ -306,7 +306,7 @@ const ProductCheckoutPage: React.FC<ProductCheckoutPageProps> = ({
 
       // 处理常规 JSON 跳转链接
       setPayResult({
-        type: selectedChannel.gateway === 'superpay' ? 'superpay' : 'wechat',
+        type: (selectedChannel.gateway === 'superpay' || selectedChannel.gateway === 'phpwc') ? 'superpay' : 'wechat',
         payUrl: data.payUrl,
         orderId: data.orderId,
         amount: product.price,

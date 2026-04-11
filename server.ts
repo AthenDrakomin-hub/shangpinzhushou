@@ -1419,7 +1419,7 @@ app.post('/api/orders', async (req: Request, res: Response) => {
       const payResult = await createPhpwcOrder({
         pid,
         secretKey,
-        type: 'alipay', // 可以通过 payType 区分或者固定为 alipay
+        type: channel.channelCode || 'alipay', // 优先使用管理员配置的通道代码（如 alipay/wxpay）
         outTradeNo: orderId,
         notifyUrl: phpwcNotifyUrl,
         returnUrl,
