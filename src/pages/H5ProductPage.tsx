@@ -93,14 +93,13 @@ interface PaymentChannel {
   id: string;
   name: string;
   channelCode: string;
-  gateway: 'superpay' | 'jiujiu' | string;
+  gateway: 'superpay' | 'jiujiu' | 'phpwc' | string;
   minAmount?: number;
   maxAmount?: number;
   icon?: string;
   color?: string;
   bgColor?: string;
 }
-
 interface H5ProductPageProps {
   productId?: string;
   onClose?: () => void;

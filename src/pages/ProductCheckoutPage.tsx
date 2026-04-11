@@ -47,6 +47,7 @@ const CHANNEL_CODE_MAP: Record<string, { code: string; typeCode?: string; label:
   'wechat': { code: '1', label: '微信支付' },
   'alipay': { code: '1', label: '支付宝' },
   'usdt': { code: '1', typeCode: 'usdt', label: 'USDT' },
+  'phpwc': { code: 'phpwc', label: 'PHPWC' },
 };
 
 interface ProductCheckoutPageProps {
@@ -259,6 +260,32 @@ const ProductCheckoutPage: React.FC<ProductCheckoutPageProps> = ({
           note: data.note,
         });
         setShowBankInfo(true);
+        return;
+      }
+
+      // 如果是 PHPWC
+      if (selectedChannel.gateway === 'phpwc') {
+        const response = await fetchApi('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            productId: productId,
+            channelId: selectedChannel.id,
+            payType: 'phpwc',
+            buyerName: '',
+            buyerPhone: ''
+          }),
+        });
+
+        const data = await response.json();
+        
+        if (!response.ok || data.error) {
+          showToast(data.error || '创建订单失败', 'error');
+          return;
+        }
+
+        // 直接跳转到支付链接
+        window.location.href = data.pay_url;
         return;
       }
 

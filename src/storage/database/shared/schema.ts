@@ -55,6 +55,10 @@ export interface User {
   superpay_merchant_on: string | null;
   superpay_merchant_key: string | null; // 加密存储
   
+  // PHPWC 配置
+  phpwc_pid: string | null;
+  phpwc_secret_key: string | null;
+
   // 其他
   default_pay_method: string | null;
   
