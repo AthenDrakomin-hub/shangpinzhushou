@@ -393,6 +393,7 @@ function PaymentChannelsModal({
                     >
                       <option value="superpay">SuperPay</option>
                       <option value="jiujiu">JiuJiu</option>
+                      <option value="phpwc">PHPWC (易支付)</option>
                     </select>
                   </div>
                   <div>
@@ -446,7 +447,7 @@ function PaymentChannelsModal({
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-gray-900 dark:text-white">{ch.name}</span>
-                        <Badge variant={ch.gateway === 'superpay' ? 'primary' : 'warning'}>{ch.gateway}</Badge>
+                        <Badge variant={ch.gateway === 'superpay' ? 'primary' : ch.gateway === 'phpwc' ? 'success' : 'warning'}>{ch.gateway}</Badge>
                       </div>
                       <div className="text-sm text-gray-500 mt-1">代码: {ch.channelCode} | 限额: {ch.minAmount}-{ch.maxAmount}</div>
                     </div>
