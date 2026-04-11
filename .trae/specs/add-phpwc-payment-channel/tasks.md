@@ -7,7 +7,7 @@
   - [x] SubTask 3.3: 编写异步通知（`notify_url`）和同步跳转（`return_url`）回调验证与订单更新逻辑。
 - [x] Task 4: 注册并打通支付路由：将 PHPWC 支付服务注册到现有的支付工厂/路由中，使其可在前台被选择和调用。
 - [x] Task 5: 增加测试与正式双重配置支持：确保支持测试环境（PID:199, Key:iyNMRtjaYUJxL4DvuXemd2kV3EO8TWFs）和正式环境（PID:637, Key:3q6kWs7zBNt0rog5MAfJcY2S4DKwjpxQ）的动态切换与调用。
-- [ ] Task 6: 推送开发分支至远程仓库：将代码提交并推送到远端 `feature/add-phpwc-payment-channel` 供测试，并在测试无误后由主分支合并。
+- [x] Task 6: 推送开发分支至远程仓库：将代码提交并推送到远端 `feature/add-phpwc-payment-channel` 供测试，并在测试无误后由主分支合并。
 
 # Task Dependencies
 - Task 3 depends on Task 2

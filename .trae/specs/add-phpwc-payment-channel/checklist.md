@@ -4,4 +4,4 @@
 - [x] 前台可以成功获取到 PHPWC 的支付 URL 或 Form 表单并发起跳转
 - [x] 系统能正确接收和处理 PHPWC 的异步回调通知并验签成功
 - [x] 测试环境密钥（199）和正式环境密钥（637）均可正确配置
-- [ ] 代码已成功推送到远程 `feature/add-phpwc-payment-channel` 分支
+- [x] 代码已成功推送到远程 `feature/add-phpwc-payment-channel` 分支
