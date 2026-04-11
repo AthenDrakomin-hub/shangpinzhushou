@@ -919,7 +919,9 @@ function PaymentConfigModal({
     superpayMerchantOn: '',
     superpayMerchantKey: '',
     jiujiuMchId: '',
-    jiujiuSecretKey: ''
+    jiujiuSecretKey: '',
+    phpwcPid: '',
+    phpwcSecretKey: ''
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
@@ -942,7 +944,9 @@ function PaymentConfigModal({
           superpayMerchantOn: data.superpayMerchantOn || '',
           superpayMerchantKey: data.superpayMerchantKey || '',
           jiujiuMchId: data.jiujiuMchId || '',
-          jiujiuSecretKey: data.jiujiuSecretKey || ''
+          jiujiuSecretKey: data.jiujiuSecretKey || '',
+          phpwcPid: data.phpwcPid || '',
+          phpwcSecretKey: data.phpwcSecretKey || ''
         });
       }
     } catch (error) {
@@ -1122,6 +1126,41 @@ function PaymentConfigModal({
                   <label className="block text-[10px] font-bold text-green-800 uppercase mb-1">您的 Webhook 异步回调地址 (系统下单时自动携带，通常无需填写到三方后台)</label>
                   <div className="text-xs font-mono text-gray-600 select-all break-all">
                     {window.location.origin}/api/orders/wechat/callback
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
+              <div className="flex justify-between items-center mb-1">
+                <h3 className="font-medium text-purple-900">PHPWC (易支付) 配置</h3>
+              </div>
+              <p className="text-xs text-purple-700 mb-4">如果不填写则不启用 PHPWC 通道</p>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm text-gray-700 mb-1">商户 ID (PID)</label>
+                  <input
+                    type="text"
+                    value={config.phpwcPid}
+                    onChange={e => setConfig({...config, phpwcPid: e.target.value})}
+                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                    placeholder="例如: 10001"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-700 mb-1">商户密钥 (Secret Key)</label>
+                  <input
+                    type="text"
+                    value={config.phpwcSecretKey}
+                    onChange={e => setConfig({...config, phpwcSecretKey: e.target.value})}
+                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                    placeholder="API Key"
+                  />
+                </div>
+                <div className="mt-2 p-2 bg-white/60 rounded border border-purple-100/50">
+                  <label className="block text-[10px] font-bold text-purple-800 uppercase mb-1">您的 Webhook 异步回调地址</label>
+                  <div className="text-xs font-mono text-gray-600 select-all break-all">
+                    {window.location.origin}/api/orders/phpwc/callback
                   </div>
                 </div>
               </div>

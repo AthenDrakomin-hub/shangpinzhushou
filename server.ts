@@ -42,6 +42,9 @@ const config = {
   jiujiuApiUrl: process.env.JIUJIU_API_URL || 'http://bayq.hanyin.9jiupay.com',
   jiujiuMchId: process.env.JIUJIU_MCH_ID || '',
   jiujiuAppSecret: process.env.JIUJIU_APP_SECRET || '',
+  // PHPWC配置
+  phpwcPid: process.env.PHPWC_PID || '',
+  phpwcSecretKey: process.env.PHPWC_SECRET_KEY || '',
 };
 
 // ==================== 文件上传配置 ====================
@@ -142,6 +145,8 @@ async function initDatabase() {
         await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS superpay_merchant_key VARCHAR(200)`);
         await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS jiujiu_mch_id VARCHAR(100)`);
         await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS jiujiu_secret_key VARCHAR(200)`);
+        await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS phpwc_pid VARCHAR(100)`);
+        await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS phpwc_secret_key VARCHAR(200)`);
       } catch (alterError) {
         console.log('添加列警告:', (alterError as Error).message);
       }
@@ -1226,6 +1231,7 @@ app.post('/api/orders', async (req: Request, res: Response) => {
     // 判断支付网关类型
     const isSuperPay = payType === 'alipay_superpay'; // 支付宝使用 SuperPay
     const isJiuJiu = payType === 'WXpay_SM'; // 微信使用九久支付
+    const isPhpwc = payType === 'phpwc'; // 使用 PHPWC
     
     let payUrl = '';
     const projectDomain = process.env.COZE_PROJECT_DOMAIN_DEFAULT || `http://localhost:${config.port}`;
@@ -1302,6 +1308,48 @@ app.post('/api/orders', async (req: Request, res: Response) => {
       payUrl = payResult.payUrl || '';
       console.log('[九久支付] 订单创建成功:', { orderId, payUrl: payUrl ? payUrl.substring(0, 50) + '...' : 'N/A' });
       
+    } else if (isPhpwc) {
+      // ========== 使用 PHPWC (易支付兼容) ==========
+      const { createPhpwcOrder } = await import('./src/services/phpwcPay.js');
+      
+      console.log('[订单创建] 使用 PHPWC 支付');
+      
+      const pid = config.phpwcPid;
+      const secretKey = config.phpwcSecretKey;
+
+      if (!pid || !secretKey) {
+        return res.status(400).json({ error: 'PHPWC 支付配置未设置，请检查管理员配置' });
+      }
+
+      // PHPWC 测试环境特判
+      let finalMoney = product.price.toString();
+      if (pid === '199') {
+        finalMoney = '0.1';
+        console.log('[PHPWC] 命中测试账号(PID: 199)，金额强制设置为 0.1 元');
+      }
+
+      const returnUrl = `${projectDomain}/payment/result?orderId=${orderId}`;
+      const phpwcNotifyUrl = `${projectDomain}/api/orders/phpwc/callback`;
+
+      const payResult = await createPhpwcOrder({
+        pid,
+        secretKey,
+        type: 'alipay', // 可以通过 payType 区分或者固定为 alipay
+        outTradeNo: orderId,
+        notifyUrl: phpwcNotifyUrl,
+        returnUrl,
+        name: product.name,
+        money: finalMoney
+      });
+      
+      if (!payResult.success) {
+        console.error('[PHPWC] 创建订单失败:', payResult.error);
+        return res.status(400).json({ error: payResult.error || '创建 PHPWC 订单失败' });
+      }
+      
+      payUrl = payResult.payUrl || '';
+      console.log('[PHPWC] 订单创建成功:', { orderId, payUrl: payUrl ? payUrl.substring(0, 50) + '...' : 'N/A' });
+
     } else {
       return res.status(400).json({ error: '不支持的支付方式' });
     }
@@ -1542,6 +1590,110 @@ app.post('/api/orders/wechat/callback', async (req: Request, res: Response) => {
       res.status(500).send('fail');
     }
   });
+
+// PHPWC 支付回调
+app.post('/api/orders/phpwc/callback', async (req: Request, res: Response) => {
+  try {
+    const params = req.method === 'POST' ? req.body : req.query;
+    console.log('PHPWC Pay Callback:', JSON.stringify(params));
+
+    const { verifyPhpwcCallbackSign } = await import('./src/services/phpwcPay.js');
+    
+    // 获取全局配置的 secretKey
+    const configResult = await pool.query(`
+      SELECT phpwc_secret_key FROM public.users WHERE role = 'manager' LIMIT 1
+    `);
+    const dynamicKey = configResult.rows[0]?.phpwc_secret_key || config.phpwcSecretKey;
+
+    if (!dynamicKey) {
+      console.error('PHPWC secret key not configured');
+      return res.status(500).send('fail');
+    }
+
+    if (!verifyPhpwcCallbackSign(params, dynamicKey)) {
+      console.error('PHPWC Pay signature verification failed');
+      return res.status(400).send('fail');
+    }
+
+    // 获取订单号
+    const orderId = params.out_trade_no;
+    if (!orderId) {
+      console.error('No order ID found in callback');
+      return res.status(400).send('fail');
+    }
+
+    // 状态 TRADE_SUCCESS 表示成功
+    const tradeStatus = params.trade_status;
+    const isSuccess = tradeStatus === 'TRADE_SUCCESS';
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const orderResult = await client.query('SELECT * FROM public.orders WHERE id = $1 FOR UPDATE', [orderId]);
+      if (orderResult.rows.length === 0) {
+        await client.query('ROLLBACK');
+        console.error('PHPWC Order not found:', orderId);
+        return res.status(404).send('fail');
+      }
+
+      const order = orderResult.rows[0];
+
+      // 幂等性校验
+      if (order.status === 'paid' || order.status === 'failed') {
+        await client.query('ROLLBACK');
+        console.log('PHPWC Order already processed:', orderId, 'Current status:', order.status);
+        return res.send('success');
+      }
+
+      if (isSuccess) {
+        // 金额校验
+        if (params.money) {
+          const callbackAmount = parseFloat(params.money);
+          const expectedAmount = parseFloat(order.amount);
+          if (Math.abs(callbackAmount - expectedAmount) > 0.01) {
+            console.error(`Amount mismatch for PHPWC ${orderId}: expected ${expectedAmount}, got ${callbackAmount}`);
+            await client.query('ROLLBACK');
+            return res.status(400).send('fail');
+          }
+        }
+
+        await client.query(`
+          UPDATE public.orders SET
+            status = 'paid',
+            pay_url = NULL,
+            paid_at = NOW(),
+            updated_at = NOW()
+          WHERE id = $1
+        `, [orderId]);
+
+        await client.query(`
+          UPDATE products SET sales = sales + 1 WHERE id = $1
+        `, [order.product_id]);
+
+        // 三级分润
+        await distributeRevenue(order.user_id, parseFloat(order.amount), client);
+
+        await client.query('COMMIT');
+        console.log('PHPWC Order paid successfully:', orderId);
+      } else {
+        await client.query(`UPDATE public.orders SET status = 'failed', updated_at = NOW() WHERE id = $1`, [orderId]);
+        await client.query('COMMIT');
+        console.log('PHPWC Order failed:', orderId);
+      }
+
+      res.send('success');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('PHPWC Order callback error:', error);
+    res.status(500).send('fail');
+  }
+});
 
 // 查询订单状态
 app.get('/api/orders/:id/status', async (req: Request, res: Response) => {
@@ -2442,14 +2594,16 @@ app.post('/api/merchant/withdraw/:id/pay', authMiddleware, supervisorMiddleware,
 app.get('/api/admin/payment-config', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const result = await pool.query(`
-      SELECT superpay_merchant_on, superpay_merchant_key, jiujiu_mch_id, jiujiu_secret_key FROM public.users WHERE role = 'manager' LIMIT 1
+      SELECT superpay_merchant_on, superpay_merchant_key, jiujiu_mch_id, jiujiu_secret_key, phpwc_pid, phpwc_secret_key FROM public.users WHERE role = 'manager' LIMIT 1
     `);
 
     res.json({
       superpayMerchantOn: result.rows[0]?.superpay_merchant_on || '',
       superpayMerchantKey: result.rows[0]?.superpay_merchant_key || '',
       jiujiuMchId: result.rows[0]?.jiujiu_mch_id || '',
-      jiujiuSecretKey: result.rows[0]?.jiujiu_secret_key || ''
+      jiujiuSecretKey: result.rows[0]?.jiujiu_secret_key || '',
+      phpwcPid: result.rows[0]?.phpwc_pid || '',
+      phpwcSecretKey: result.rows[0]?.phpwc_secret_key || ''
     });
   } catch (error) {
     console.error('Get payment config error:', error);
@@ -2460,7 +2614,7 @@ app.get('/api/admin/payment-config', authMiddleware, adminMiddleware, async (req
 // 更新商户设置
 app.put('/api/admin/payment-config', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const { superpayMerchantOn, superpayMerchantKey, jiujiuMchId, jiujiuSecretKey } = req.body;
+    const { superpayMerchantOn, superpayMerchantKey, jiujiuMchId, jiujiuSecretKey, phpwcPid, phpwcSecretKey } = req.body;
 
     // 将支付配置保存到经理账户上（全局配置）
     await pool.query(`
@@ -2469,15 +2623,19 @@ app.put('/api/admin/payment-config', authMiddleware, adminMiddleware, async (req
         superpay_merchant_key = $2,
         jiujiu_mch_id = $3,
         jiujiu_secret_key = $4,
+        phpwc_pid = $5,
+        phpwc_secret_key = $6,
         updated_at = NOW()
       WHERE role = 'manager'
-    `, [superpayMerchantOn, superpayMerchantKey, jiujiuMchId, jiujiuSecretKey]);
+    `, [superpayMerchantOn, superpayMerchantKey, jiujiuMchId, jiujiuSecretKey, phpwcPid, phpwcSecretKey]);
 
     // 同步更新运行时配置，使其立即生效
     if (superpayMerchantOn) config.superpayMerchantOn = superpayMerchantOn;
     if (superpayMerchantKey) config.superpayMerchantKey = superpayMerchantKey;
     if (jiujiuMchId) config.jiujiuMchId = jiujiuMchId;
     if (jiujiuSecretKey) config.jiujiuAppSecret = jiujiuSecretKey;
+    if (phpwcPid) config.phpwcPid = phpwcPid;
+    if (phpwcSecretKey) config.phpwcSecretKey = phpwcSecretKey;
 
     // 注入到 global 供服务读取
     (global as any).paymentConfig = config;
@@ -2581,7 +2739,7 @@ app.post('/api/settings/test-jiujiu', authMiddleware, adminMiddleware, async (re
       if (payResult.success) {
         res.json({
           success: true,
-          pay_url: payResult.codeUrl // 可能是扫码链接或跳转链接
+          pay_url: payResult.payUrl || payResult.formHtml // 可能是扫码链接或跳转链接
         });
       } else {
         res.json({
@@ -2776,12 +2934,14 @@ async function start() {
     await initDatabase();
 
     try {
-      const result = await pool.query(`SELECT superpay_merchant_on, superpay_merchant_key, jiujiu_mch_id, jiujiu_secret_key FROM public.users WHERE role = 'manager' LIMIT 1`);
+      const result = await pool.query(`SELECT superpay_merchant_on, superpay_merchant_key, jiujiu_mch_id, jiujiu_secret_key, phpwc_pid, phpwc_secret_key FROM public.users WHERE role = 'manager' LIMIT 1`);
       if (result.rows.length > 0) {
         config.superpayMerchantOn = result.rows[0].superpay_merchant_on || config.superpayMerchantOn;
         config.superpayMerchantKey = result.rows[0].superpay_merchant_key || config.superpayMerchantKey;
         config.jiujiuMchId = result.rows[0].jiujiu_mch_id || config.jiujiuMchId;
         config.jiujiuAppSecret = result.rows[0].jiujiu_secret_key || config.jiujiuAppSecret;
+        config.phpwcPid = result.rows[0].phpwc_pid || config.phpwcPid;
+        config.phpwcSecretKey = result.rows[0].phpwc_secret_key || config.phpwcSecretKey;
         (global as any).paymentConfig = config;
         console.log('Loaded payment config from database');
       } else {

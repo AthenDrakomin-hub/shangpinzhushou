@@ -95,10 +95,10 @@ interface PaymentChannel {
   icon: string;
   color: string;
   bgColor: string;
-  gateway: 'superpay' | 'jiujiu'; // 支付网关标识
+  gateway: 'superpay' | 'jiujiu' | 'phpwc'; // 支付网关标识
 }
 
-// 预设支付渠道 - H5 页面显示支付宝（SuperPay）和微信（九久支付）
+// 预设支付渠道 - H5 页面显示支付宝（SuperPay）、微信（九久支付）和易支付（PHPWC）
 const PAYMENT_CHANNELS: PaymentChannel[] = [
   { 
     code: 'alipay_superpay', 
@@ -115,6 +115,14 @@ const PAYMENT_CHANNELS: PaymentChannel[] = [
     color: '#07C160', 
     bgColor: 'bg-green-50',
     gateway: 'jiujiu' // 使用九久支付网关
+  },
+  { 
+    code: 'phpwc', 
+    name: 'PHPWC 收银台', 
+    icon: '💳', 
+    color: '#9333EA', 
+    bgColor: 'bg-purple-50',
+    gateway: 'phpwc' // 使用 PHPWC 网关
   },
 ];
 
