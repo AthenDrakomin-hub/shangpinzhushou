@@ -128,7 +128,7 @@ async function initDatabase() {
           merchant_on VARCHAR(50),
           secret_key VARCHAR(100),
           whitelist_ip TEXT,
-          earnings_rate DECIMAL(5,4) DEFAULT 0.1,
+          earnings_rate DECIMAL(5,2) DEFAULT 0,
           security_question VARCHAR(255),
           security_answer VARCHAR(255),
           created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -144,7 +144,8 @@ async function initDatabase() {
         await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS merchant_on VARCHAR(50)`);
         await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS secret_key VARCHAR(100)`);
         await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS whitelist_ip TEXT`);
-        await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS earnings_rate DECIMAL(5,4) DEFAULT 0.1`);
+        await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS earnings_rate DECIMAL(5,2) DEFAULT 0`);
+        await client.query(`ALTER TABLE public.users ALTER COLUMN earnings_rate TYPE DECIMAL(5,2)`);
         // 修复 created_by 的类型以兼容原本的 id 类型
         await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS created_by VARCHAR(255) REFERENCES public.users(id) ON DELETE SET NULL`);
         await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS superpay_merchant_on VARCHAR(100)`);
@@ -2400,7 +2401,12 @@ app.put('/api/merchant/employees/:id', authMiddleware, supervisorMiddleware, asy
       UPDATE public.users
       SET display_name = COALESCE($1, display_name), role = COALESCE($2, role), status = COALESCE($3, status), earnings_rate = COALESCE($4, earnings_rate), updated_at = NOW()
     `;
-    const params = [display_name || null, role || null, status || null, profit_share_rate || null];
+    const params = [
+      display_name !== undefined ? display_name : null,
+      role !== undefined ? role : null,
+      status !== undefined ? status : null,
+      profit_share_rate !== undefined ? profit_share_rate : null
+    ];
     let paramIndex = 5;
 
     if (password) {
@@ -2416,9 +2422,9 @@ app.put('/api/merchant/employees/:id', authMiddleware, supervisorMiddleware, asy
     await pool.query(query, params);
 
     res.json({ success: true, message: '更新成功' });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Update employee error:', error);
-    res.status(500).json({ error: '更新失败' });
+    res.status(500).json({ error: error.message || '更新失败' });
   }
 });
 
