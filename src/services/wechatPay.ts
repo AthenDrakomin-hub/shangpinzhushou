@@ -177,6 +177,7 @@ export async function createWechatOrder(params: CreateOrderParams): Promise<JiuJ
         if (finalUrl) {
           return { success: true, payUrl: finalUrl };
         }
+        return { success: false, error: json.msg || json.message || '九久支付网关未返回支付链接，请检查通道编码是否正确' };
       } catch (e) {
         // 解析 JSON 失败，说明网关返回的是 HTML 页面（比如收银台或二维码页面）
         // 直接把这个 HTML 发给前端渲染，不再让前端去 POST

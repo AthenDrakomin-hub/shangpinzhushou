@@ -1,0 +1,3 @@
+- [x] `wechatPay.ts` handles JSON responses without URLs properly, returning an error instead of treating it as HTML.
+- [x] `server.ts` endpoint `/api/settings/test-jiujiu` accepts and passes the `channelCode` parameter.
+- [x] The user is notified why this error happens and how to fix it (i.e. fix the channel code in their settings).

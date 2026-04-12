@@ -2921,7 +2921,7 @@ app.post('/api/settings/test-superpay', authMiddleware, adminMiddleware, async (
 // 测试九久支付配置
 app.post('/api/settings/test-jiujiu', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const { mchId, secretKey, testAmount } = req.body;
+    const { mchId, secretKey, testAmount, channelCode } = req.body;
 
     if (!mchId || !secretKey) {
       return res.status(400).json({ error: '请提供商户ID和密钥' });
@@ -2951,6 +2951,7 @@ app.post('/api/settings/test-jiujiu', authMiddleware, adminMiddleware, async (re
         productName: '九久支付通道连通性测试',
         notifyUrl: `${projectDomain}/api/orders/wechat/callback`,
         callbackUrl: `${projectDomain}/payment/result?orderId=${orderId}`,
+        channelCode: channelCode || '6007',
       });
 
       if (payResult.success) {
