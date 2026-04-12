@@ -69,5 +69,67 @@ npm run build
 pm2 start server.ts --name payforme --interpreter ./node_modules/.bin/tsx
 ```
 
-## 🌐 交付说明
-本项目使用 GitHub Actions 自动监听 `main` 分支的提交，触发 Vultr 服务器的自动化部署流水线。每次推送均会自动重构前端页面并平滑重启后端 Node 进程。
+## 🌐 部署与维护指南 (重要)
+
+本项目由于涉及到底层 Canvas 图像渲染（生成海报）以及后台 PM2 进程守护，请务必按照以下规范进行项目的部署、更新与日常维护。
+
+### 1. 首次部署环境要求
+- Node.js (v18 或 v20+)
+- PostgreSQL 数据库 (v12+)
+- **中文字体包**：服务器必须安装中文字体，否则海报生成的中文会变成透明/方块。
+  ```bash
+  sudo apt-get update
+  sudo apt-get install -y fonts-wqy-zenhei
+  ```
+
+### 2. 标准的 PM2 启动方式
+为了避免 PM2 找不到全局 `tsx` 环境变量的问题，**请严格使用 npm 脚本启动**：
+```bash
+# 1. 全局安装运行依赖（仅首次需要）
+npm install -g tsx
+
+# 2. 启动服务（让 PM2 代理执行 npm run start）
+pm2 start npm --name "payforme" -- run start
+
+# 3. 保存配置，开机自启
+pm2 save
+pm2 startup
+```
+
+### 3. 日常代码更新流程 (重新部署)
+当 GitHub 仓库有代码更新时，请在服务器按以下标准步骤操作，确保新功能生效且不产生端口冲突：
+
+```bash
+cd /root/payforme
+
+# 1. 拉取最新代码
+git fetch origin main && git reset --hard origin/main
+
+# 2. 重新编译前端静态资源
+npm run build
+
+# 3. 平滑重启后端服务
+pm2 restart payforme
+```
+
+### 4. 常见问题排查与维护建议
+- **端口被占 (EADDRINUSE: :::5000)**：
+  如果遇到 PM2 不断重启且报错 5000 端口被占用，说明底层有僵尸进程。请执行清场命令：
+  ```bash
+  pm2 stop all
+  killall -9 node
+  killall -9 tsx
+  pm2 restart payforme
+  ```
+- **海报文字不显示**：检查服务器是否成功安装了 `fonts-wqy-zenhei` 字体包，安装后必须 `pm2 restart payforme` 才能生效。
+- **查看实时报错日志**：
+  ```bash
+  pm2 logs payforme --lines 50
+  ```
+- **清空历史旧日志**（当日志文件太大或被旧报错干扰时）：
+  ```bash
+  pm2 flush
+  ```
+
+## 📜 交付说明
+本项目已集成 CI/CD 流水线与完整的私有化支付网关对接能力。遇到支付报错（如 `AvailablePassageVO`），通常为网关侧通道编码未开通或限额拦截，请在后台【动态通道管理】中核对或联系支付网关客服处理。
