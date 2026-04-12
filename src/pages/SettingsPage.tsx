@@ -1182,11 +1182,14 @@ function PaymentConfigModal({
   const [config, setConfig] = useState({
     superpayMerchantOn: '',
     superpayMerchantKey: '',
+    superpayTestAmount: '100.00',
     jiujiuMchId: '',
     jiujiuSecretKey: '',
+    jiujiuTestAmount: '1.00',
     phpwcPid: '',
     phpwcSecretKey: '',
-    phpwcApiUrl: ''
+    phpwcApiUrl: '',
+    phpwcTestAmount: '1.00'
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
@@ -1208,11 +1211,14 @@ function PaymentConfigModal({
         setConfig({
           superpayMerchantOn: data.superpayMerchantOn || '',
           superpayMerchantKey: data.superpayMerchantKey || '',
+          superpayTestAmount: data.superpayTestAmount || '100.00',
           jiujiuMchId: data.jiujiuMchId || '',
           jiujiuSecretKey: data.jiujiuSecretKey || '',
+          jiujiuTestAmount: data.jiujiuTestAmount || '1.00',
           phpwcPid: data.phpwcPid || '',
           phpwcSecretKey: data.phpwcSecretKey || '',
-          phpwcApiUrl: data.phpwcApiUrl || ''
+          phpwcApiUrl: data.phpwcApiUrl || '',
+          phpwcTestAmount: data.phpwcTestAmount || '1.00'
         });
       }
     } catch (error) {
@@ -1252,6 +1258,10 @@ function PaymentConfigModal({
       showToast('请先填写商户号和密钥', 'error');
       return;
     }
+    if (!config.superpayTestAmount) {
+      showToast('请先填写测试金额', 'error');
+      return;
+    }
     setIsLoading(true);
     try {
       const response = await fetchApi('/api/settings/test-superpay', {
@@ -1259,13 +1269,14 @@ function PaymentConfigModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           merchantOn: config.superpayMerchantOn,
-          merchantKey: config.superpayMerchantKey
+          merchantKey: config.superpayMerchantKey,
+          testAmount: config.superpayTestAmount
         })
       });
       const data = await response.json();
       if (response.ok && data.success) {
         if (data.payUrl) {
-          showToast('测试订单(1.00元)创建成功，正在跳转...', 'success');
+          showToast(`测试订单(${config.superpayTestAmount}元)创建成功，正在跳转...`, 'success');
           setTimeout(() => window.open(data.payUrl, '_blank'), 1500);
         } else {
           showToast('通道可用！(测试响应无支付链接)', 'success');
@@ -1285,6 +1296,10 @@ function PaymentConfigModal({
       showToast('请先填写商户ID和密钥', 'error');
       return;
     }
+    if (!config.jiujiuTestAmount) {
+      showToast('请先填写测试金额', 'error');
+      return;
+    }
     setIsLoading(true);
     try {
       const response = await fetchApi('/api/settings/test-jiujiu', {
@@ -1292,13 +1307,14 @@ function PaymentConfigModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           mchId: config.jiujiuMchId,
-          secretKey: config.jiujiuSecretKey
+          secretKey: config.jiujiuSecretKey,
+          testAmount: config.jiujiuTestAmount
         })
       });
       const data = await response.json();
       if (response.ok && data.success) {
         if (data.formHtml) {
-          showToast('测试订单(1.00元)创建成功，正在打开支付页面...', 'success');
+          showToast(`测试订单(${config.jiujiuTestAmount}元)创建成功，正在打开支付页面...`, 'success');
           setTimeout(() => {
             const newWin = window.open('', '_blank');
             if (newWin) {
@@ -1307,7 +1323,7 @@ function PaymentConfigModal({
             }
           }, 1500);
         } else if (data.payUrl) {
-          showToast('测试订单(1.00元)创建成功，正在打开支付页面...', 'success');
+          showToast(`测试订单(${config.jiujiuTestAmount}元)创建成功，正在打开支付页面...`, 'success');
           setTimeout(() => window.open(data.payUrl, '_blank'), 1500);
         } else {
           showToast('通道可用！(测试响应无支付链接)', 'success');
@@ -1323,8 +1339,8 @@ function PaymentConfigModal({
   };
 
   const handleTestPhpwc = async () => {
-    if (!config.phpwcPid || !config.phpwcSecretKey || !config.phpwcApiUrl) {
-      showToast('请先填写接口域名、商户ID和密钥', 'error');
+    if (!config.phpwcPid || !config.phpwcSecretKey || !config.phpwcApiUrl || !config.phpwcTestAmount) {
+      showToast('请先填写接口域名、商户ID、密钥和测试金额', 'error');
       return;
     }
     setIsLoading(true);
@@ -1335,13 +1351,14 @@ function PaymentConfigModal({
         body: JSON.stringify({
           pid: config.phpwcPid,
           secretKey: config.phpwcSecretKey,
-          apiUrl: config.phpwcApiUrl
+          apiUrl: config.phpwcApiUrl,
+          testAmount: config.phpwcTestAmount
         })
       });
       const data = await response.json();
       if (response.ok && data.success) {
         if (data.pay_url) {
-          showToast('测试订单创建成功，正在跳转...', 'success');
+          showToast(`测试订单(${config.phpwcTestAmount}元)创建成功，正在跳转...`, 'success');
           setTimeout(() => window.open(data.pay_url, '_blank'), 1500);
         } else {
           showToast('通道可用！(测试响应无支付链接)', 'success');
@@ -1393,6 +1410,16 @@ function PaymentConfigModal({
                     placeholder="API Key"
                   />
                 </div>
+                <div>
+                  <label className="block text-sm text-gray-700 mb-1">测试金额 (元)</label>
+                  <input
+                    type="text"
+                    value={config.superpayTestAmount}
+                    onChange={e => setConfig({...config, superpayTestAmount: e.target.value})}
+                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    placeholder="例如: 100.00"
+                  />
+                </div>
                 <div className="mt-2 p-2 bg-white/60 rounded border border-blue-100/50">
                   <label className="block text-[10px] font-bold text-blue-800 uppercase mb-1">您的 Webhook 异步回调地址 (需填入三方后台)</label>
                   <div className="text-xs font-mono text-gray-600 select-all break-all">
@@ -1431,6 +1458,16 @@ function PaymentConfigModal({
                     placeholder="API Key"
                   />
                 </div>
+                <div>
+                  <label className="block text-sm text-gray-700 mb-1">测试金额 (元)</label>
+                  <input
+                    type="text"
+                    value={config.jiujiuTestAmount}
+                    onChange={e => setConfig({...config, jiujiuTestAmount: e.target.value})}
+                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                    placeholder="例如: 1.00"
+                  />
+                </div>
                 <div className="mt-2 p-2 bg-white/60 rounded border border-green-100/50">
                   <label className="block text-[10px] font-bold text-green-800 uppercase mb-1">您的 Webhook 异步回调地址 (系统下单时自动携带，通常无需填写到三方后台)</label>
                   <div className="text-xs font-mono text-gray-600 select-all break-all">
@@ -1457,6 +1494,16 @@ function PaymentConfigModal({
                     onChange={e => setConfig({...config, phpwcApiUrl: e.target.value})}
                     className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
                     placeholder="例如: https://pay.phpwc.com/"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-700 mb-1">测试金额 (元)</label>
+                  <input
+                    type="text"
+                    value={config.phpwcTestAmount}
+                    onChange={e => setConfig({...config, phpwcTestAmount: e.target.value})}
+                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                    placeholder="例如: 1.00"
                   />
                 </div>
                 <div>

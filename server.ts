@@ -38,14 +38,17 @@ const config = {
   superpayBaseUrl: process.env.SUPERPAY_BASE_URL || 'https://hixrs.ibpee.com:13758',
   superpayMerchantOn: process.env.SUPERPAY_MERCHANT_ON || '',
   superpayMerchantKey: process.env.SUPERPAY_MERCHANT_KEY || '',
+  superpayTestAmount: process.env.SUPERPAY_TEST_AMOUNT || '100.00',
   // 九久支付微信收款配置
   jiujiuApiUrl: process.env.JIUJIU_API_URL || 'http://bayq.hanyin.9jiupay.com',
   jiujiuMchId: process.env.JIUJIU_MCH_ID || '',
   jiujiuAppSecret: process.env.JIUJIU_APP_SECRET || '',
+  jiujiuTestAmount: process.env.JIUJIU_TEST_AMOUNT || '1.00',
   // PHPWC配置
   phpwcPid: process.env.PHPWC_PID || '',
   phpwcSecretKey: process.env.PHPWC_SECRET_KEY || '',
   phpwcApiUrl: process.env.PHPWC_API_URL || '',
+  phpwcTestAmount: process.env.PHPWC_TEST_AMOUNT || '1.00',
 };
 
 // ==================== 文件上传配置 ====================
@@ -146,11 +149,14 @@ async function initDatabase() {
         await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS created_by VARCHAR(255) REFERENCES public.users(id) ON DELETE SET NULL`);
         await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS superpay_merchant_on VARCHAR(100)`);
         await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS superpay_merchant_key VARCHAR(200)`);
+        await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS superpay_test_amount VARCHAR(20)`);
         await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS jiujiu_mch_id VARCHAR(100)`);
         await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS jiujiu_secret_key VARCHAR(200)`);
+        await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS jiujiu_test_amount VARCHAR(20)`);
         await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS phpwc_pid VARCHAR(100)`);
         await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS phpwc_secret_key VARCHAR(200)`);
         await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS phpwc_api_url VARCHAR(255)`);
+        await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS phpwc_test_amount VARCHAR(20)`);
       } catch (alterError) {
         console.log('添加列警告:', (alterError as Error).message);
       }
@@ -2688,17 +2694,20 @@ app.post('/api/merchant/withdraw/:id/pay', authMiddleware, supervisorMiddleware,
 app.get('/api/admin/payment-config', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const result = await pool.query(`
-      SELECT superpay_merchant_on, superpay_merchant_key, jiujiu_mch_id, jiujiu_secret_key, phpwc_pid, phpwc_secret_key, phpwc_api_url FROM public.users WHERE role = 'manager' LIMIT 1
+      SELECT superpay_merchant_on, superpay_merchant_key, superpay_test_amount, jiujiu_mch_id, jiujiu_secret_key, jiujiu_test_amount, phpwc_pid, phpwc_secret_key, phpwc_api_url, phpwc_test_amount FROM public.users WHERE role = 'manager' LIMIT 1
     `);
 
     res.json({
       superpayMerchantOn: result.rows[0]?.superpay_merchant_on || '',
       superpayMerchantKey: result.rows[0]?.superpay_merchant_key || '',
+      superpayTestAmount: result.rows[0]?.superpay_test_amount || config.superpayTestAmount,
       jiujiuMchId: result.rows[0]?.jiujiu_mch_id || '',
       jiujiuSecretKey: result.rows[0]?.jiujiu_secret_key || '',
+      jiujiuTestAmount: result.rows[0]?.jiujiu_test_amount || config.jiujiuTestAmount,
       phpwcPid: result.rows[0]?.phpwc_pid || '',
       phpwcSecretKey: result.rows[0]?.phpwc_secret_key || '',
-      phpwcApiUrl: result.rows[0]?.phpwc_api_url || ''
+      phpwcApiUrl: result.rows[0]?.phpwc_api_url || '',
+      phpwcTestAmount: result.rows[0]?.phpwc_test_amount || config.phpwcTestAmount
     });
   } catch (error) {
     console.error('Get payment config error:', error);
@@ -2709,30 +2718,36 @@ app.get('/api/admin/payment-config', authMiddleware, adminMiddleware, async (req
 // 更新商户设置
 app.put('/api/admin/payment-config', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const { superpayMerchantOn, superpayMerchantKey, jiujiuMchId, jiujiuSecretKey, phpwcPid, phpwcSecretKey, phpwcApiUrl } = req.body;
+    const { superpayMerchantOn, superpayMerchantKey, superpayTestAmount, jiujiuMchId, jiujiuSecretKey, jiujiuTestAmount, phpwcPid, phpwcSecretKey, phpwcApiUrl, phpwcTestAmount } = req.body;
 
     // 将支付配置保存到经理账户上（全局配置）
     await pool.query(`
       UPDATE public.users SET
         superpay_merchant_on = $1,
         superpay_merchant_key = $2,
-        jiujiu_mch_id = $3,
-        jiujiu_secret_key = $4,
-        phpwc_pid = $5,
-        phpwc_secret_key = $6,
-        phpwc_api_url = $7,
+        superpay_test_amount = $3,
+        jiujiu_mch_id = $4,
+        jiujiu_secret_key = $5,
+        jiujiu_test_amount = $6,
+        phpwc_pid = $7,
+        phpwc_secret_key = $8,
+        phpwc_api_url = $9,
+        phpwc_test_amount = $10,
         updated_at = NOW()
       WHERE role = 'manager'
-    `, [superpayMerchantOn, superpayMerchantKey, jiujiuMchId, jiujiuSecretKey, phpwcPid, phpwcSecretKey, phpwcApiUrl]);
+    `, [superpayMerchantOn, superpayMerchantKey, superpayTestAmount, jiujiuMchId, jiujiuSecretKey, jiujiuTestAmount, phpwcPid, phpwcSecretKey, phpwcApiUrl, phpwcTestAmount]);
 
     // 同步更新运行时配置，使其立即生效
     if (superpayMerchantOn) config.superpayMerchantOn = superpayMerchantOn;
     if (superpayMerchantKey) config.superpayMerchantKey = superpayMerchantKey;
+    if (superpayTestAmount !== undefined) config.superpayTestAmount = superpayTestAmount;
     if (jiujiuMchId) config.jiujiuMchId = jiujiuMchId;
     if (jiujiuSecretKey) config.jiujiuAppSecret = jiujiuSecretKey;
+    if (jiujiuTestAmount !== undefined) config.jiujiuTestAmount = jiujiuTestAmount;
     if (phpwcPid) config.phpwcPid = phpwcPid;
     if (phpwcSecretKey) config.phpwcSecretKey = phpwcSecretKey;
     if (phpwcApiUrl !== undefined) config.phpwcApiUrl = phpwcApiUrl;
+    if (phpwcTestAmount !== undefined) config.phpwcTestAmount = phpwcTestAmount;
 
     // 注入到 global 供服务读取
     (global as any).paymentConfig = config;
@@ -2807,7 +2822,7 @@ app.post('/api/settings/regenerate-key', authMiddleware, async (req: AuthRequest
 // 测试 SuperPay 配置
 app.post('/api/settings/test-superpay', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const { merchantOn, merchantKey } = req.body;
+    const { merchantOn, merchantKey, testAmount } = req.body;
 
     if (!merchantOn || !merchantKey) {
       return res.status(400).json({ error: '请提供商户号和密钥' });
@@ -2818,11 +2833,16 @@ app.post('/api/settings/test-superpay', authMiddleware, adminMiddleware, async (
     const projectDomain = process.env.COZE_PROJECT_DOMAIN_DEFAULT || `http://localhost:${config.port}`;
     const testOrderId = `TEST${Date.now()}`;
 
-    // 使用支付宝小混通道824，金额改为 100.00 以满足大部分通道的最低限额
+    const amountNumber = parseFloat(String(testAmount || config.superpayTestAmount || '100.00'));
+    if (!Number.isFinite(amountNumber) || amountNumber <= 0) {
+      return res.status(400).json({ error: '测试金额不合法' });
+    }
+    const amount = amountNumber.toFixed(2);
+
     const payResult = await createSuperPayOrder({
       merchantOn,
       merchantKey,
-      amount: '100.00',
+      amount,
       orderSn: testOrderId,
       channelCode: '824',
       notifyUrl: `${projectDomain}/api/orders/callback`,
@@ -2852,7 +2872,7 @@ app.post('/api/settings/test-superpay', authMiddleware, adminMiddleware, async (
 // 测试九久支付配置
 app.post('/api/settings/test-jiujiu', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const { mchId, secretKey } = req.body;
+    const { mchId, secretKey, testAmount } = req.body;
 
     if (!mchId || !secretKey) {
       return res.status(400).json({ error: '请提供商户ID和密钥' });
@@ -2870,10 +2890,15 @@ app.post('/api/settings/test-jiujiu', authMiddleware, adminMiddleware, async (re
     try {
       const orderId = `TEST${Date.now()}`;
       const projectDomain = process.env.COZE_PROJECT_DOMAIN_DEFAULT || `http://localhost:${config.port}`;
+
+      const amountNumber = parseFloat(String(testAmount || config.jiujiuTestAmount || '1.00'));
+      if (!Number.isFinite(amountNumber) || amountNumber < 1 || amountNumber > 20) {
+        return res.status(400).json({ error: '测试金额需在 1.00 ~ 20.00 之间' });
+      }
       
       const payResult = await createWechatOrder({
         orderId,
-        amount: 1.00, // 九久通道(微信)单笔限额多为 [1.00/20.00] 或类似小额，故修改为 1.00
+        amount: amountNumber,
         productName: '九久支付通道连通性测试',
         notifyUrl: `${projectDomain}/api/orders/wechat/callback`,
         callbackUrl: `${projectDomain}/payment/result?orderId=${orderId}`,
@@ -2882,7 +2907,8 @@ app.post('/api/settings/test-jiujiu', authMiddleware, adminMiddleware, async (re
       if (payResult.success) {
         res.json({
           success: true,
-          pay_url: payResult.payUrl || payResult.formHtml // 修复：之前这里是 codeUrl 导致前端报错无链接
+          payUrl: payResult.payUrl || '',
+          formHtml: payResult.formHtml || ''
         });
       } else {
         res.json({
@@ -2904,7 +2930,7 @@ app.post('/api/settings/test-jiujiu', authMiddleware, adminMiddleware, async (re
 // 测试 PHPWC (易支付) 支付通道连通性
 app.post('/api/settings/test-phpwc', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const { pid, secretKey, apiUrl } = req.body;
+    const { pid, secretKey, apiUrl, testAmount } = req.body;
 
     if (!pid || !secretKey) {
       return res.status(400).json({ error: '请提供商户PID和密钥' });
@@ -2914,9 +2940,12 @@ app.post('/api/settings/test-phpwc', authMiddleware, adminMiddleware, async (req
 
     const projectDomain = process.env.COZE_PROJECT_DOMAIN_DEFAULT || `http://localhost:${config.port}`;
     const testOrderId = `TEST${Date.now()}`;
-    
-    // PHPWC 测试账号(199) 特判金额，其他账号统一 1.00 测试
-    const testMoney = pid === '199' ? '0.1' : '1.00';
+
+    const money = pid === '199' ? '0.1' : String(testAmount || config.phpwcTestAmount || '1.00');
+    const moneyNumber = parseFloat(money);
+    if (!Number.isFinite(moneyNumber) || moneyNumber <= 0) {
+      return res.status(400).json({ error: '测试金额不合法' });
+    }
 
     const payResult = await createPhpwcOrder({
       pid,
@@ -2927,7 +2956,7 @@ app.post('/api/settings/test-phpwc', authMiddleware, adminMiddleware, async (req
       notifyUrl: `${projectDomain}/api/orders/phpwc/callback`,
       returnUrl: `${projectDomain}/payment/result?orderId=${testOrderId}`,
       name: 'PHPWC易支付通道连通性测试',
-      money: testMoney
+      money: moneyNumber.toFixed(2)
     });
 
     console.log('PHPWC test response:', JSON.stringify(payResult));
@@ -3129,15 +3158,18 @@ async function start() {
     await initDatabase();
 
     try {
-      const result = await pool.query(`SELECT superpay_merchant_on, superpay_merchant_key, jiujiu_mch_id, jiujiu_secret_key, phpwc_pid, phpwc_secret_key, phpwc_api_url FROM public.users WHERE role = 'manager' LIMIT 1`);
+      const result = await pool.query(`SELECT superpay_merchant_on, superpay_merchant_key, superpay_test_amount, jiujiu_mch_id, jiujiu_secret_key, jiujiu_test_amount, phpwc_pid, phpwc_secret_key, phpwc_api_url, phpwc_test_amount FROM public.users WHERE role = 'manager' LIMIT 1`);
       if (result.rows.length > 0) {
         config.superpayMerchantOn = result.rows[0].superpay_merchant_on || config.superpayMerchantOn;
         config.superpayMerchantKey = result.rows[0].superpay_merchant_key || config.superpayMerchantKey;
+        config.superpayTestAmount = result.rows[0].superpay_test_amount || config.superpayTestAmount;
         config.jiujiuMchId = result.rows[0].jiujiu_mch_id || config.jiujiuMchId;
         config.jiujiuAppSecret = result.rows[0].jiujiu_secret_key || config.jiujiuAppSecret;
+        config.jiujiuTestAmount = result.rows[0].jiujiu_test_amount || config.jiujiuTestAmount;
         config.phpwcPid = result.rows[0].phpwc_pid || config.phpwcPid;
         config.phpwcSecretKey = result.rows[0].phpwc_secret_key || config.phpwcSecretKey;
         config.phpwcApiUrl = result.rows[0].phpwc_api_url || config.phpwcApiUrl;
+        config.phpwcTestAmount = result.rows[0].phpwc_test_amount || config.phpwcTestAmount;
         (global as any).paymentConfig = config;
         console.log('Loaded payment config from database');
       } else {
