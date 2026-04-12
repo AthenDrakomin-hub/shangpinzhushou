@@ -166,6 +166,8 @@ async function initDatabase() {
         await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS phpwc_secret_key VARCHAR(200)`);
         await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS phpwc_api_url VARCHAR(255)`);
         await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS phpwc_test_amount VARCHAR(20)`);
+        await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS security_question VARCHAR(255)`);
+        await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS security_answer VARCHAR(255)`);
       } catch (alterError) {
         console.log('添加列警告:', (alterError as Error).message);
       }
