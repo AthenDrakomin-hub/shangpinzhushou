@@ -8,7 +8,7 @@
     "dev:frontend": "vite --port 5000 --host",
     "dev:backend": "tsx watch server.ts",
     "build": "vite build",
-    "start": "tsx server.ts",
+    "start": "npx tsx server.ts",
     "preview": "vite preview --port 5000 --host",
     "db:init": "tsx -e \"import('./server.ts').then(m => m.initDatabase && m.initDatabase())\"",
     "db:migrate": "node migrations/run-migration.js",
