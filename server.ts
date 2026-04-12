@@ -161,6 +161,7 @@ async function initDatabase() {
         await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS jiujiu_mch_id VARCHAR(100)`);
         await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS jiujiu_secret_key VARCHAR(200)`);
         await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS jiujiu_test_amount VARCHAR(20)`);
+        await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS jiujiu_api_url VARCHAR(255)`);
         await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS phpwc_pid VARCHAR(100)`);
         await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS phpwc_secret_key VARCHAR(200)`);
         await client.query(`ALTER TABLE public.users ADD COLUMN IF NOT EXISTS phpwc_api_url VARCHAR(255)`);
@@ -2024,7 +2025,7 @@ app.put('/api/user/profile', authMiddleware, async (req: AuthRequest, res: Respo
 // ---------- 用户管理 API (管理员) ----------
 
 // 首席工程师：获取用户树形结构
-app.get('/api/users/tree', authMiddleware, chiefEngineerMiddleware, async (req: AuthRequest, res: Response) => {
+app.get('/api/users/tree', authMiddleware, chiefEngineerMiddleware, async (_req: AuthRequest, res: Response) => {
   try {
     const result = await pool.query(`
       SELECT id, email, display_name as name, role, status, created_at, updated_at, created_by
@@ -2057,7 +2058,7 @@ app.get('/api/users/tree', authMiddleware, chiefEngineerMiddleware, async (req: 
 });
 
 // 获取系统运行状态 (首席工程师专属)
-app.get('/api/system/status', authMiddleware, chiefEngineerMiddleware, async (req: AuthRequest, res: Response) => {
+app.get('/api/system/status', authMiddleware, chiefEngineerMiddleware, async (_req: AuthRequest, res: Response) => {
   try {
     const dbSizeResult = await pool.query("SELECT pg_size_pretty(pg_database_size(current_database())) as size");
     const userCountResult = await pool.query("SELECT count(*) FROM public.users");
@@ -2087,7 +2088,7 @@ app.get('/api/system/status', authMiddleware, chiefEngineerMiddleware, async (re
 // ---------- 系统与数据库管理 API (首席工程师) ----------
 
 // 获取数据库中所有的表
-app.get('/api/system/db/tables', authMiddleware, chiefEngineerMiddleware, async (req: AuthRequest, res: Response) => {
+app.get('/api/system/db/tables', authMiddleware, chiefEngineerMiddleware, async (_req: AuthRequest, res: Response) => {
   try {
     const result = await pool.query(`
       SELECT table_name 
@@ -2740,16 +2741,17 @@ app.post('/api/merchant/withdraw/:id/pay', authMiddleware, supervisorMiddleware,
 
 // ---------- 设置 API ----------
 // 获取商户设置
-app.get('/api/admin/payment-config', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response) => {
+app.get('/api/admin/payment-config', authMiddleware, adminMiddleware, async (_req: AuthRequest, res: Response) => {
   try {
     const result = await pool.query(`
-      SELECT superpay_merchant_on, superpay_merchant_key, superpay_test_amount, jiujiu_mch_id, jiujiu_secret_key, jiujiu_test_amount, phpwc_pid, phpwc_secret_key, phpwc_api_url, phpwc_test_amount FROM public.users WHERE role = 'manager' LIMIT 1
+      SELECT superpay_merchant_on, superpay_merchant_key, superpay_test_amount, jiujiu_api_url, jiujiu_mch_id, jiujiu_secret_key, jiujiu_test_amount, phpwc_pid, phpwc_secret_key, phpwc_api_url, phpwc_test_amount FROM public.users WHERE role = 'manager' LIMIT 1
     `);
 
     res.json({
       superpayMerchantOn: result.rows[0]?.superpay_merchant_on || '',
       superpayMerchantKey: result.rows[0]?.superpay_merchant_key || '',
       superpayTestAmount: result.rows[0]?.superpay_test_amount || config.superpayTestAmount,
+      jiujiuApiUrl: result.rows[0]?.jiujiu_api_url || config.jiujiuApiUrl,
       jiujiuMchId: result.rows[0]?.jiujiu_mch_id || '',
       jiujiuSecretKey: result.rows[0]?.jiujiu_secret_key || '',
       jiujiuTestAmount: result.rows[0]?.jiujiu_test_amount || config.jiujiuTestAmount,
@@ -2767,7 +2769,7 @@ app.get('/api/admin/payment-config', authMiddleware, adminMiddleware, async (req
 // 更新商户设置
 app.put('/api/admin/payment-config', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const { superpayMerchantOn, superpayMerchantKey, superpayTestAmount, jiujiuMchId, jiujiuSecretKey, jiujiuTestAmount, phpwcPid, phpwcSecretKey, phpwcApiUrl, phpwcTestAmount } = req.body;
+    const { superpayMerchantOn, superpayMerchantKey, superpayTestAmount, jiujiuApiUrl, jiujiuMchId, jiujiuSecretKey, jiujiuTestAmount, phpwcPid, phpwcSecretKey, phpwcApiUrl, phpwcTestAmount } = req.body;
 
     // 将支付配置保存到经理账户上（全局配置）
     await pool.query(`
@@ -2775,21 +2777,23 @@ app.put('/api/admin/payment-config', authMiddleware, adminMiddleware, async (req
         superpay_merchant_on = $1,
         superpay_merchant_key = $2,
         superpay_test_amount = $3,
-        jiujiu_mch_id = $4,
-        jiujiu_secret_key = $5,
-        jiujiu_test_amount = $6,
-        phpwc_pid = $7,
-        phpwc_secret_key = $8,
-        phpwc_api_url = $9,
-        phpwc_test_amount = $10,
+        jiujiu_api_url = $4,
+        jiujiu_mch_id = $5,
+        jiujiu_secret_key = $6,
+        jiujiu_test_amount = $7,
+        phpwc_pid = $8,
+        phpwc_secret_key = $9,
+        phpwc_api_url = $10,
+        phpwc_test_amount = $11,
         updated_at = NOW()
       WHERE role = 'manager'
-    `, [superpayMerchantOn, superpayMerchantKey, superpayTestAmount, jiujiuMchId, jiujiuSecretKey, jiujiuTestAmount, phpwcPid, phpwcSecretKey, phpwcApiUrl, phpwcTestAmount]);
+    `, [superpayMerchantOn, superpayMerchantKey, superpayTestAmount, jiujiuApiUrl, jiujiuMchId, jiujiuSecretKey, jiujiuTestAmount, phpwcPid, phpwcSecretKey, phpwcApiUrl, phpwcTestAmount]);
 
     // 同步更新运行时配置，使其立即生效
     if (superpayMerchantOn) config.superpayMerchantOn = superpayMerchantOn;
     if (superpayMerchantKey) config.superpayMerchantKey = superpayMerchantKey;
     if (superpayTestAmount !== undefined) config.superpayTestAmount = superpayTestAmount;
+    if (jiujiuApiUrl) config.jiujiuApiUrl = jiujiuApiUrl;
     if (jiujiuMchId) config.jiujiuMchId = jiujiuMchId;
     if (jiujiuSecretKey) config.jiujiuAppSecret = jiujiuSecretKey;
     if (jiujiuTestAmount !== undefined) config.jiujiuTestAmount = jiujiuTestAmount;
@@ -2921,7 +2925,7 @@ app.post('/api/settings/test-superpay', authMiddleware, adminMiddleware, async (
 // 测试九久支付配置
 app.post('/api/settings/test-jiujiu', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const { mchId, secretKey, testAmount, channelCode } = req.body;
+    const { mchId, secretKey, testAmount, channelCode, apiUrl } = req.body;
 
     if (!mchId || !secretKey) {
       return res.status(400).json({ error: '请提供商户ID和密钥' });
@@ -2932,9 +2936,11 @@ app.post('/api/settings/test-jiujiu', authMiddleware, adminMiddleware, async (re
     // 临时覆盖全局配置进行测试
     const originalMchId = config.jiujiuMchId;
     const originalSecret = config.jiujiuAppSecret;
+    const originalApiUrl = config.jiujiuApiUrl;
     
     config.jiujiuMchId = mchId;
     config.jiujiuAppSecret = secretKey;
+    if (apiUrl) config.jiujiuApiUrl = apiUrl;
 
     try {
       const orderId = `TEST${Date.now()}`;
@@ -2970,6 +2976,7 @@ app.post('/api/settings/test-jiujiu', authMiddleware, adminMiddleware, async (re
       // 恢复原配置
       config.jiujiuMchId = originalMchId;
       config.jiujiuAppSecret = originalSecret;
+      config.jiujiuApiUrl = originalApiUrl;
     }
   } catch (error) {
     console.error('Test JiuJiu error:', error);
@@ -3208,11 +3215,12 @@ async function start() {
     await initDatabase();
 
     try {
-      const result = await pool.query(`SELECT superpay_merchant_on, superpay_merchant_key, superpay_test_amount, jiujiu_mch_id, jiujiu_secret_key, jiujiu_test_amount, phpwc_pid, phpwc_secret_key, phpwc_api_url, phpwc_test_amount FROM public.users WHERE role = 'manager' LIMIT 1`);
+      const result = await pool.query(`SELECT superpay_merchant_on, superpay_merchant_key, superpay_test_amount, jiujiu_api_url, jiujiu_mch_id, jiujiu_secret_key, jiujiu_test_amount, phpwc_pid, phpwc_secret_key, phpwc_api_url, phpwc_test_amount FROM public.users WHERE role = 'manager' LIMIT 1`);
       if (result.rows.length > 0) {
         config.superpayMerchantOn = result.rows[0].superpay_merchant_on || config.superpayMerchantOn;
         config.superpayMerchantKey = result.rows[0].superpay_merchant_key || config.superpayMerchantKey;
         config.superpayTestAmount = result.rows[0].superpay_test_amount || config.superpayTestAmount;
+        config.jiujiuApiUrl = result.rows[0].jiujiu_api_url || config.jiujiuApiUrl;
         config.jiujiuMchId = result.rows[0].jiujiu_mch_id || config.jiujiuMchId;
         config.jiujiuAppSecret = result.rows[0].jiujiu_secret_key || config.jiujiuAppSecret;
         config.jiujiuTestAmount = result.rows[0].jiujiu_test_amount || config.jiujiuTestAmount;

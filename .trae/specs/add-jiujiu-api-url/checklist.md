@@ -1,0 +1,5 @@
+- [x] The `users` table has `jiujiu_api_url` column added automatically.
+- [x] Admin dashboard settings page shows a new "网关地址" field for JiuJiu Pay.
+- [x] Saving the settings successfully updates the DB.
+- [x] The "Test Channel" button for JiuJiu Pay sends the custom `apiUrl` and correctly tests the connection against it.
+- [x] The actual order creation process uses the updated `apiUrl`.

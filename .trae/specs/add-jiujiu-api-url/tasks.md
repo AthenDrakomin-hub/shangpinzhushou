@@ -1,0 +1,14 @@
+# Tasks
+- [x] Task 1: Update Backend Database and Global Config
+  - [x] SubTask 1.1: Add `jiujiu_api_url` to `users` table via `ALTER TABLE` in `server.ts`.
+  - [x] SubTask 1.2: Update `GET /api/settings/config` to return `jiujiuApiUrl: result.rows[0]?.jiujiu_api_url || config.jiujiuApiUrl`.
+  - [x] SubTask 1.3: Update `POST /api/settings/config` to accept `jiujiuApiUrl` and save it to the DB (`jiujiu_api_url = $...`).
+  - [x] SubTask 1.4: Update the `pool.query` block in `start` to assign `config.jiujiuApiUrl = result.rows[0].jiujiu_api_url || config.jiujiuApiUrl`.
+- [x] Task 2: Update `test-jiujiu` endpoint
+  - [x] SubTask 2.1: Update `POST /api/settings/test-jiujiu` to accept `apiUrl` from `req.body`, temporarily assign it to `config.jiujiuApiUrl`, and then restore it back to the original value after testing.
+- [x] Task 3: Update `wechatPay.ts`
+  - [x] SubTask 3.1: Update `getJiujiuConfig()` to return `apiUrl: config.jiujiuApiUrl || 'http://bayq.hanyin.9jiupay.com'` by referencing the `config` object from `server.ts` or dynamically passing it in.
+- [x] Task 4: Update Frontend UI
+  - [x] SubTask 4.1: Add the `jiujiuApiUrl` input field to the JiuJiu Pay configuration section in `src/pages/SettingsPage.tsx`.
+  - [x] SubTask 4.2: Ensure the state is correctly mapped and saved on submit.
+  - [x] SubTask 4.3: Ensure `apiUrl` is passed in the `test-jiujiu` POST request.

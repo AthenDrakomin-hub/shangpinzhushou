@@ -33,20 +33,21 @@ export interface JiuJiuPayResult {
 export function getJiujiuConfig(): JiuJiuPayConfig {
   let dynamicMchId = process.env.JIUJIU_MCH_ID || '';
   let dynamicAppSecret = process.env.JIUJIU_APP_SECRET || '';
-  const apiUrl = process.env.JIUJIU_API_URL || 'http://bayq.hanyin.9jiupay.com';
+  let dynamicApiUrl = process.env.JIUJIU_API_URL || 'http://bayq.hanyin.9jiupay.com';
 
   try {
     if ((global as any).paymentConfig) {
       const gConfig = (global as any).paymentConfig;
       if (gConfig.jiujiuMchId) dynamicMchId = gConfig.jiujiuMchId;
       if (gConfig.jiujiuAppSecret) dynamicAppSecret = gConfig.jiujiuAppSecret;
+      if (gConfig.jiujiuApiUrl) dynamicApiUrl = gConfig.jiujiuApiUrl;
     }
   } catch (e) {}
 
   return {
     mchId: dynamicMchId,
     appSecret: dynamicAppSecret,
-    apiUrl: apiUrl
+    apiUrl: dynamicApiUrl
   };
 }
 

@@ -1186,6 +1186,7 @@ function PaymentConfigModal({
     jiujiuMchId: '',
     jiujiuSecretKey: '',
     jiujiuTestAmount: '1.00',
+    jiujiuApiUrl: '',
     phpwcPid: '',
     phpwcSecretKey: '',
     phpwcApiUrl: '',
@@ -1215,6 +1216,7 @@ function PaymentConfigModal({
           jiujiuMchId: data.jiujiuMchId || '',
           jiujiuSecretKey: data.jiujiuSecretKey || '',
           jiujiuTestAmount: data.jiujiuTestAmount || '1.00',
+          jiujiuApiUrl: data.jiujiuApiUrl || '',
           phpwcPid: data.phpwcPid || '',
           phpwcSecretKey: data.phpwcSecretKey || '',
           phpwcApiUrl: data.phpwcApiUrl || '',
@@ -1308,7 +1310,8 @@ function PaymentConfigModal({
         body: JSON.stringify({
           mchId: config.jiujiuMchId,
           secretKey: config.jiujiuSecretKey,
-          testAmount: config.jiujiuTestAmount
+          testAmount: config.jiujiuTestAmount,
+          apiUrl: config.jiujiuApiUrl
         })
       });
       const data = await response.json();
@@ -1446,6 +1449,16 @@ function PaymentConfigModal({
                     onChange={e => setConfig({...config, jiujiuMchId: e.target.value})}
                     className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
                     placeholder="例如: 10001"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-700 mb-1">网关地址 (API URL)</label>
+                  <input
+                    type="text"
+                    value={config.jiujiuApiUrl}
+                    onChange={e => setConfig({...config, jiujiuApiUrl: e.target.value})}
+                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                    placeholder="留空则使用默认网关: http://bayq.hanyin.9jiupay.com"
                   />
                 </div>
                 <div>
