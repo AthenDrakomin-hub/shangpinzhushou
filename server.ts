@@ -2873,7 +2873,7 @@ app.post('/api/settings/test-jiujiu', authMiddleware, adminMiddleware, async (re
       
       const payResult = await createWechatOrder({
         orderId,
-        amount: 100.00, // 修改为 100.00，以匹配大部分原生通道的限额限制
+        amount: 1.00, // 九久通道(微信)单笔限额多为 [1.00/20.00] 或类似小额，故修改为 1.00
         productName: '九久支付通道连通性测试',
         notifyUrl: `${projectDomain}/api/orders/wechat/callback`,
         callbackUrl: `${projectDomain}/payment/result?orderId=${orderId}`,
