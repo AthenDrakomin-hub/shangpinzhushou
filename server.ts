@@ -204,6 +204,13 @@ async function initDatabase() {
       )
     `);
 
+    // 为已有的商品表添加可能缺失的字段
+    try {
+      await client.query(`ALTER TABLE public.products ADD COLUMN IF NOT EXISTS is_shared BOOLEAN DEFAULT false`);
+    } catch (e) {
+      console.log('添加商品列警告:', (e as Error).message);
+    }
+
     // 创建订单表
     await client.query(`
       CREATE TABLE IF NOT EXISTS public.orders (

@@ -1,7 +1,21 @@
 {
   "settings": "Settings",
   "language": "Language",
+  "current_language": "Current: ",
+  "switch": "Switch",
   "pay_now": "Pay Now",
   "original_price": "Original Price",
-  "quantity": "Quantity"
+  "quantity": "Quantity",
+  "logout": "Logout",
+  "nav": {
+    "chief_dashboard": "Monitoring",
+    "db_admin": "DB Admin",
+    "dashboard": "Dashboard",
+    "products": "Products",
+    "orders": "Orders",
+    "wallet": "Wallet",
+    "merchant_employees": "Employees",
+    "merchant_withdrawals": "Withdrawals",
+    "settings": "Settings"
+  }
 }

@@ -29,6 +29,8 @@ import {
 } from 'lucide-react';
 import type { AuthUser } from '../../services/authService';
 
+import { useTranslation } from 'react-i18next';
+
 // 主题上下文
 export const ThemeContext = React.createContext<{
   isDark: boolean;
@@ -76,6 +78,7 @@ export default function AppLayout({
   onLogout,
   unreadNotifications = 0,
 }: AppLayoutProps) {
+  const { t } = useTranslation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
@@ -250,7 +253,7 @@ export default function AppLayout({
                           animate={{ opacity: 1 }}
                           exit={{ opacity: 0 }}
                         >
-                          {item.label}
+                          {t(`nav.${item.id}`, item.label)}
                         </motion.span>
                       )}
                       {item.badge && !sidebarCollapsed && (
@@ -381,7 +384,7 @@ export default function AppLayout({
                         className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                       >
                         <Settings className="w-4 h-4" />
-                        设置
+                        {t('settings', '设置')}
                       </button>
                       <button
                         onClick={() => {
@@ -391,7 +394,7 @@ export default function AppLayout({
                         className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700"
                       >
                         <LogOut className="w-4 h-4" />
-                        退出登录
+                        {t('logout', '退出登录')}
                       </button>
                     </motion.div>
                   )}

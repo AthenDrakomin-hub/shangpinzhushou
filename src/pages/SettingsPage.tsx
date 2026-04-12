@@ -561,7 +561,7 @@ export default function SettingsPage({ user, showToast, onLogout }: SettingsPage
   const { t, i18n } = useTranslation();
   
   const toggleLanguage = () => {
-    const newLang = i18n.language.startsWith('zh') ? 'en' : 'zh-CN';
+    const newLang = i18n.language.startsWith('zh') ? 'en' : 'zh';
     i18n.changeLanguage(newLang);
     setLanguage(newLang);
   };

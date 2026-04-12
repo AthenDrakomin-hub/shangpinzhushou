@@ -1,7 +1,21 @@
 {
-  "settings": "设置",
-  "language": "语言",
+  "settings": "系统管理",
+  "language": "语言设置",
+  "current_language": "当前: ",
+  "switch": "切换",
   "pay_now": "立即支付",
   "original_price": "原价",
-  "quantity": "数量"
+  "quantity": "数量",
+  "logout": "退出登录",
+  "nav": {
+    "chief_dashboard": "系统监控",
+    "db_admin": "数据库管理",
+    "dashboard": "仪表盘",
+    "products": "商品管理",
+    "orders": "订单管理",
+    "wallet": "我的钱包",
+    "merchant_employees": "员工管理",
+    "merchant_withdrawals": "提现管理",
+    "settings": "系统管理"
+  }
 }
