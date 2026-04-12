@@ -400,6 +400,7 @@ function EditProductModal({
         imageUrl: product.image || '',
         templateId: product.template_id || 'default',
         supportedPayMethods: product.supported_pay_methods ? product.supported_pay_methods.split(',') : [],
+        isShared: product.is_shared || false,
       });
     }
   }, [product]);
