@@ -1,4 +1,5 @@
 import { fetchApi } from '../utils/apiClient';
+import { compressImage } from '../utils/imageCompressor';
 /**
  * 商品创建页面
  * 使用新布局和UI组件
@@ -60,25 +61,35 @@ export default function ProductCreatePage({ user, handleBack, setCurrentView, sh
 
     setUploading(true);
     try {
-      const token = localStorage.getItem('auth_token');
+      // 在前端进行本地图片压缩（防 Nginx 413 报错，加速上传）
+      const compressedFile = await compressImage(file);
+      
       const formData = new FormData();
-      formData.append('image', file);
+      formData.append('image', compressedFile);
 
       const response = await fetchApi('/api/upload/image', {
         method: 'POST',
         headers: {
-          
+
         },
         body: formData,
       });
 
-      const data = await response.json();
+      // 处理非 JSON 返回值的报错（如 Nginx 返回的 413 HTML 页面）
+      let data;
+      try {
+        data = await response.json();
+      } catch (e) {
+        throw new Error('服务器返回了无效数据，可能是图片仍然过大');
+      }
+
       if (response.ok && data.url) {
         setProduct({ ...product, imageUrl: data.url });
       } else {
-        showToast(data.error || '上传失败，请检查图片格式和大小', 'error');
+        showToast(data?.error || '上传失败，请检查图片格式和大小', 'error');
       }
     } catch (error) {
+      console.error(error);
       showToast('上传出错，请稍后重试', 'error');
     } finally {
       setUploading(false);
@@ -175,7 +186,7 @@ export default function ProductCreatePage({ user, handleBack, setCurrentView, sh
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*,.heic,.heif"
+              accept="image/*"
               onChange={handleImageUpload}
               className="hidden"
             />
