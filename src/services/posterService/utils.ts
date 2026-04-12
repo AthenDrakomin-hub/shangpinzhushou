@@ -2,12 +2,19 @@
  * 海报生成服务 - 工具函数
  */
 
-import { createCanvas, loadImage, Canvas, SKRSContext2D as CanvasRenderingContext2D } from '@napi-rs/canvas';
+import { createCanvas, loadImage, Canvas, SKRSContext2D as CanvasRenderingContext2D, GlobalFonts } from '@napi-rs/canvas';
 import axios from 'axios';
 import sharp from 'sharp';
 
-// 字体配置
-const FONT_FAMILY = 'WenQuanYi, "PingFang SC", sans-serif';
+// 尝试加载系统字体，增加对服务器上现有中文字体的兼容性
+try {
+  (GlobalFonts as any).loadSystemFonts();
+} catch (e) {
+  console.warn('Failed to load system fonts for canvas:', e);
+}
+
+// 字体配置，增加更多的 fallback，特别是 `@napi-rs/canvas` 能识别的全名
+export const FONT_FAMILY = '"WenQuanYi Zen Hei", "WenQuanYi Micro Hei", "Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei", sans-serif';
 
 /**
  * 安全加载图片（支持 base64、本地路径、网络 URL）
@@ -99,14 +106,14 @@ export function drawImageError(
   ctx.lineWidth = 3;
   ctx.strokeRect(x, y, w, h);
   ctx.fillStyle = '#FF0000';
-  ctx.font = '24px sans-serif';
+  ctx.font = `24px ${FONT_FAMILY}`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText('图片加载失败', x + w/2, y + h/2 - 20);
   
   // 显示路径（截断过长的路径）
   const displayPath = imagePath.length > 40 ? '...' + imagePath.slice(-37) : imagePath;
-  ctx.font = '16px sans-serif';
+  ctx.font = `16px ${FONT_FAMILY}`;
   ctx.fillStyle = '#CC0000';
   ctx.fillText(displayPath, x + w/2, y + h/2 + 20);
 }

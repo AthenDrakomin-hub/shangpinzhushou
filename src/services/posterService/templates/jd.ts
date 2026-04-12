@@ -5,7 +5,7 @@
 
 import { Canvas, SKRSContext2D as CanvasRenderingContext2D, Image } from '@napi-rs/canvas';
 import { PosterData } from '../types';
-import { safeLoadImage, drawImageError, drawHeavyText, drawNormalText, roundRect, truncateText, drawImageCover, drawImageSmart } from '../utils';
+import { FONT_FAMILY, safeLoadImage, drawImageError, drawHeavyText, drawNormalText, roundRect, truncateText, drawImageCover, drawImageSmart } from '../utils';
 import path from 'path';
 
 const POSTER_WIDTH = 640;
@@ -31,10 +31,10 @@ function drawQualityBadge(ctx: CanvasRenderingContext2D, x: number, y: number) {
   
   // 文字
   ctx.fillStyle = '#FFFFFF';
-  ctx.font = 'bold 11px sans-serif';
+  ctx.font = `bold 11px ${FONT_FAMILY}`;
   ctx.textAlign = 'center';
   ctx.fillText('自营', x, y - 4);
-  ctx.font = '9px sans-serif';
+  ctx.font = `9px ${FONT_FAMILY}`;
   ctx.fillText('正品', x, y + 7);
 }
 
@@ -113,11 +113,11 @@ export async function renderJdTemplate(
   drawHeavyText(ctx, `¥${data.price.toFixed(2)}`, priceX, priceY, '#e4393c', 52);
   
   if (data.originalPrice && data.originalPrice > data.price) {
-    ctx.font = 'bold 52px sans-serif';
+    ctx.font = `bold 52px ${FONT_FAMILY}`;
     const currentPriceWidth = ctx.measureText(`¥${data.price.toFixed(2)}`).width;
     
     ctx.fillStyle = '#999999';
-    ctx.font = '20px sans-serif';
+    ctx.font = `20px ${FONT_FAMILY}`;
     const origPrice = `¥${data.originalPrice.toFixed(2)}`;
     ctx.fillText(origPrice, priceX + currentPriceWidth + 12, priceY);
   }

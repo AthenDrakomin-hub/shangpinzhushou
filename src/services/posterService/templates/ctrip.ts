@@ -5,7 +5,7 @@
 
 import { Canvas, SKRSContext2D as CanvasRenderingContext2D, Image } from '@napi-rs/canvas';
 import { PosterData } from '../types';
-import { safeLoadImage, drawImageError, drawHeavyText, drawNormalText, drawMultiLineText, roundRect, truncateText, drawImageCover, drawImageSmart } from '../utils';
+import { FONT_FAMILY, safeLoadImage, drawImageError, drawHeavyText, drawNormalText, drawMultiLineText, roundRect, truncateText, drawImageCover, drawImageSmart } from '../utils';
 import path from 'path';
 
 const POSTER_WIDTH = 750;
@@ -72,7 +72,7 @@ export async function renderCtripTemplate(
 
   drawHeavyText(ctx, '¥', 70, infoY + 70, '#F9D490', 36);
   ctx.fillStyle = goldGrad;
-  ctx.font = 'bold 72px sans-serif';
+  ctx.font = `bold 72px ${FONT_FAMILY}`;
   ctx.fillText(data.price.toFixed(2), 105, infoY + 70);
 
   // 原价
@@ -80,7 +80,7 @@ export async function renderCtripTemplate(
     const priceTextWidth = ctx.measureText(data.price.toFixed(2)).width;
     const origX = 105 + priceTextWidth + 20;
     
-    ctx.font = '24px sans-serif';
+    ctx.font = `24px ${FONT_FAMILY}`;
     ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
     ctx.fillText(`原价 ¥${data.originalPrice.toFixed(2)}`, origX, infoY + 60);
     

@@ -5,7 +5,7 @@
 
 import { Canvas, SKRSContext2D as CanvasRenderingContext2D, Image } from '@napi-rs/canvas';
 import { PosterData } from '../types';
-import { safeLoadImage, drawImageError, drawHeavyText, drawNormalText, drawMultiLineText, roundRect, drawImageCover, drawImageSmart } from '../utils';
+import { FONT_FAMILY, safeLoadImage, drawImageError, drawHeavyText, drawNormalText, drawMultiLineText, roundRect, drawImageCover, drawImageSmart } from '../utils';
 
 const POSTER_WIDTH = 750;
 const POSTER_HEIGHT = 1200;
@@ -72,7 +72,7 @@ export async function renderElemeTemplate(
     const priceTextWidth = ctx.measureText(data.price.toFixed(2)).width;
     const origX = 95 + priceTextWidth + 20;
     
-    ctx.font = '24px sans-serif';
+    ctx.font = `24px ${FONT_FAMILY}`;
     ctx.fillStyle = '#999999';
     ctx.fillText(`¥${data.originalPrice.toFixed(2)}`, origX, bottomY + 30);
     

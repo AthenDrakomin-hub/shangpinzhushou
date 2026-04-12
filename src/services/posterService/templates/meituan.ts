@@ -5,7 +5,7 @@
 
 import { Canvas, SKRSContext2D as CanvasRenderingContext2D, Image } from '@napi-rs/canvas';
 import { PosterData } from '../types';
-import { safeLoadImage, drawImageError, drawHeavyText, drawNormalText, roundRect, truncateText, drawImageCover, drawImageSmart } from '../utils';
+import { FONT_FAMILY, safeLoadImage, drawImageError, drawHeavyText, drawNormalText, roundRect, truncateText, drawImageCover, drawImageSmart } from '../utils';
 import path from 'path';
 
 const POSTER_WIDTH = 640;
@@ -29,7 +29,7 @@ function drawCornerBadge(ctx: CanvasRenderingContext2D, text: string) {
   
   // 文字
   ctx.fillStyle = '#FFFFFF';
-  ctx.font = 'bold 16px sans-serif';
+  ctx.font = `bold 16px ${FONT_FAMILY}`;
   ctx.textAlign = 'center';
   ctx.save();
   ctx.translate(w - 45, 45);
@@ -50,7 +50,7 @@ function drawTagCloud(ctx: CanvasRenderingContext2D, tags: string[], startX: num
     ctx.fill();
     
     ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 13px sans-serif';
+    ctx.font = `bold 13px ${FONT_FAMILY}`;
     ctx.textAlign = 'center';
     ctx.fillText(tag, x + 40, y + 18);
     
@@ -132,7 +132,7 @@ export async function renderMeituanTemplate(
   if (data.originalPrice && data.originalPrice > data.price) {
     const priceText = `原价 ¥${data.originalPrice.toFixed(2)}`;
     ctx.fillStyle = '#999999';
-    ctx.font = '18px sans-serif';
+    ctx.font = `18px ${FONT_FAMILY}`;
     ctx.fillText(priceText, 24, priceY + 30);
     
     // 折扣标签

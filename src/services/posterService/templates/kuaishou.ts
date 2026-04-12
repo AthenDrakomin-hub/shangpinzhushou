@@ -5,7 +5,7 @@
 
 import { Canvas, SKRSContext2D as CanvasRenderingContext2D, Image } from '@napi-rs/canvas';
 import { PosterData } from '../types';
-import { safeLoadImage, drawImageError, drawHeavyText, drawNormalText, roundRect, truncateText, drawImageCover, drawImageSmart } from '../utils';
+import { FONT_FAMILY, safeLoadImage, drawImageError, drawHeavyText, drawNormalText, roundRect, truncateText, drawImageCover, drawImageSmart } from '../utils';
 import path from 'path';
 
 const POSTER_WIDTH = 640;
@@ -37,7 +37,7 @@ function drawExplosionBadge(ctx: CanvasRenderingContext2D, x: number, y: number,
   
   // 白色文字
   ctx.fillStyle = '#FFFFFF';
-  ctx.font = 'bold 18px sans-serif';
+  ctx.font = `bold 18px ${FONT_FAMILY}`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(text, x, y);
@@ -113,11 +113,11 @@ export async function renderKuaishouTemplate(
 
   // 原价
   if (data.originalPrice && data.originalPrice > data.price) {
-    ctx.font = 'bold 56px sans-serif';
+    ctx.font = `bold 56px ${FONT_FAMILY}`;
     const currentPriceWidth = ctx.measureText(`¥${data.price.toFixed(2)}`).width;
 
     ctx.fillStyle = '#999999';
-    ctx.font = '22px sans-serif';
+    ctx.font = `22px ${FONT_FAMILY}`;
     const origPrice = `¥${data.originalPrice.toFixed(2)}`;
     ctx.fillText(origPrice, 40 + currentPriceWidth + 15, priceY);
 
