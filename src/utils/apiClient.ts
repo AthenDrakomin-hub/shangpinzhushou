@@ -10,6 +10,16 @@ export const fetchApi = async (url: string, options: RequestInit = {}): Promise<
     headers.set('Authorization', `Bearer ${token}`);
   }
 
+  // 如果是 GET 请求或未指定（默认为 GET），附加时间戳参数防缓存
+  if (!options.method || options.method.toUpperCase() === 'GET') {
+    const separator = url.includes('?') ? '&' : '?';
+    url = `${url}${separator}_t=${Date.now()}`;
+    
+    // 设置请求头防缓存
+    headers.set('Cache-Control', 'no-cache');
+    headers.set('Pragma', 'no-cache');
+  }
+
   const response = await fetch(url, {
     ...options,
     headers,

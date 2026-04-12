@@ -1,0 +1,3 @@
+- [x] The `fetchApi` function automatically appends an anti-caching query parameter to all `GET` requests.
+- [x] `Cache-Control: no-cache` is added to all fetch headers.
+- [x] Users who edit a product will immediately see the updated state upon closing the modal and re-opening it, because the GET request will bypass the browser cache.
