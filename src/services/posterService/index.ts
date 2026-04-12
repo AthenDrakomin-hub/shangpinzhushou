@@ -17,12 +17,15 @@ import { renderKuaishouTemplate } from './templates/kuaishou';
  * 生成海报主函数
  * @param data 海报数据
  * @param template 模板类型
+ * @param lang 语言参数
  * @returns PNG Buffer
  */
 export async function generatePoster(
   data: PosterData,
-  template: PosterTemplate = 'default'
+  template: PosterTemplate = 'default',
+  lang: string = 'zh'
 ): Promise<Buffer> {
+  console.log(`Generating poster with template: ${template}, language: ${lang}`);
   let width = 750;
   let height = 1200;
 

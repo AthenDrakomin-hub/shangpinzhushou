@@ -1,6 +1,7 @@
 import { fetchApi } from '../utils/apiClient';
 import { useState } from 'react';
 import { Button, Modal } from './ui';
+import i18n from '../i18n';
 
 export default function ShareProductModal({ 
   product, 
@@ -64,7 +65,8 @@ export default function ShareProductModal({
     setGenerating(true);
     setPosterUrl('');
     try {
-      const response = await fetchApi('/api/poster/generate', {
+      const lang = i18n.language || 'zh';
+      const response = await fetchApi(`/api/poster/generate?lang=${lang}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 

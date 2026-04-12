@@ -1,4 +1,5 @@
 import { fetchApi } from '../utils/apiClient';
+import { useTranslation } from 'react-i18next';
 import { useState, useEffect } from 'react';
 import { 
   Share2, ChevronRight, CheckCircle2, Clock, 
@@ -105,7 +106,8 @@ interface H5ProductPageProps {
   onClose?: () => void;
 }
 
-export default function H5ProductPage({ productId = 'p1', onClose }: H5ProductPageProps) {
+export default function H5ProductPage({ productId, shareUid, onClose }: H5ProductPageProps) {
+  const { t } = useTranslation();
   const [product, setProduct] = useState<Product | null>(null);
   const [paymentChannels, setPaymentChannels] = useState<PaymentChannel[]>([]);
   const [selectedChannel, setSelectedChannel] = useState<PaymentChannel | null>(null);
@@ -426,7 +428,7 @@ export default function H5ProductPage({ productId = 'p1', onClose }: H5ProductPa
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 pb-32">
+    <div className="min-h-screen bg-gray-100 pb-48">
       {/* 顶部导航栏 - 使用模板主题色 */}
       <header className="sticky top-0 bg-white border-b z-40" style={{ borderBottomColor: currentBrand.themeColor }}>
         <div className="flex items-center justify-between px-4 py-3">
@@ -496,15 +498,15 @@ export default function H5ProductPage({ productId = 'p1', onClose }: H5ProductPa
         <p className="text-sm text-gray-500 leading-relaxed">{product.description}</p>
         
         <div className="flex items-center gap-4 mt-4 text-xs text-gray-400">
-          <span>已售 {product.sales} 件</span>
-          <span>库存 {product.stock} 件</span>
-          <span>极速发货</span>
+          <span>{t('sold', '已售')} {product.sales} {t('items', '件')}</span>
+          <span>{t('stock', '库存')} {product.stock} {t('items', '件')}</span>
+          <span>{t('fast_shipping', '极速发货')}</span>
         </div>
       </div>
 
       {/* 支付方式选择 */}
       <div className="bg-white px-4 py-4">
-        <h3 className="font-semibold text-gray-900 mb-3">选择支付方式</h3>
+        <h3 className="font-semibold text-gray-900 mb-3">{t('choose_payment_method', '选择支付方式')}</h3>
         {availableChannels.length === 0 ? (
           <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
@@ -563,8 +565,8 @@ export default function H5ProductPage({ productId = 'p1', onClose }: H5ProductPa
           <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
             <Clock size={20} className="text-blue-500" />
             <div>
-              <p className="text-sm font-medium text-blue-900">订单待支付</p>
-              <p className="text-xs text-blue-600">订单号: {orderId}</p>
+              <p className="text-sm font-medium text-blue-900">{t('order_pending', '订单待支付')}</p>
+              <p className="text-xs text-blue-600">{t('order_number', '订单号')}: {orderId}</p>
             </div>
           </div>
         </div>
@@ -573,19 +575,29 @@ export default function H5ProductPage({ productId = 'p1', onClose }: H5ProductPa
       {/* 底部支付栏 */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 flex items-center gap-4 z-40">
         <div className="flex-1">
-          <div className="text-xs text-gray-500">应付金额</div>
+          <div className="text-xs text-gray-500">{t('amount_to_pay', '应付金额')}</div>
           <div className="text-xl font-bold text-red-500">¥{product.price.toFixed(2)}</div>
         </div>
         <button
           onClick={handlePayment}
-          disabled={loading}
+          disabled={loading || !selectedChannel || availableChannels.length === 0}
           className={`flex-1 py-3 rounded-lg font-semibold text-white transition-all ${
-            loading 
-              ? 'bg-gray-400 cursor-not-allowed' 
-              : 'bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600'
+            (loading || !selectedChannel || availableChannels.length === 0)
+              ? 'bg-gray-400 cursor-not-allowed'
+              : 'bg-[#FF4D4F] hover:bg-[#FF3333] active:bg-[#E60000]'
           }`}
+          style={(loading || !selectedChannel || availableChannels.length === 0) ? {} : { backgroundColor: currentBrand.themeColor }}
         >
-          {loading ? '处理中...' : orderStatus === 'pending' ? '继续支付' : '立即支付'}
+          {loading ? (
+            <div className="flex items-center justify-center gap-2">
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              {t('processing', '处理中...')}
+            </div>
+          ) : orderStatus === 'pending' ? (
+            t('continue_payment', '继续支付')
+          ) : (
+            t('pay_now', '立即支付')
+          )}
         </button>
       </div>
 

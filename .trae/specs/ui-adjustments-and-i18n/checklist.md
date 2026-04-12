@@ -1,0 +1,6 @@
+- [x] The "Dark Mode" menu item is successfully removed from the Settings page.
+- [x] The bottom padding on H5 and PC checkout pages allows scrolling completely past the payment channel list, without the fixed bottom bar covering the last item.
+- [x] `i18next` is installed and initialized.
+- [x] The "Language Settings" menu in the Settings page opens a functional language switcher.
+- [x] Switching between Chinese and English updates the text on the Settings page and the Checkout pages immediately.
+- [x] The poster generation API request in the frontend now includes a `lang` query parameter reflecting the current user language.

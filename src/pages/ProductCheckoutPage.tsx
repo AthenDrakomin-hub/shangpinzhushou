@@ -4,6 +4,7 @@ import { fetchApi } from '../utils/apiClient';
  */
 
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { 
   ChevronLeft, 
   Clock, 
@@ -61,6 +62,7 @@ const ProductCheckoutPage: React.FC<ProductCheckoutPageProps> = ({
   handleBack,
   showToast
 }) => {
+  const { t } = useTranslation();
   const [product, setProduct] = useState<any>(null);
   const [payChannels, setPayChannels] = useState<any[]>([]);
   const [selectedChannel, setSelectedChannel] = useState<any | null>(null);
@@ -342,7 +344,7 @@ const ProductCheckoutPage: React.FC<ProductCheckoutPageProps> = ({
           <div className="flex items-center gap-4 mb-6">
             <button onClick={handleBack} className="p-2 bg-white/10 rounded-xl"><ChevronLeft className="w-6 h-6" /></button>
             <div>
-              <h2 className="text-xl font-black">银行卡转账</h2>
+              <h2 className="text-xl font-black">{t('bankTransfer', '银行卡转账')}</h2>
               <p className="text-xs text-white/60 mt-1">请按照以下信息转账</p>
             </div>
           </div>
@@ -423,11 +425,11 @@ const ProductCheckoutPage: React.FC<ProductCheckoutPageProps> = ({
             <div className="flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-bold text-blue-800 mb-1">转账说明</p>
+                <p className="text-sm font-bold text-blue-800 mb-1">{t('transferInstructions', '转账说明')}</p>
                 <ul className="text-xs text-blue-600 space-y-1">
-                  <li>• 请在转账时备注订单号</li>
-                  <li>• 商户确认到账后订单自动完成</li>
-                  <li>• 如有问题请联系商户</li>
+                  <li>• {t('transferNoteOrder', '请在转账时备注订单号')}</li>
+                  <li>• {t('transferAutoComplete', '商户确认到账后订单自动完成')}</li>
+                  <li>• {t('transferContactMerchant', '如有问题请联系商户')}</li>
                 </ul>
               </div>
             </div>
@@ -485,7 +487,7 @@ const ProductCheckoutPage: React.FC<ProductCheckoutPageProps> = ({
 
   // 主下单页面
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="min-h-screen bg-white pb-32">
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="min-h-screen bg-white pb-48">
       {/* 品牌模板头部 */}
       <div 
         className={`px-6 pt-16 pb-8 text-center ${serverTemplate ? 'brand-header' : 'border-b border-gray-50'}`}
@@ -517,7 +519,7 @@ const ProductCheckoutPage: React.FC<ProductCheckoutPageProps> = ({
         <div className="flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-widest">
           <ShieldCheck className="w-4 h-4" style={{ color: serverTemplate ? serverTemplate.textColor : '#22C55E', opacity: 0.8 }} />
           <span style={{ color: serverTemplate ? serverTemplate.textColor : '#9CA3AF', opacity: 0.7 }}>
-            {serverTemplate ? `${serverTemplate.name} · 安全下单` : '安全下单'}
+            {serverTemplate ? `${serverTemplate.name} · ${t('secureOrder', '安全下单')}` : t('secureOrder', '安全下单')}
           </span>
         </div>
         <div className="mt-6 flex items-baseline justify-center gap-1">
@@ -545,7 +547,7 @@ const ProductCheckoutPage: React.FC<ProductCheckoutPageProps> = ({
           </div>
         ) : (
           <>
-            <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4 ml-1">选择下单方式</p>
+            <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4 ml-1">{t('choosePaymentMethod', '选择下单方式')}</p>
             <div className="space-y-3">
               {availableChannels.map(channel => (
                 <button
@@ -557,7 +559,7 @@ const ProductCheckoutPage: React.FC<ProductCheckoutPageProps> = ({
                     {getChannelIcon(channel)}
                     <div className="text-left">
                       <h4 className="font-black text-gray-900">{getChannelDisplayName(channel)}</h4>
-                      <p className="text-[10px] text-gray-400 font-medium">{channel.gateway === 'wechat' ? '扫码下单，即时到账' : channel.gateway === 'bank' ? '线下转账，商户确认' : '网页下单，安全便捷'}</p>
+                      <p className="text-[10px] text-gray-400 font-medium">{channel.gateway === 'wechat' ? t('scanToPay', '扫码下单，即时到账') : channel.gateway === 'bank' ? t('offlineTransfer', '线下转账，商户确认') : t('webOrder', '网页下单，安全便捷')}</p>
                     </div>
                   </div>
                   <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${selectedChannel?.id === channel.id ? 'border-blue-500' : 'border-gray-200'}`}>
@@ -578,12 +580,12 @@ const ProductCheckoutPage: React.FC<ProductCheckoutPageProps> = ({
               {paying ? (
                 <>
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  处理中...
+                  {t('processing', '处理中...')}
                 </>
               ) : (
                 <>
                   <Lock className="w-5 h-5" />
-                  立即下单
+                  {t('orderNow', '立即下单')}
                 </>
               )}
             </button>

@@ -3094,6 +3094,7 @@ app.get('/api/superpay/channels', authMiddleware, async (req: AuthRequest, res: 
 // 生成商品分享海报
 app.post('/api/poster/generate', async (req: Request, res: Response) => {
   try {
+    const lang = req.query.lang as string || 'zh';
     const { productId, template, shareUid }: { productId: string; template?: PosterTemplate; shareUid?: string } = req.body;
 
     if (!productId) {
@@ -3146,7 +3147,8 @@ app.post('/api/poster/generate', async (req: Request, res: Response) => {
         image: imageUrl,
         qrUrl: qrBase64,  // 传递 base64 二维码图片
       },
-      usedTemplate
+      usedTemplate,
+      lang
     );
 
     // 返回 PNG 图片

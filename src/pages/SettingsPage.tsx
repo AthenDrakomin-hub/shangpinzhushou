@@ -1,8 +1,5 @@
 import { fetchApi } from '../utils/apiClient';
-/**
- * 设置页面
- * 使用新布局和UI组件
- */
+import { useTranslation } from 'react-i18next';
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import {
@@ -561,23 +558,25 @@ export default function SettingsPage({ user, showToast, onLogout }: SettingsPage
         ]
       : baseAccountSettings;
 
+  const { t, i18n } = useTranslation();
+  
+  const toggleLanguage = () => {
+    const newLang = i18n.language.startsWith('zh') ? 'en' : 'zh-CN';
+    i18n.changeLanguage(newLang);
+    setLanguage(newLang);
+  };
+
   const appSettings: SettingItem[] = [
-      {
-        id: 'theme',
-        icon: <Palette className="w-5 h-5" />,
-        title: '深色模式',
-        description: '切换明暗主题',
-        action: (
-          <Badge variant="warning">待开发</Badge>
-        ),
-      },
       {
         id: 'language',
         icon: <Globe className="w-5 h-5" />,
-        title: '语言设置',
-        description: `当前: ${language === 'zh-CN' ? '简体中文' : 'English'}`,
+        title: t('language', '语言设置'),
+        description: t('current_language', '当前: ') + (i18n.language.startsWith('zh') ? '简体中文' : 'English'),
+        onClick: toggleLanguage,
         action: (
-          <Badge variant="warning">待开发</Badge>
+          <div className="px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-xs font-medium cursor-pointer hover:bg-blue-200 transition-colors">
+            {t('switch', '切换')}
+          </div>
         )
       },
   ];
