@@ -1,0 +1,13 @@
+# Tasks
+- [x] Task 1: Implement Earnings Tracking Table and API
+  - [x] SubTask 1.1: Create `public.earnings` table in `server.ts` initialization block
+  - [x] SubTask 1.2: Add `GET /api/earnings` endpoint in `server.ts`
+  - [x] SubTask 1.3: Update `processOrderProfitShare` to insert records into `public.earnings` upon order completion
+- [x] Task 2: Fix Payment Channels Display Logic in Checkout Pages
+  - [x] SubTask 2.1: Update `getChannelDisplayName` and `getChannelIcon` in `src/pages/H5ProductPage.tsx` to force standardized names and logos for WeChat/Alipay
+  - [x] SubTask 2.2: Update `getChannelDisplayName` and `getChannelIcon` in `src/pages/ProductCheckoutPage.tsx` similarly
+- [x] Task 3: Fix Bottom Padding on Checkout Pages
+  - [x] SubTask 3.1: Change `pb-20` to `pb-32` in `src/pages/H5ProductPage.tsx`
+  - [x] SubTask 3.2: Change `pb-32` to `pb-40` or equivalent in `src/pages/ProductCheckoutPage.tsx`
+- [x] Task 4: Explain "Channel code incorrect" error to the user
+  - [x] SubTask 4.1: Write the final response explaining why the test channel worked but the live channel failed (hardcoded `channelCode` in the test endpoint vs real one).

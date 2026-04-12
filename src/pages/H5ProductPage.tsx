@@ -138,11 +138,11 @@ export default function H5ProductPage({ productId = 'p1', onClose }: H5ProductPa
     });
   };
 
-  const getChannelIcon = (channel: any) => {
-    const isWechat = channel.icon === 'wechat' || channel.gateway === 'wechat' || channel.name.includes('微信');
-    const isAlipay = channel.icon === 'alipay' || channel.gateway === 'alipay' || channel.name.includes('支付宝');
+  const isWechatChannel = (channel: any) => channel.icon === 'wechat' || channel.gateway === 'wechat' || channel.gateway === 'jiujiu' || channel.channelCode?.toLowerCase().includes('wx') || channel.name.includes('微信');
+  const isAlipayChannel = (channel: any) => channel.icon === 'alipay' || channel.gateway === 'alipay' || channel.gateway === 'superpay' || channel.channelCode?.toLowerCase().includes('ali') || channel.name.includes('支付宝');
 
-    if (isWechat) {
+  const getChannelIcon = (channel: any) => {
+    if (isWechatChannel(channel)) {
       return (
         <div className="w-7 h-7 flex items-center justify-center bg-[#07c160] rounded-md shadow-sm">
           <svg viewBox="0 0 1024 1024" width="18" height="18" fill="white">
@@ -151,7 +151,7 @@ export default function H5ProductPage({ productId = 'p1', onClose }: H5ProductPa
         </div>
       );
     }
-    if (isAlipay) {
+    if (isAlipayChannel(channel)) {
       return (
         <div className="w-7 h-7 flex items-center justify-center bg-[#1677ff] rounded-md shadow-sm">
           <svg viewBox="0 0 1024 1024" width="18" height="18" fill="white">
@@ -164,8 +164,8 @@ export default function H5ProductPage({ productId = 'p1', onClose }: H5ProductPa
   };
 
   const getChannelDisplayName = (channel: any) => {
-    if (channel.name.includes('微信')) return '微信支付';
-    if (channel.name.includes('支付宝')) return '支付宝';
+    if (isWechatChannel(channel)) return '微信支付';
+    if (isAlipayChannel(channel)) return '支付宝';
     return channel.name;
   };
 
@@ -426,7 +426,7 @@ export default function H5ProductPage({ productId = 'p1', onClose }: H5ProductPa
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 pb-20">
+    <div className="min-h-screen bg-gray-100 pb-32">
       {/* 顶部导航栏 - 使用模板主题色 */}
       <header className="sticky top-0 bg-white border-b z-40" style={{ borderBottomColor: currentBrand.themeColor }}>
         <div className="flex items-center justify-between px-4 py-3">

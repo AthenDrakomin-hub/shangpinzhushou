@@ -257,6 +257,19 @@ async function initDatabase() {
       )
     `);
 
+    // 创建收益表
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS public.earnings (
+        id SERIAL PRIMARY KEY,
+        user_id UUID REFERENCES public.users(id),
+        order_id VARCHAR(50),
+        product_name VARCHAR(255),
+        amount DECIMAL(10,2) NOT NULL,
+        type VARCHAR(20) DEFAULT 'sale',
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+
     // 创建索引
     await client.query(`CREATE INDEX IF NOT EXISTS idx_products_user_id ON public.products(user_id)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_orders_user_id ON public.orders(user_id)`);
@@ -380,7 +393,7 @@ const chiefEngineerMiddleware = (req: AuthRequest, res: Response, next: NextFunc
 };
 
 // 递归计算三级分润 (经理 -> 主管 -> 员工)
-async function distributeRevenue(orderUserId: string, totalAmount: number, dbClient: any) {
+async function distributeRevenue(orderUserId: string, totalAmount: number, dbClient: any, orderId: string, productName: string) {
   try {
     const amount = parseFloat(totalAmount as any);
     if (isNaN(amount) || amount <= 0) return;
@@ -461,6 +474,12 @@ async function distributeRevenue(orderUserId: string, totalAmount: number, dbCli
           updated_at = NOW()
         WHERE user_id = $2
       `, [amountToPay, userId]);
+      
+      // 插入收益记录
+      await dbClient.query(`
+        INSERT INTO public.earnings (user_id, order_id, product_name, amount, type)
+        VALUES ($1, $2, $3, $4, $5)
+      `, [userId, orderId, productName, amountToPay, i === 0 ? 'sale' : 'commission']);
       
       console.log(`[链式分润] 用户 ${userId} 获得分润: ¥${amountToPay.toFixed(2)}`);
     }
@@ -1562,7 +1581,7 @@ app.post('/api/orders/callback', async (req: Request, res: Response) => {
         `, [order.product_id]);
 
         // 三级分润
-        await distributeRevenue(order.user_id, expectedAmount, client);
+        await distributeRevenue(order.user_id, expectedAmount, client, order.id, order.product_name);
 
         await client.query('COMMIT');
         console.log('Order paid successfully:', order_sn);
@@ -1672,7 +1691,7 @@ app.post('/api/orders/wechat/callback', async (req: Request, res: Response) => {
         `, [order.product_id]);
 
         // 三级分润
-        await distributeRevenue(order.user_id, parseFloat(order.amount), client);
+        await distributeRevenue(order.user_id, parseFloat(order.amount), client, order.id, order.product_name);
 
         await client.query('COMMIT');
         console.log('Wechat Order paid successfully:', orderId);
@@ -1780,7 +1799,7 @@ app.post('/api/orders/phpwc/callback', async (req: Request, res: Response) => {
         `, [order.product_id]);
 
         // 三级分润
-        await distributeRevenue(order.user_id, parseFloat(order.amount), client);
+        await distributeRevenue(order.user_id, parseFloat(order.amount), client, order.id, order.product_name);
 
         await client.query('COMMIT');
         console.log('PHPWC Order paid successfully:', orderId);
@@ -1882,6 +1901,23 @@ app.get('/api/wallet', authMiddleware, async (req: AuthRequest, res: Response) =
   } catch (error) {
     console.error('Get wallet error:', error);
     res.status(500).json({ error: '获取钱包信息失败' });
+  }
+});
+
+// ---------- 收益 API ----------
+// 获取收益记录
+app.get('/api/earnings', authMiddleware, async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await pool.query(`
+      SELECT * FROM public.earnings 
+      WHERE user_id = $1 
+      ORDER BY created_at DESC 
+      LIMIT 50
+    `, [req.user.id]);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Get earnings error:', error);
+    res.status(500).json({ error: '获取收益记录失败' });
   }
 });
 

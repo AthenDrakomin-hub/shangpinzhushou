@@ -1,0 +1,4 @@
+- [x] `public.earnings` table is created and `GET /api/earnings` returns JSON.
+- [x] Profit sharing logic inserts records into `public.earnings`.
+- [x] WeChat and Alipay channels show standardized icons and names in `H5ProductPage.tsx` and `ProductCheckoutPage.tsx`.
+- [x] The bottom padding of checkout pages is increased to prevent the payment methods from being hidden behind the fixed bottom bar.

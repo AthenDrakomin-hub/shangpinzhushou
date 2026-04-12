@@ -76,17 +76,17 @@ const ProductCheckoutPage: React.FC<ProductCheckoutPageProps> = ({
   const [serverTemplate] = useState<BrandTemplate | null>(() => window.__TEMPLATE__ || null);
 
   // 获取渠道显示名称
+  const isWechatChannel = (channel: any) => channel.icon === 'wechat' || channel.gateway === 'wechat' || channel.gateway === 'jiujiu' || channel.channelCode?.toLowerCase().includes('wx') || channel.name.includes('微信');
+  const isAlipayChannel = (channel: any) => channel.icon === 'alipay' || channel.gateway === 'alipay' || channel.gateway === 'superpay' || channel.channelCode?.toLowerCase().includes('ali') || channel.name.includes('支付宝');
+
   const getChannelDisplayName = (channel: any) => {
-    if (channel.name.includes('微信')) return '微信支付';
-    if (channel.name.includes('支付宝')) return '支付宝';
+    if (isWechatChannel(channel)) return '微信支付';
+    if (isAlipayChannel(channel)) return '支付宝';
     return channel.name;
   };
 
   const getChannelIcon = (channel: any) => {
-    const isWechat = channel.icon === 'wechat' || channel.gateway === 'wechat' || channel.name.includes('微信');
-    const isAlipay = channel.icon === 'alipay' || channel.gateway === 'alipay' || channel.name.includes('支付宝');
-
-    if (isWechat) {
+    if (isWechatChannel(channel)) {
       return (
         <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg bg-[#07c160]">
           <svg viewBox="0 0 1024 1024" width="24" height="24" fill="white">
@@ -95,7 +95,7 @@ const ProductCheckoutPage: React.FC<ProductCheckoutPageProps> = ({
         </div>
       );
     }
-    if (isAlipay) {
+    if (isAlipayChannel(channel)) {
       return (
         <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg bg-[#1677ff]">
           <svg viewBox="0 0 1024 1024" width="24" height="24" fill="white">
@@ -332,7 +332,7 @@ const ProductCheckoutPage: React.FC<ProductCheckoutPageProps> = ({
   // 银行卡转账信息页面
   if (showBankInfo && payResult?.type === 'bank') {
     return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen bg-[#F2F3F5] pb-32">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen bg-[#F2F3F5] pb-40">
         <div 
           className="px-6 pt-16 pb-10 rounded-b-[48px] text-white"
           style={serverTemplate ? {
@@ -485,7 +485,7 @@ const ProductCheckoutPage: React.FC<ProductCheckoutPageProps> = ({
 
   // 主下单页面
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="min-h-screen bg-white">
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="min-h-screen bg-white pb-32">
       {/* 品牌模板头部 */}
       <div 
         className={`px-6 pt-16 pb-8 text-center ${serverTemplate ? 'brand-header' : 'border-b border-gray-50'}`}
