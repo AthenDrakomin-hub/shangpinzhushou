@@ -73,6 +73,13 @@ const storage = multer.diskStorage({
     if (file.mimetype === 'image/heic') safeExt = '.heic';
     if (file.mimetype === 'image/heif') safeExt = '.heif';
     if (file.mimetype === 'image/svg+xml') safeExt = '.svg';
+    
+    // 如果没有匹配到 mimetype，尝试使用原文件扩展名（兼容手机端可能缺少 mimetype 的情况）
+    const originalExt = path.extname(file.originalname).toLowerCase();
+    if (['.jpg', '.jpeg', '.png', '.gif', '.heic', '.heif', '.webp'].includes(originalExt)) {
+      safeExt = originalExt;
+    }
+    
     cb(null, `${uniqueSuffix}${safeExt}`);
   }
 });
@@ -80,7 +87,7 @@ const storage = multer.diskStorage({
 // 文件过滤器
 const fileFilter = (_req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
   // 允许所有图片格式，防止手机原图（如 heic）或特殊格式报错
-  if (file.mimetype.startsWith('image/')) {
+  if (file.mimetype.startsWith('image/') || file.originalname.toLowerCase().match(/\.(jpg|jpeg|png|gif|heic|heif|webp)$/)) {
     cb(null, true);
   } else {
     cb(new Error('不支持的格式：仅允许上传图片文件'));

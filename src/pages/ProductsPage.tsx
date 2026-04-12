@@ -371,10 +371,11 @@ function EditProductModal({
   useEffect(() => {
     const fetchChannels = async () => {
       try {
-        const response = await fetchApi('/api/admin/payment-channels');
+        const response = await fetchApi('/api/payment-channels');
         const data = await response.json();
         if (response.ok && Array.isArray(data)) {
-          setChannels(data);
+          const activeChannels = data.filter((c: any) => c.status !== 'inactive');
+          setChannels(activeChannels);
         }
       } catch (error) {
         console.error('Failed to fetch payment channels:', error);

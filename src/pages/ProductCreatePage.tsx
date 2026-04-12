@@ -41,10 +41,13 @@ export default function ProductCreatePage({ user, handleBack, setCurrentView, sh
 
   const fetchChannels = async () => {
     try {
-      const response = await fetchApi('/api/admin/payment-channels');
+      // 使用公开的 payment-channels 接口，所有角色均可获取
+      const response = await fetchApi('/api/payment-channels');
       const data = await response.json();
       if (response.ok && Array.isArray(data)) {
-        setChannels(data);
+        // 过滤出启用的通道
+        const activeChannels = data.filter((c: any) => c.status !== 'inactive');
+        setChannels(activeChannels);
       }
     } catch (error) {
       console.error('Failed to fetch payment channels:', error);
@@ -172,7 +175,7 @@ export default function ProductCreatePage({ user, handleBack, setCurrentView, sh
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept="image/*,.heic,.heif"
               onChange={handleImageUpload}
               className="hidden"
             />
