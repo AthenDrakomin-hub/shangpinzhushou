@@ -38,6 +38,7 @@ interface Product {
   status: 'active' | 'inactive';
   template_id?: string;
   supported_pay_methods?: string;
+  is_shared?: boolean;
   created_at: string;
   sales?: number;
 }
@@ -265,6 +266,9 @@ export default function ProductsPage({ user, handleBack, setCurrentView, showToa
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="font-medium text-gray-900 dark:text-white truncate">{product.name}</h3>
+                      {product.is_shared && (
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">共享</span>
+                      )}
                       <Badge variant={product.status === 'active' ? 'success' : 'default'}>
                         {product.status === 'active' ? '已上架' : '已下架'}
                       </Badge>
@@ -364,6 +368,7 @@ function EditProductModal({
     imageUrl: product?.image || '',
     templateId: product?.template_id || 'default',
     supportedPayMethods: product?.supported_pay_methods ? product.supported_pay_methods.split(',') : ([] as string[]),
+    isShared: product?.is_shared || false,
   });
   const [saving, setSaving] = useState(false);
   const [channels, setChannels] = useState<any[]>([]);
@@ -432,6 +437,7 @@ function EditProductModal({
           image: form.imageUrl,
           template_id: form.templateId,
           supported_pay_methods: selectedValidChannels.join(','),
+          is_shared: form.isShared,
         }),
       });
 
@@ -495,6 +501,25 @@ function EditProductModal({
             rows={3}
             className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
           />
+        </div>
+
+        {/* 共享设置 */}
+        <div className="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-800">
+          <div>
+            <h4 className="text-sm font-medium text-blue-900 dark:text-blue-100">支持共享该商品</h4>
+            <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+              开启后所有员工可见。其他员工分享产生的收益归分享者所有。
+            </p>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              className="sr-only peer"
+              checked={form.isShared}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, isShared: e.target.checked })}
+            />
+            <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+          </label>
         </div>
 
         <div>
