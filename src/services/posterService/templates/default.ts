@@ -3,7 +3,7 @@
  * 特点：颗粒质感、大胆渐变、几何装饰
  */
 
-import { Canvas, CanvasRenderingContext2D, Image } from 'canvas';
+import { Canvas, SKRSContext2D as CanvasRenderingContext2D, Image } from '@napi-rs/canvas';
 import { PosterData } from '../types';
 import { safeLoadImage, drawImageError, drawHeavyText, drawNormalText, drawMultiLineText, roundRect, truncateText } from '../utils';
 

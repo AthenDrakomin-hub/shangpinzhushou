@@ -3,7 +3,7 @@
  * 特点：手写体标签、促销贴纸、粗犷边框
  */
 
-import { Canvas, CanvasRenderingContext2D, Image } from 'canvas';
+import { Canvas, SKRSContext2D as CanvasRenderingContext2D, Image } from '@napi-rs/canvas';
 import { PosterData } from '../types';
 import { safeLoadImage, drawImageError, drawHeavyText, drawNormalText, roundRect, truncateText, drawImageCover, drawImageSmart } from '../utils';
 import path from 'path';

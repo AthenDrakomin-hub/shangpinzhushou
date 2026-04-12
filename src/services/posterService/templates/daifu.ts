@@ -3,7 +3,7 @@
  * 特点：爱心元素、温暖配色、情感化文案
  */
 
-import { Canvas, CanvasRenderingContext2D, Image } from 'canvas';
+import { Canvas, SKRSContext2D as CanvasRenderingContext2D, Image } from '@napi-rs/canvas';
 import { PosterData } from '../types';
 import { safeLoadImage, drawImageError, drawHeavyText, drawNormalText, roundRect, truncateText, drawImageCover, drawImageSmart } from '../utils';
 import path from 'path';

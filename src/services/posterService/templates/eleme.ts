@@ -3,7 +3,7 @@
  * 特点：食物蒸汽效果、配送标签、清爽蓝色
  */
 
-import { Canvas, CanvasRenderingContext2D, Image } from 'canvas';
+import { Canvas, SKRSContext2D as CanvasRenderingContext2D, Image } from '@napi-rs/canvas';
 import { PosterData } from '../types';
 import { safeLoadImage, drawImageError, drawHeavyText, drawNormalText, drawMultiLineText, roundRect, drawImageCover, drawImageSmart } from '../utils';
 

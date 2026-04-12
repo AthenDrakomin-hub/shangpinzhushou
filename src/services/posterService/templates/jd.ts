@@ -3,7 +3,7 @@
  * 特点：强化信任标签、品质感、红色主题
  */
 
-import { Canvas, CanvasRenderingContext2D, Image } from 'canvas';
+import { Canvas, SKRSContext2D as CanvasRenderingContext2D, Image } from '@napi-rs/canvas';
 import { PosterData } from '../types';
 import { safeLoadImage, drawImageError, drawHeavyText, drawNormalText, roundRect, truncateText, drawImageCover, drawImageSmart } from '../utils';
 import path from 'path';

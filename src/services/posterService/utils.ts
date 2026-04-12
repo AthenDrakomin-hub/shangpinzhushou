@@ -2,7 +2,7 @@
  * 海报生成服务 - 工具函数
  */
 
-import { createCanvas, loadImage, Canvas, CanvasRenderingContext2D } from 'canvas';
+import { createCanvas, loadImage, Canvas, SKRSContext2D as CanvasRenderingContext2D } from '@napi-rs/canvas';
 import axios from 'axios';
 import sharp from 'sharp';
 
@@ -340,7 +340,8 @@ export function createPosterCanvas(width: number = 640, height: number = 900): {
 } {
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext('2d');
-  ctx.antialias = 'subpixel';
+  // napi-rs/canvas 默认开启抗锯齿，不需要手动设置
+  // ctx.antialias = 'subpixel';
   ctx.textBaseline = 'middle';
   return { canvas, ctx };
 }
