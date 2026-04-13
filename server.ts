@@ -1305,7 +1305,7 @@ app.get('/api/dashboard/stats', authMiddleware, async (req: AuthRequest, res: Re
 // 创建订单（H5页面调用）
 app.post('/api/orders', async (req: Request, res: Response) => {
   try {
-    const { productId, payType, buyerName, buyerPhone, shareUid } = req.body;
+    const { productId, payType, buyerName, buyerPhone, shareUid, template } = req.body;
 
     if (!productId || !payType) {
       return res.status(400).json({ error: '缺少必要参数' });
@@ -1374,6 +1374,7 @@ app.post('/api/orders', async (req: Request, res: Response) => {
     let formHtml = '';
     const projectDomain = process.env.COZE_PROJECT_DOMAIN_DEFAULT || `http://localhost:${config.port}`;
     const notifyUrl = `${projectDomain}/api/orders/callback`;
+    const returnUrl = `${projectDomain}/payment/result?orderId=${orderId}${template ? `&template=${template}` : ''}`;
     
     if (isSuperPay) {
       // ========== 使用 SuperPay（支付宝收款）==========
@@ -1390,8 +1391,6 @@ app.post('/api/orders', async (req: Request, res: Response) => {
       const channelCode = channel.channelCode || '824'; // 默认使用正式通道
 
       console.log('[SuperPay] 使用渠道编码:', channelCode);
-      
-      const returnUrl = `${projectDomain}/payment/result?orderId=${orderId}`;
       
       const payResult = await createSuperPayOrder({
         merchantOn,
@@ -1417,7 +1416,6 @@ app.post('/api/orders', async (req: Request, res: Response) => {
 
       console.log('[订单创建] 使用九久支付微信');
       
-      const returnUrl = `${projectDomain}/payment/result?orderId=${orderId}`;
       const wechatNotifyUrl = `${projectDomain}/api/orders/wechat/callback`;
       
       const payResult = await createWechatOrder({
@@ -1459,7 +1457,6 @@ app.post('/api/orders', async (req: Request, res: Response) => {
         console.log('[PHPWC] 命中测试账号(PID: 199)，金额强制设置为 0.1 元');
       }
 
-      const returnUrl = `${projectDomain}/payment/result?orderId=${orderId}`;
       const phpwcNotifyUrl = `${projectDomain}/api/orders/phpwc/callback`;
 
       const payResult = await createPhpwcOrder({
@@ -1835,13 +1832,39 @@ app.post('/api/orders/phpwc/callback', async (req: Request, res: Response) => {
 // 查询订单状态
 app.get('/api/orders/:id/status', async (req: Request, res: Response) => {
   try {
-    const result = await pool.query('SELECT id, status, amount, paid_at FROM public.orders WHERE id = $1', [req.params.id]);
+    const result = await pool.query(`
+      SELECT 
+        o.id, o.status, o.amount, o.paid_at, o.pay_type, o.buyer_name, o.payer_info,
+        COALESCE(p.name, o.product_name) as product_name,
+        p.template_id
+      FROM public.orders o
+      LEFT JOIN public.products p ON o.product_id = p.id
+      WHERE o.id = $1
+    `, [req.params.id]);
     
     if (result.rows.length === 0) {
       return res.status(404).json({ error: '订单不存在' });
     }
 
-    res.json(result.rows[0]);
+    const row = result.rows[0];
+    let finalBuyerName = row.buyer_name || '';
+    try {
+      if (row.payer_info) {
+        const info = JSON.parse(row.payer_info);
+        finalBuyerName = info.name || info.buyer_name || finalBuyerName;
+      }
+    } catch (e) {}
+
+    res.json({
+      id: row.id,
+      status: row.status,
+      amount: row.amount,
+      paid_at: row.paid_at,
+      pay_type: row.pay_type,
+      product_name: row.product_name,
+      buyer_name: finalBuyerName,
+      template_id: row.template_id
+    });
   } catch (error) {
     console.error('Get order status error:', error);
     res.status(500).json({ error: '查询订单状态失败' });

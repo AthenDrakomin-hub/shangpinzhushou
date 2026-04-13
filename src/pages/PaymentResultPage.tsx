@@ -3,13 +3,160 @@ import { fetchApi } from '../utils/apiClient';
  * 支付结果页面
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Clock, CheckCircle2, AlertCircle, ShieldCheck } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface PaymentResultPageProps {
   orderId: string;
 }
+
+const TEMPLATES: Record<string, any> = {
+  default: {
+    theme: 'blue',
+    successBg: 'from-green-600 to-green-700',
+    pendingBg: 'from-orange-500 to-orange-600',
+    successTitle: '下单成功',
+    pendingTitle: '等待确认',
+    successSubtitle: '您的订单已完成',
+    pendingSubtitle: '订单等待确认中',
+    btnSuccess: '完成',
+    btnPending: '刷新',
+    btnSuccessBg: 'bg-green-600',
+    btnPendingBg: 'bg-orange-500',
+    tipsTitle: '下单提示',
+    tips: [
+      '如您已完成下单，请稍后刷新页面',
+      '如下单遇到问题，请联系商户'
+    ]
+  },
+  daifu: {
+    theme: 'orange',
+    successBg: 'from-orange-500 to-orange-600',
+    pendingBg: 'from-orange-400 to-orange-500',
+    successTitle: '代付成功',
+    pendingTitle: '等待代付确认',
+    successSubtitle: '代付订单已完成',
+    pendingSubtitle: '代付结果确认中',
+    btnSuccess: '我知道了',
+    btnPending: '刷新',
+    btnSuccessBg: 'bg-orange-500',
+    btnPendingBg: 'bg-orange-400',
+    tipsTitle: '代付说明',
+    tips: [
+      '代付成功后，系统将自动通知原下单人',
+      '代付金额将直接结算给商家'
+    ]
+  },
+  meituan: {
+    theme: 'yellow',
+    successBg: 'from-yellow-400 to-yellow-500',
+    pendingBg: 'from-orange-400 to-orange-500',
+    successTitle: '支付成功',
+    pendingTitle: '等待确认',
+    successSubtitle: '美团订单已支付',
+    pendingSubtitle: '订单状态确认中',
+    btnSuccess: '返回美团',
+    btnPending: '刷新',
+    btnSuccessBg: 'bg-yellow-500 text-gray-900',
+    btnPendingBg: 'bg-orange-500',
+    tipsTitle: '下单提示',
+    tips: [
+      '订单支付成功后，请在美团App查看详情',
+      '如未到账，请联系美团客服'
+    ]
+  },
+  eleme: {
+    theme: 'blue',
+    successBg: 'from-blue-500 to-blue-600',
+    pendingBg: 'from-orange-400 to-orange-500',
+    successTitle: '支付成功',
+    pendingTitle: '等待确认',
+    successSubtitle: '饿了么订单已支付',
+    pendingSubtitle: '订单状态确认中',
+    btnSuccess: '返回饿了么',
+    btnPending: '刷新',
+    btnSuccessBg: 'bg-blue-500',
+    btnPendingBg: 'bg-orange-500',
+    tipsTitle: '下单提示',
+    tips: [
+      '订单支付成功后，请在饿了么App查看详情',
+      '如未到账，请联系饿了么客服'
+    ]
+  },
+  jd: {
+    theme: 'red',
+    successBg: 'from-red-600 to-red-700',
+    pendingBg: 'from-orange-500 to-orange-600',
+    successTitle: '支付成功',
+    pendingTitle: '等待确认',
+    successSubtitle: '京东订单已支付',
+    pendingSubtitle: '订单状态确认中',
+    btnSuccess: '返回京东',
+    btnPending: '刷新',
+    btnSuccessBg: 'bg-red-600',
+    btnPendingBg: 'bg-orange-500',
+    tipsTitle: '下单提示',
+    tips: [
+      '订单支付成功后，请在京东App查看详情',
+      '如未到账，请联系京东客服'
+    ]
+  },
+  ctrip: {
+    theme: 'blue',
+    successBg: 'from-blue-600 to-blue-800',
+    pendingBg: 'from-orange-500 to-orange-600',
+    successTitle: '支付成功',
+    pendingTitle: '等待确认',
+    successSubtitle: '携程订单已支付',
+    pendingSubtitle: '订单状态确认中',
+    btnSuccess: '返回携程',
+    btnPending: '刷新',
+    btnSuccessBg: 'bg-blue-600',
+    btnPendingBg: 'bg-orange-500',
+    tipsTitle: '下单提示',
+    tips: [
+      '订单支付成功后，请在携程App查看详情',
+      '如未到账，请联系携程客服'
+    ]
+  },
+  douyin: {
+    theme: 'black',
+    successBg: 'from-gray-800 to-black',
+    pendingBg: 'from-orange-500 to-orange-600',
+    successTitle: '支付成功',
+    pendingTitle: '等待确认',
+    successSubtitle: '抖音订单已支付',
+    pendingSubtitle: '订单状态确认中',
+    btnSuccess: '返回抖音',
+    btnPending: '刷新',
+    btnSuccessBg: 'bg-black',
+    btnPendingBg: 'bg-orange-500',
+    tipsTitle: '下单提示',
+    tips: [
+      '订单支付成功后，请在抖音App查看详情',
+      '如未到账，请联系抖音客服'
+    ]
+  },
+  kuaishou: {
+    theme: 'orange',
+    successBg: 'from-orange-500 to-red-500',
+    pendingBg: 'from-orange-400 to-orange-500',
+    successTitle: '支付成功',
+    pendingTitle: '等待确认',
+    successSubtitle: '快手订单已支付',
+    pendingSubtitle: '订单状态确认中',
+    btnSuccess: '返回快手',
+    btnPending: '刷新',
+    btnSuccessBg: 'bg-orange-500',
+    btnPendingBg: 'bg-orange-400',
+    tipsTitle: '下单提示',
+    tips: [
+      '订单支付成功后，请在快手App查看详情',
+      '如未到账，请联系快手客服'
+    ]
+  }
+};
 
 const PaymentResultPage: React.FC<PaymentResultPageProps> = ({ orderId }) => {
   const [orderInfo, setOrderInfo] = useState<any>(null);
@@ -51,69 +198,104 @@ const PaymentResultPage: React.FC<PaymentResultPageProps> = ({ orderId }) => {
     );
   }
 
-  const isSuccess = orderInfo?.status === 'paid';
+  const isSuccess = orderInfo?.status === 'paid' || orderInfo?.status === 'completed';
+
+  const templateId = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('template') || orderInfo?.template || 'default';
+  }, [orderInfo?.template]);
+
+  const template = TEMPLATES[templateId] || TEMPLATES.default;
+  const themeBg = isSuccess ? template.successBg : template.pendingBg;
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen bg-[#F2F3F5] pb-32">
-      <div className={`px-6 pt-20 pb-10 rounded-b-[48px] text-white text-center ${isSuccess ? 'bg-gradient-to-br from-green-600 to-green-700' : 'bg-gradient-to-br from-orange-500 to-orange-600'}`}>
-        <div className="w-20 h-20 bg-white rounded-full mx-auto mb-4 flex items-center justify-center">
+      <div className={`px-6 pt-20 pb-24 rounded-b-[48px] text-white text-center bg-gradient-to-br ${themeBg}`}>
+        <div className="flex items-center justify-center gap-2 mb-4">
           {isSuccess ? (
-            <CheckCircle2 className="w-10 h-10 text-green-600" />
+            <CheckCircle2 className="w-8 h-8 text-white" />
           ) : (
-            <Clock className="w-10 h-10 text-orange-500" />
+            <Clock className="w-8 h-8 text-white" />
           )}
+          <h2 className="text-xl font-black">
+            {isSuccess ? template.successTitle : template.pendingTitle}
+          </h2>
         </div>
-        <h2 className="text-xl font-black mb-2">
-          {isSuccess ? '下单成功' : '等待确认'}
-        </h2>
-        <p className="text-xs text-white/60">
-          {isSuccess ? '您的订单已完成' : '订单等待确认中'}
+        <p className="text-sm text-white/80 mb-6">
+          {isSuccess ? template.successSubtitle : template.pendingSubtitle}
         </p>
-      </div>
 
-      <div className="px-6 mt-6">
-        <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 text-center">
-          {orderInfo?.amount && (
-            <div className="flex items-baseline justify-center gap-1 mb-4">
-              <span className="text-2xl font-bold text-gray-300">¥</span>
-              <span className="text-4xl font-black text-gray-900">{orderInfo.amount.toFixed(2)}</span>
-            </div>
-          )}
-          
-          <p className="text-xs text-gray-400 mb-6">
-            订单号: <span className="font-mono text-gray-600">{orderId}</span>
-          </p>
-
-          {isSuccess && orderInfo?.paidAt && (
-            <p className="text-xs text-gray-400 mb-6">
-              下单时间: <span className="text-gray-600">{new Date(orderInfo.paidAt).toLocaleString()}</span>
-            </p>
-          )}
-
-          <button 
-            onClick={() => window.location.href = '/'}
-            className={`w-full py-4 text-white rounded-[24px] font-black text-sm ${isSuccess ? 'bg-green-600' : 'bg-orange-500'}`}
-          >
-            {isSuccess ? '完成' : '返回'}
-          </button>
-        </div>
-
-        {!isSuccess && (
-          <div className="bg-orange-50 rounded-3xl p-5 border border-orange-100 mt-6">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-orange-500 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-bold text-orange-800 mb-1">下单提示</p>
-                <ul className="text-xs text-orange-600 space-y-1">
-                  <li>• 如您已完成下单，请稍后刷新页面</li>
-                  <li>• 如下单遇到问题，请联系商户</li>
-                </ul>
-              </div>
-            </div>
+        {orderInfo?.amount && (
+          <div className="flex items-baseline justify-center gap-1">
+            <span className="text-3xl font-bold">¥</span>
+            <span className="text-5xl font-black">{orderInfo.amount.toFixed(2)}</span>
           </div>
         )}
+      </div>
 
-        <div className="text-center mt-6 px-6">
+      <div className="px-6 -mt-16">
+        <div className="bg-white rounded-[32px] p-6 shadow-sm border border-gray-100 mb-6">
+          <h3 className="text-sm font-bold text-gray-900 mb-4 border-b border-gray-50 pb-4">交易信息</h3>
+          <div className="space-y-4">
+            {(orderInfo?.product_name || orderInfo?.productName) && (
+              <div className="flex justify-between items-start gap-4">
+                <span className="text-xs text-gray-500 shrink-0">商品名称</span>
+                <span className="text-xs text-gray-900 text-right">{orderInfo.product_name || orderInfo.productName}</span>
+              </div>
+            )}
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-gray-500">订单编号</span>
+              <span className="text-xs font-mono text-gray-900">{orderId}</span>
+            </div>
+            {(orderInfo?.pay_type || orderInfo?.payType) && (
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-gray-500">支付方式</span>
+                <span className="text-xs text-gray-900">{orderInfo.pay_type || orderInfo.payType}</span>
+              </div>
+            )}
+            {(orderInfo?.buyer_name || orderInfo?.buyerName) && (
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-gray-500">下单人</span>
+                <span className="text-xs text-gray-900">{orderInfo.buyer_name || orderInfo.buyerName}</span>
+              </div>
+            )}
+            {isSuccess && (orderInfo?.paid_at || orderInfo?.paidAt) && (
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-gray-500">支付时间</span>
+                <span className="text-xs text-gray-900">{new Date(orderInfo.paid_at || orderInfo.paidAt).toLocaleString()}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-[32px] p-6 shadow-sm border border-gray-100 mb-8">
+          <div className="flex items-start gap-3">
+            <AlertCircle className={`w-5 h-5 shrink-0 mt-0.5 ${isSuccess ? 'text-blue-500' : 'text-orange-500'}`} />
+            <div>
+              <p className="text-sm font-bold text-gray-900 mb-2">{template.tipsTitle}</p>
+              <ul className="text-xs text-gray-500 space-y-1.5">
+                {template.tips.map((tip: string, index: number) => (
+                  <li key={index}>• {tip}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <button 
+          onClick={() => {
+            if (!isSuccess) {
+              window.location.reload();
+            } else {
+              window.location.href = '/';
+            }
+          }}
+          className={`w-full py-4 text-white rounded-[24px] font-black text-sm shadow-lg shadow-black/5 ${isSuccess ? template.btnSuccessBg : template.btnPendingBg}`}
+        >
+          {isSuccess ? template.btnSuccess : template.btnPending}
+        </button>
+
+        <div className="text-center mt-6">
           <p className="text-[10px] text-gray-400">
             <button onClick={() => setShowUserAgreement(true)} className="text-blue-500 hover:underline">《用户服务协议》</button>
             <span className="mx-1">|</span>
