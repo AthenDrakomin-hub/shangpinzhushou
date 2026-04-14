@@ -3040,7 +3040,7 @@ app.post('/api/settings/test-phpwc', authMiddleware, adminMiddleware, async (req
       pid,
       secretKey,
       apiUrl,
-      type: 'alipay', // 默认用支付宝扫码做测试
+      type: 'wxpay', // 根据用户需求，测试按钮强制使用微信通道
       outTradeNo: testOrderId,
       notifyUrl: `${projectDomain}/api/orders/phpwc/callback`,
       returnUrl: `${projectDomain}/payment/result?orderId=${testOrderId}`,
