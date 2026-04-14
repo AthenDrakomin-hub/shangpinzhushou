@@ -66,6 +66,24 @@ const TEMPLATES: Record<string, any> = {
       '如未到账，请联系美团客服'
     ]
   },
+  meituan_daifu: {
+    theme: 'yellow',
+    successBg: 'from-yellow-400 to-yellow-500',
+    pendingBg: 'from-orange-400 to-orange-500',
+    successTitle: '代付成功',
+    pendingTitle: '等待确认',
+    successSubtitle: '美团代付已支付',
+    pendingSubtitle: '订单状态确认中',
+    btnSuccess: '返回美团',
+    btnPending: '刷新',
+    btnSuccessBg: 'bg-yellow-500 text-gray-900',
+    btnPendingBg: 'bg-orange-500',
+    tipsTitle: '代付提示',
+    tips: [
+      '代付成功后，系统将自动通知原下单人',
+      '请在美团App查看订单详情'
+    ]
+  },
   eleme: {
     theme: 'blue',
     successBg: 'from-blue-500 to-blue-600',

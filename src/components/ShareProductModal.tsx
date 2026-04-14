@@ -22,6 +22,7 @@ export default function ShareProductModal({
     { id: 'default', name: '默认' },
     { id: 'daifu', name: '代付' },
     { id: 'meituan', name: '美团' },
+    { id: 'meituan_daifu', name: '美团代付' },
     { id: 'eleme', name: '饿了么' },
     { id: 'jd', name: '京东' },
     { id: 'ctrip', name: '携程' },

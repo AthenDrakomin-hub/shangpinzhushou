@@ -39,6 +39,13 @@ const TEMPLATE_BRANDS: Record<string, {
     icon: '🟡',
     themeColor: '#FFD100'
   },
+  meituan_daifu: {
+    name: '美团代付',
+    title: '美团代付',
+    description: '好友帮忙，温暖人心',
+    icon: '🟡',
+    themeColor: '#FFD100'
+  },
   eleme: {
     name: '饿了么',
     title: '饿了么订餐',
