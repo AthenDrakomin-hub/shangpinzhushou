@@ -3019,7 +3019,7 @@ app.post('/api/settings/test-jiujiu', authMiddleware, adminMiddleware, async (re
 // 测试 PHPWC (易支付) 支付通道连通性
 app.post('/api/settings/test-phpwc', authMiddleware, adminMiddleware, async (req: AuthRequest, res: Response) => {
   try {
-    const { pid, secretKey, apiUrl, testAmount } = req.body;
+    const { pid, secretKey, apiUrl, testAmount, type } = req.body;
 
     if (!pid || !secretKey) {
       return res.status(400).json({ error: '请提供商户PID和密钥' });
@@ -3036,11 +3036,13 @@ app.post('/api/settings/test-phpwc', authMiddleware, adminMiddleware, async (req
       return res.status(400).json({ error: '测试金额不合法' });
     }
 
+    const payType = typeof type === 'string' && type.trim() ? type.trim() : 'wxpay';
+
     const payResult = await createPhpwcOrder({
       pid,
       secretKey,
       apiUrl,
-      type: 'wxpay', // 根据用户需求，测试按钮强制使用微信通道
+      type: payType,
       outTradeNo: testOrderId,
       notifyUrl: `${projectDomain}/api/orders/phpwc/callback`,
       returnUrl: `${projectDomain}/payment/result?orderId=${testOrderId}`,

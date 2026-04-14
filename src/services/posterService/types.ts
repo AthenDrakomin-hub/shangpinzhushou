@@ -3,7 +3,7 @@
  */
 
 // 模板类型
-export type PosterTemplate = 'default' | 'daifu' | 'meituan' | 'eleme' | 'jd' | 'ctrip' | 'douyin' | 'kuaishou';
+export type PosterTemplate = 'default' | 'daifu' | 'meituan' | 'meituan_daifu' | 'eleme' | 'jd' | 'ctrip' | 'douyin' | 'kuaishou';
 
 // 海报数据接口
 export interface PosterData {
@@ -66,6 +66,18 @@ export const TEMPLATE_CONFIG: Record<PosterTemplate, TemplateConfig> = {
     h5Title: '美团优选',
     h5Description: '美好生活小帮手',
     h5Icon: '🟡',
+    h5ThemeColor: '#FFD100'
+  },
+  meituan_daifu: {
+    id: 'meituan_daifu',
+    name: '美团代付',
+    slogan: '快来帮我代付吧～',
+    primaryColor: '#FFD100',
+    secondaryColor: '#FFB800',
+    priceColor: '#111111',
+    h5Title: '美团代付',
+    h5Description: '快来帮我支付这笔订单吧～',
+    h5Icon: '🧾',
     h5ThemeColor: '#FFD100'
   },
   eleme: { 

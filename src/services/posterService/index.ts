@@ -7,6 +7,7 @@ import { PosterData, PosterTemplate } from './types';
 import { renderDefaultTemplate } from './templates/default';
 import { renderDaifuTemplate } from './templates/daifu';
 import { renderMeituanTemplate } from './templates/meituan';
+import { renderMeituanDaifuTemplate } from './templates/meituan_daifu';
 import { renderElemeTemplate } from './templates/eleme';
 import { renderJdTemplate } from './templates/jd';
 import { renderCtripTemplate } from './templates/ctrip';
@@ -32,6 +33,7 @@ export async function generatePoster(
   switch (template) {
     case 'daifu': width = 640; height = 900; break;
     case 'meituan': width = 640; height = 900; break;
+    case 'meituan_daifu': width = 640; height = 900; break;
     case 'eleme': width = 750; height = 1200; break;
     case 'jd': width = 640; height = 1140; break;
     case 'ctrip': width = 750; height = 1334; break;
@@ -45,6 +47,7 @@ export async function generatePoster(
   switch (template) {
     case 'daifu': return renderDaifuTemplate(ctx, canvas, data);
     case 'meituan': return renderMeituanTemplate(ctx, canvas, data);
+    case 'meituan_daifu': return renderMeituanDaifuTemplate(ctx, canvas, data);
     case 'eleme': return renderElemeTemplate(ctx, canvas, data);
     case 'jd': return renderJdTemplate(ctx, canvas, data);
     case 'ctrip': return renderCtripTemplate(ctx, canvas, data);

@@ -259,6 +259,18 @@ function PaymentChannelsModal({
     minAmount: 0,
     maxAmount: 0
   });
+  const phpwcTypeOptions = [
+    { value: 'wxpay', label: '微信支付 (wxpay)' },
+    { value: 'alipay', label: '支付宝 (alipay)' },
+    { value: 'qqpay', label: 'QQ钱包 (qqpay)' },
+    { value: 'bank', label: '网银 (bank)' },
+    { value: 'usdt', label: 'USDT (usdt)' },
+  ];
+  const phpwcPresetValues = phpwcTypeOptions.map(o => o.value);
+  const isPhpwc = formData.gateway === 'phpwc';
+  const phpwcSelectValue = isPhpwc
+    ? (phpwcPresetValues.includes(formData.channelCode) ? formData.channelCode : 'custom')
+    : '';
 
   useEffect(() => {
     if (isOpen) {
@@ -310,7 +322,7 @@ function PaymentChannelsModal({
 
   const handleSubmitForm = () => {
     if (!formData.name || !formData.channelCode) {
-      showToast('请填写通道名称和代码', 'error');
+      showToast(isPhpwc ? '请填写通道名称和支付方式' : '请填写通道名称和代码', 'error');
       return;
     }
     
@@ -394,14 +406,51 @@ function PaymentChannelsModal({
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm text-gray-500 mb-1">通道代码 (Channel Code)</label>
-                    <input
-                      type="text"
-                      value={formData.channelCode}
-                      onChange={e => setFormData({ ...formData, channelCode: e.target.value })}
-                      placeholder="例如: 824"
-                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    />
+                    <label className="block text-sm text-gray-500 mb-1">
+                      {isPhpwc ? '支付方式 (type)' : '通道代码 (Channel Code)'}
+                    </label>
+                    {isPhpwc ? (
+                      <div className="space-y-2">
+                        <select
+                          value={phpwcSelectValue}
+                          onChange={e => {
+                            const next = e.target.value;
+                            if (next === 'custom') {
+                              setFormData({
+                                ...formData,
+                                channelCode: phpwcPresetValues.includes(formData.channelCode) ? '' : formData.channelCode
+                              });
+                              return;
+                            }
+                            setFormData({ ...formData, channelCode: next });
+                          }}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        >
+                          {phpwcTypeOptions.map(opt => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                          <option value="custom">自定义</option>
+                        </select>
+                        {phpwcSelectValue === 'custom' && (
+                          <input
+                            type="text"
+                            value={formData.channelCode}
+                            onChange={e => setFormData({ ...formData, channelCode: e.target.value.trim() })}
+                            placeholder="例如: wxpay"
+                            className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                          />
+                        )}
+                        <p className="text-xs text-gray-400">该值将作为易支付下单参数 type 发送给网关</p>
+                      </div>
+                    ) : (
+                      <input
+                        type="text"
+                        value={formData.channelCode}
+                        onChange={e => setFormData({ ...formData, channelCode: e.target.value })}
+                        placeholder="例如: 824"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                      />
+                    )}
                   </div>
                   <div className="flex gap-2">
                     <div className="flex-1">
@@ -446,7 +495,9 @@ function PaymentChannelsModal({
                         <span className="font-medium text-gray-900 dark:text-white">{ch.name}</span>
                         <Badge variant={ch.gateway === 'superpay' ? 'primary' : ch.gateway === 'phpwc' ? 'success' : 'warning'}>{ch.gateway}</Badge>
                       </div>
-                      <div className="text-sm text-gray-500 mt-1">代码: {ch.channelCode} | 限额: {ch.minAmount}-{ch.maxAmount}</div>
+                      <div className="text-sm text-gray-500 mt-1">
+                        {ch.gateway === 'phpwc' ? `支付方式: ${ch.channelCode}` : `代码: ${ch.channelCode}`} | 限额: {ch.minAmount}-{ch.maxAmount}
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <button onClick={() => handleEdit(ch)} className="text-blue-500 hover:bg-blue-50 p-1.5 rounded transition-colors" title="编辑">
@@ -1189,7 +1240,8 @@ function PaymentConfigModal({
     phpwcPid: '',
     phpwcSecretKey: '',
     phpwcApiUrl: '',
-    phpwcTestAmount: '1.00'
+    phpwcTestAmount: '1.00',
+    phpwcTestType: 'wxpay'
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
@@ -1219,7 +1271,8 @@ function PaymentConfigModal({
           phpwcPid: data.phpwcPid || '',
           phpwcSecretKey: data.phpwcSecretKey || '',
           phpwcApiUrl: data.phpwcApiUrl || '',
-          phpwcTestAmount: data.phpwcTestAmount || '1.00'
+          phpwcTestAmount: data.phpwcTestAmount || '1.00',
+          phpwcTestType: 'wxpay'
         });
       }
     } catch (error) {
@@ -1354,7 +1407,8 @@ function PaymentConfigModal({
           pid: config.phpwcPid,
           secretKey: config.phpwcSecretKey,
           apiUrl: config.phpwcApiUrl,
-          testAmount: config.phpwcTestAmount
+          testAmount: config.phpwcTestAmount,
+          type: config.phpwcTestType
         })
       });
       const data = await response.json();
@@ -1507,6 +1561,20 @@ function PaymentConfigModal({
                     className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
                     placeholder="例如: https://pay.phpwc.com/"
                   />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-700 mb-1">测试支付方式 (type)</label>
+                  <select
+                    value={config.phpwcTestType}
+                    onChange={e => setConfig({ ...config, phpwcTestType: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                  >
+                    <option value="wxpay">微信支付 (wxpay)</option>
+                    <option value="alipay">支付宝 (alipay)</option>
+                    <option value="qqpay">QQ钱包 (qqpay)</option>
+                    <option value="bank">网银 (bank)</option>
+                    <option value="usdt">USDT (usdt)</option>
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm text-gray-700 mb-1">测试金额 (元)</label>
