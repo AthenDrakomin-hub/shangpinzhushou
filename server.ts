@@ -3203,7 +3203,16 @@ if (!fs.existsSync(path.join(distPath, 'index.html'))) {
   console.warn('Please run: pnpm build');
 }
 
-app.use(express.static(distPath, { maxAge: config.nodeEnv === 'production' ? '1d' : '0' }));
+app.use(express.static(distPath, { 
+  maxAge: config.nodeEnv === 'production' ? '1d' : '0',
+  setHeaders: (res, path) => {
+    if (path.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    }
+  }
+}));
 
 // SPA 回退 (处理 /, /h5/*, /checkout/*, /payment/result 等前端路由)
 app.get('*', (req: Request, res: Response, next: NextFunction) => {
@@ -3221,6 +3230,9 @@ app.get('*', (req: Request, res: Response, next: NextFunction) => {
     });
   }
 
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   res.sendFile(indexPath);
 });
 
