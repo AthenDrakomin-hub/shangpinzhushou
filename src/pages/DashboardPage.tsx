@@ -333,6 +333,9 @@ export default function DashboardPage({ user, onNavigate }: DashboardPageProps) 
     revenue: product.price * product.sales,
   }));
 
+  const incomeTitle = isManager(user) ? '总销售额' : '总收益';
+  const incomeValue = isManager(user) ? stats.totalRevenue : stats.totalEarnings;
+
   return (
     <div className="space-y-6">
       {/* 页面标题 */}
@@ -361,8 +364,8 @@ export default function DashboardPage({ user, onNavigate }: DashboardPageProps) 
           iconBgColor="bg-green-100 dark:bg-green-900/30"
         />
         <StatCard
-          title="总收入"
-          value={`¥${stats.totalRevenue.toLocaleString()}`}
+          title={incomeTitle}
+          value={`¥${incomeValue.toLocaleString()}`}
           icon={<Wallet className="w-5 h-5 text-purple-600 dark:text-purple-400" />}
           iconBgColor="bg-purple-100 dark:bg-purple-900/30"
         />
