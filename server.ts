@@ -407,6 +407,7 @@ async function distributeRevenue(orderUserId: string, merchantId: string, totalA
   try {
     const amount = parseFloat(totalAmount as any);
     if (isNaN(amount) || amount <= 0) return;
+    const baseAmount = Math.round(amount * 100) / 100;
 
     // 1. 获取员工及其上级链路 (最多查3层)
     const userRes = await dbClient.query(`
@@ -475,6 +476,8 @@ async function distributeRevenue(orderUserId: string, merchantId: string, totalA
       const userId = validChain[i].id;
       
       if (amountToPay <= 0) continue;
+      const finalAmountToPay = Math.round(amountToPay * 100) / 100;
+      const rate = Math.round((finalAmountToPay / baseAmount) * 10000) / 10000;
       
       await dbClient.query(`
         INSERT INTO public.wallets (user_id, balance, frozen_balance, total_earnings, total_withdrawn)
@@ -489,13 +492,13 @@ async function distributeRevenue(orderUserId: string, merchantId: string, totalA
           total_earnings = total_earnings + $1,
           updated_at = NOW()
         WHERE user_id = $2
-      `, [amountToPay, userId]);
+      `, [finalAmountToPay, userId]);
       
       // 插入收益记录
       await dbClient.query(`
         INSERT INTO public.earnings (user_id, merchant_id, order_id, order_amount, earnings_amount, rate, status)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
-      `, [userId, merchantId, orderId, amount, amountToPay, amountToPay / amount, 'success']);
+      `, [userId, merchantId, orderId, baseAmount, finalAmountToPay, rate, 'success']);
       
       console.log(`[链式分润] 订单 ${orderId}(${productName}) 用户 ${userId} 获得分润: ¥${amountToPay.toFixed(2)}`);
     }

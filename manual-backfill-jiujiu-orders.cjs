@@ -57,6 +57,16 @@ function calcNetAmount(amountYuan, feePermille) {
   return (amountFen - feeFen) / 100;
 }
 
+function toMoney2(v) {
+  const n = toNumber(v);
+  return Math.round(n * 100) / 100;
+}
+
+function toRate4(v) {
+  const n = toNumber(v);
+  return Math.round(n * 10000) / 10000;
+}
+
 async function ensureWallet(client, userId) {
   await client.query(
     `
@@ -69,7 +79,7 @@ async function ensureWallet(client, userId) {
 }
 
 async function distributeRevenue(client, orderUserId, merchantId, totalAmount, orderId, productName) {
-  const amount = toNumber(totalAmount);
+  const amount = toMoney2(totalAmount);
   if (!(amount > 0)) return;
 
   const userRes = await client.query(
@@ -113,7 +123,7 @@ async function distributeRevenue(client, orderUserId, merchantId, totalAmount, o
   payouts[poolOwnerIndex] += currentPool;
 
   for (let i = 0; i < validChain.length; i++) {
-    const amountToPay = payouts[i];
+    const amountToPay = toMoney2(payouts[i]);
     const userId = validChain[i].id;
     if (!(amountToPay > 0)) continue;
 
@@ -129,12 +139,13 @@ async function distributeRevenue(client, orderUserId, merchantId, totalAmount, o
       [amountToPay, userId]
     );
 
+    const rate = toRate4(amountToPay / amount);
     await client.query(
       `
         INSERT INTO public.earnings (user_id, merchant_id, order_id, order_amount, earnings_amount, rate, status)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
       `,
-      [userId, merchantId, orderId, amount, amountToPay, amountToPay / amount, 'success']
+      [userId, merchantId, orderId, amount, amountToPay, rate, 'success']
     );
   }
 }
@@ -209,4 +220,3 @@ async function distributeRevenue(client, orderUserId, merchantId, totalAmount, o
 
   await pool.end();
 })();
-

@@ -32,6 +32,18 @@ if (!getEnvValue('PGDATABASE_URL') && !getEnvValue('DATABASE_URL')) {
 
 const pool = new Pool({ connectionString: getEnvValue('PGDATABASE_URL') || getEnvValue('DATABASE_URL') });
 
+function toMoney2(v: any) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return 0;
+  return Math.round(n * 100) / 100;
+}
+
+function toRate4(v: any) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return 0;
+  return Math.round(n * 10000) / 10000;
+}
+
 const orderIds = [
   'O1776226885691HF8O',
   'O177622706381645QB',
@@ -42,7 +54,7 @@ const orderIds = [
 ];
 
 async function distributeRevenue(orderUserId: string, merchantId: string, totalAmount: number, dbClient: any, orderId: string) {
-  const amount = parseFloat(totalAmount as any);
+  const amount = toMoney2(totalAmount as any);
   if (isNaN(amount) || amount <= 0) return;
 
   const userRes = await dbClient.query(
@@ -99,7 +111,7 @@ async function distributeRevenue(orderUserId: string, merchantId: string, totalA
   payouts[poolOwnerIndex] += currentPool;
 
   for (let i = 0; i < validChain.length; i++) {
-    const amountToPay = payouts[i];
+    const amountToPay = toMoney2(payouts[i]);
     const userId = validChain[i].id;
 
     if (amountToPay <= 0) continue;
@@ -129,7 +141,7 @@ async function distributeRevenue(orderUserId: string, merchantId: string, totalA
         INSERT INTO public.earnings (user_id, merchant_id, order_id, order_amount, earnings_amount, rate, status)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
       `,
-      [userId, merchantId, orderId, amount, amountToPay, amountToPay / amount, 'success']
+      [userId, merchantId, orderId, amount, amountToPay, toRate4(amountToPay / amount), 'success']
     );
   }
 }
