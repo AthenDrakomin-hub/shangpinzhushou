@@ -215,7 +215,9 @@ async function initDatabase() {
     await client.query(`
       CREATE TABLE IF NOT EXISTS public.orders (
         id VARCHAR(50) PRIMARY KEY,
+        order_id VARCHAR(50),
         user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+        referrer_id UUID REFERENCES public.users(id) ON DELETE SET NULL,
         product_id VARCHAR(50) REFERENCES public.products(id),
         product_name VARCHAR(255),
         amount DECIMAL(12,2) NOT NULL,
@@ -231,6 +233,13 @@ async function initDatabase() {
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       )
     `);
+
+    try {
+      await client.query(`ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS order_id VARCHAR(50)`);
+      await client.query(`ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS referrer_id UUID REFERENCES public.users(id) ON DELETE SET NULL`);
+    } catch (e) {
+      console.log('添加订单列警告:', (e as Error).message);
+    }
 
     // 创建钱包表
     await client.query(`
@@ -1334,12 +1343,13 @@ app.post('/api/orders', async (req: Request, res: Response) => {
 
     const product = productResult.rows[0];
     
-    // 如果传入了 shareUid，并且商品是共享的，则订单归属分享者
     let orderUserId = product.user_id;
-    if (shareUid && product.is_shared) {
+    let referrerId: string | null = null;
+    if (shareUid) {
       const shareUserCheck = await pool.query('SELECT id FROM users WHERE id = $1', [shareUid]);
       if (shareUserCheck.rows.length > 0) {
         orderUserId = shareUid;
+        referrerId = shareUid;
       }
     }
 
@@ -1497,9 +1507,9 @@ app.post('/api/orders', async (req: Request, res: Response) => {
 
     // 创建本地订单记录（注意：服务器表有 order_id 字段）
     await pool.query(`
-      INSERT INTO public.orders (id, order_id, user_id, product_id, product_name, amount, status, buyer_name, buyer_phone, pay_type, pay_url, expired_at)
-      VALUES ($1, $1, $2, $3, $4, $5, 'pending', $6, $7, $8, $9, NOW() + INTERVAL '30 minutes')
-    `, [orderId, orderUserId, productId, product.name, product.price, finalBuyerName, finalBuyerPhone, payType, payUrl]);
+      INSERT INTO public.orders (id, order_id, user_id, referrer_id, product_id, product_name, amount, status, buyer_name, buyer_phone, pay_type, pay_url, expired_at)
+      VALUES ($1, $1, $2, $3, $4, $5, $6, 'pending', $7, $8, $9, $10, NOW() + INTERVAL '30 minutes')
+    `, [orderId, orderUserId, referrerId, productId, product.name, product.price, finalBuyerName, finalBuyerPhone, payType, payUrl]);
 
     res.status(201).json({
       orderId,
