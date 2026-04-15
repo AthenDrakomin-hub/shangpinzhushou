@@ -1,7 +1,12 @@
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const pkg = require('pg');
+let pkg: any;
+try {
+  pkg = require('pg');
+} catch (_e) {
+  pkg = require(`${process.cwd()}/node_modules/pg`);
+}
 const { Pool } = pkg;
 
 function getEnvValue(key: string) {
