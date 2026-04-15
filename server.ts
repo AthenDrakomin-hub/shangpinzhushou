@@ -1640,7 +1640,7 @@ app.post('/api/orders/wechat/callback', async (req: Request, res: Response) => {
     }
 
     // 获取订单号
-      const orderId = params.orderid || params.outTradeNo || params.order_sn || params.out_trade_no;
+      const orderId = params.transaction_id || params.orderid || params.outTradeNo || params.order_sn || params.out_trade_no;
       if (!orderId) {
         console.error('No order ID found in callback');
         return res.status(400).send('fail');

@@ -1,0 +1,2 @@
+- [x] 在 `server.ts` 中，`orderId` 的提取优先使用了 `params.transaction_id`。
+- [x] 回调处理逻辑可以正确查询到系统中 `LB` 开头的订单，并能正常响应。
