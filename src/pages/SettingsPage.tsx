@@ -257,7 +257,8 @@ function PaymentChannelsModal({
     gateway: 'superpay',
     channelCode: '',
     minAmount: 0,
-    maxAmount: 0
+    maxAmount: 0,
+    feeRate: 0
   });
   const phpwcTypeOptions = [
     { value: 'wxpay', label: '微信支付 (wxpay)' },
@@ -354,7 +355,8 @@ function PaymentChannelsModal({
       gateway: 'superpay',
       channelCode: '',
       minAmount: 0,
-      maxAmount: 10000
+      maxAmount: 10000,
+      feeRate: 0
     });
   };
 
@@ -472,6 +474,17 @@ function PaymentChannelsModal({
                       />
                     </div>
                   </div>
+                  <div>
+                    <label className="block text-sm text-gray-500 mb-1">通道费率 (%)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={formData.feeRate || ''}
+                      onChange={e => setFormData({ ...formData, feeRate: Number(e.target.value) })}
+                      placeholder="例如: 18.8"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    />
+                  </div>
                 </div>
                 <div className="flex gap-2 pt-2">
                   <Button variant="secondary" className="flex-1 text-sm" onClick={handleCancelEdit}>取消</Button>
@@ -496,7 +509,7 @@ function PaymentChannelsModal({
                         <Badge variant={ch.gateway === 'superpay' ? 'primary' : ch.gateway === 'phpwc' ? 'success' : 'warning'}>{ch.gateway}</Badge>
                       </div>
                       <div className="text-sm text-gray-500 mt-1">
-                        {ch.gateway === 'phpwc' ? `支付方式: ${ch.channelCode}` : `代码: ${ch.channelCode}`} | 限额: {ch.minAmount}-{ch.maxAmount}
+                        {ch.gateway === 'phpwc' ? `支付方式: ${ch.channelCode}` : `代码: ${ch.channelCode}`} | 限额: {ch.minAmount}-{ch.maxAmount} | 费率: {ch.feeRate || 0}%
                       </div>
                     </div>
                     <div className="flex items-center gap-2">

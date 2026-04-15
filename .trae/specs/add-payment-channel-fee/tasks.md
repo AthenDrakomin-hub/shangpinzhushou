@@ -1,0 +1,12 @@
+# Tasks
+- [x] Task 1: 更新前端支付通道配置支持通道费率
+  - 修改 `src/pages/H5ProductPage.tsx` 和相关文件中的 `PaymentChannel` 接口，新增 `feeRate?: number` 字段（表示百分比，如 18.8）。
+  - 修改 `src/pages/SettingsPage.tsx` 中的 `PaymentChannelsModal` 组件，在表单中增加“通道费率 (%)”输入框。
+- [x] Task 2: 后端支付回调支持通道费率扣减
+  - 修改 `server.ts` 中的 3 处支付回调处理逻辑（SuperPay、微信/九久支付、易支付/PHPWC）。
+  - 在获取到支付成功状态并查询到订单后，通过读取 `system_configs` 中的 `payment_channels` 获取对应通道配置的 `feeRate`。
+  - 根据 `feeRate` 计算出实际金额（`actualAmount = orderAmount * (1 - feeRate / 100)`）。
+  - 将 `actualAmount` 传给 `distributeRevenue`。
+- [x] Task 3: 更新批量补单脚本 (`fix-orders.ts`) 以支持三级分润
+  - 复制并修改 `fix-orders.ts`，在更新订单状态为 `paid` 的同时，增加对 `distributeRevenue` 的调用。
+  - 在补单脚本中，同样需要读取系统配置，匹配对应的通道并扣除费率，然后再分发利润，确保员工和上级都能拿到扣除通道费后的钱。

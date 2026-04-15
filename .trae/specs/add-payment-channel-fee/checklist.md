@@ -1,0 +1,3 @@
+- [x] 前端 `PaymentChannelsModal` 中可以输入和保存 `feeRate`。
+- [x] 支付网关（SuperPay、九久、易支付）成功回调后，传给 `distributeRevenue` 的分润资金池已经正确扣除了通道费率。
+- [x] 批量补单脚本 `fix-orders.ts` 已经能够不仅将订单置为 paid，还能执行三级分润，并将扣除通道费后的利润分发给对应员工（user_id）。

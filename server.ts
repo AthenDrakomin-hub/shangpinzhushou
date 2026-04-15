@@ -1586,8 +1586,26 @@ app.post('/api/orders/callback', async (req: Request, res: Response) => {
           UPDATE products SET sales = sales + 1 WHERE id = $1
         `, [order.product_id]);
 
+        // 获取通道费率并计算实际分润金额
+        const channelsResult = await client.query(`SELECT value FROM public.system_configs WHERE key = 'payment_channels' LIMIT 1`);
+        let feeRate = 0;
+        if (channelsResult.rows.length > 0) {
+          try {
+            const channels = JSON.parse(channelsResult.rows[0].value);
+            const channel = channels.find((c: any) => c.id === order.pay_type);
+            if (channel && channel.feeRate) {
+              feeRate = parseFloat(channel.feeRate);
+            }
+          } catch (e) {
+            console.error('Failed to parse payment channels in callback', e);
+          }
+        }
+        
+        const actualAmount = expectedAmount * (1 - feeRate / 100);
+        console.log(`Order ${order_sn} amount: ${expectedAmount}, feeRate: ${feeRate}%, actualAmount: ${actualAmount}`);
+
         // 三级分润
-        await distributeRevenue(order.user_id, expectedAmount, client, order.id, order.product_name);
+        await distributeRevenue(order.user_id, actualAmount, client, order.id, order.product_name);
 
         await client.query('COMMIT');
         console.log('Order paid successfully:', order_sn);
@@ -1695,8 +1713,27 @@ app.post('/api/orders/wechat/callback', async (req: Request, res: Response) => {
           UPDATE products SET sales = sales + 1 WHERE id = $1
         `, [order.product_id]);
 
+        // 获取通道费率并计算实际分润金额
+        const channelsResult = await client.query(`SELECT value FROM public.system_configs WHERE key = 'payment_channels' LIMIT 1`);
+        let feeRate = 0;
+        if (channelsResult.rows.length > 0) {
+          try {
+            const channels = JSON.parse(channelsResult.rows[0].value);
+            const channel = channels.find((c: any) => c.id === order.pay_type);
+            if (channel && channel.feeRate) {
+              feeRate = parseFloat(channel.feeRate);
+            }
+          } catch (e) {
+            console.error('Failed to parse payment channels in Wechat callback', e);
+          }
+        }
+        
+        const expectedAmount = parseFloat(order.amount);
+        const actualAmount = expectedAmount * (1 - feeRate / 100);
+        console.log(`Wechat Order ${orderId} amount: ${expectedAmount}, feeRate: ${feeRate}%, actualAmount: ${actualAmount}`);
+
         // 三级分润
-        await distributeRevenue(order.user_id, parseFloat(order.amount), client, order.id, order.product_name);
+        await distributeRevenue(order.user_id, actualAmount, client, order.id, order.product_name);
 
         await client.query('COMMIT');
         console.log('Wechat Order paid successfully:', orderId);
@@ -1802,8 +1839,27 @@ app.post('/api/orders/phpwc/callback', async (req: Request, res: Response) => {
           UPDATE products SET sales = sales + 1 WHERE id = $1
         `, [order.product_id]);
 
+        // 获取通道费率并计算实际分润金额
+        const channelsResult = await client.query(`SELECT value FROM public.system_configs WHERE key = 'payment_channels' LIMIT 1`);
+        let feeRate = 0;
+        if (channelsResult.rows.length > 0) {
+          try {
+            const channels = JSON.parse(channelsResult.rows[0].value);
+            const channel = channels.find((c: any) => c.id === order.pay_type);
+            if (channel && channel.feeRate) {
+              feeRate = parseFloat(channel.feeRate);
+            }
+          } catch (e) {
+            console.error('Failed to parse payment channels in PHPWC callback', e);
+          }
+        }
+        
+        const expectedAmount = parseFloat(order.amount);
+        const actualAmount = expectedAmount * (1 - feeRate / 100);
+        console.log(`PHPWC Order ${orderId} amount: ${expectedAmount}, feeRate: ${feeRate}%, actualAmount: ${actualAmount}`);
+
         // 三级分润
-        await distributeRevenue(order.user_id, parseFloat(order.amount), client, order.id, order.product_name);
+        await distributeRevenue(order.user_id, actualAmount, client, order.id, order.product_name);
 
         await client.query('COMMIT');
         console.log('PHPWC Order paid successfully:', orderId);
