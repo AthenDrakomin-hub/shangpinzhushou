@@ -1,0 +1,4 @@
+- [ ] 动态通道费率以千分率（‰）作为统一口径，兼容旧 `feeRate`，并对费率进行合理钳制，净额计算按“到分”。
+- [ ] `POST /api/admin/orders/backfill` 具备权限控制、支持 dryRun，并返回逐单处理结果。
+- [ ] 回填成功后 `orders.payment_amount` 为正数且与通道费率一致；`earnings`、`wallets` 正确落账。
+- [ ] 幂等：重复回填同一订单不产生重复 `earnings` 记录与重复钱包入账。
