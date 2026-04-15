@@ -351,7 +351,7 @@ function EditProductModal({
   onClose, 
   onSave, 
   showToast,
-  user: _user 
+  user: _user
 }: { 
   product: Product | null; 
   onClose: () => void; 

@@ -78,7 +78,6 @@ export default function OrdersPage({ user, handleBack: _handleBack, showToast }:
     }
     return 'all';
   };
-
   const [orders, setOrders] = useState<Order[]>([]);
   const [stats, setStats] = useState<OrderStats>({
     total: 0,

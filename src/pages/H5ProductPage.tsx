@@ -104,6 +104,8 @@ interface PaymentChannel {
   gateway: 'superpay' | 'jiujiu' | 'phpwc' | string;
   minAmount?: number;
   maxAmount?: number;
+  min_amount?: number;
+  max_amount?: number;
   icon?: string;
   color?: string;
   bgColor?: string;
