@@ -322,8 +322,7 @@ async function run() {
       await client.query(`
         UPDATE public.orders SET
           user_id = ${sqlLiteral(targetUserId)},
-          referrer_id = ${sqlLiteral(targetUserId)},
-          updated_at = NOW()
+          referrer_id = ${sqlLiteral(targetUserId)}
         WHERE id = ${sqlLiteral(orderId)}
       `);
 
