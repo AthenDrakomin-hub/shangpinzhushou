@@ -64,7 +64,7 @@ export async function safeLoadImage(input: string): Promise<any> {
 /**
  * 使用 sharp 处理图片，将不支持的格式转换为 png
  */
-async function loadImageWithSharp(buffer: Buffer, sourcePath: string): Promise<any> {
+async function loadImageWithSharp(buffer: Buffer, _sourcePath: string): Promise<any> {
   try {
     // 检测图片格式
     const metadata = await sharp(buffer).metadata();

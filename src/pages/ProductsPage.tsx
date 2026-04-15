@@ -51,7 +51,7 @@ const PRODUCT_CATEGORIES = [
   { id: 'other', name: '其他', icon: '✨' },
 ];
 
-export default function ProductsPage({ user, handleBack, setCurrentView, showToast, setSharingProduct }: ProductsPageProps) {
+export default function ProductsPage({ user, handleBack: _handleBack, setCurrentView, showToast, setSharingProduct }: ProductsPageProps) {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -351,7 +351,7 @@ function EditProductModal({
   onClose, 
   onSave, 
   showToast,
-  user 
+  user: _user 
 }: { 
   product: Product | null; 
   onClose: () => void; 

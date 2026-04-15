@@ -18,7 +18,7 @@ interface ProductCreatePageProps {
   setSharingProduct?: (product: any) => void;
 }
 
-export default function ProductCreatePage({ user, handleBack, setCurrentView, showToast, setSharingProduct }: ProductCreatePageProps) {
+export default function ProductCreatePage({ user: _user, handleBack: _handleBack, setCurrentView, showToast, setSharingProduct }: ProductCreatePageProps) {
   const [product, setProduct] = useState({
     name: '',
     price: '',

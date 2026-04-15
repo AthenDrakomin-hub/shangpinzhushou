@@ -12,7 +12,7 @@ interface ResetPasswordPageProps {
   onSuccess: () => void;
 }
 
-export default function ResetPasswordPage({ handleBack, showToast, onSuccess }: ResetPasswordPageProps) {
+export default function ResetPasswordPage({ handleBack: _handleBack, showToast, onSuccess }: ResetPasswordPageProps) {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);

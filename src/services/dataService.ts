@@ -14,7 +14,7 @@ function getAuthHeaders(): Record<string, string> {
 /**
  * 获取用户信息
  */
-export const getUser = async (uid: string): Promise<User | null> => {
+export const getUser = async (_uid: string): Promise<User | null> => {
   try {
     const response = await fetchApi('/api/auth/me', {
       

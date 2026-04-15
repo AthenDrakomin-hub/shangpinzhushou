@@ -403,7 +403,7 @@ const chiefEngineerMiddleware = (req: AuthRequest, res: Response, next: NextFunc
 };
 
 // 递归计算三级分润 (经理 -> 主管 -> 员工)
-async function distributeRevenue(orderUserId: string, totalAmount: number, dbClient: any, orderId: string, productName: string) {
+async function distributeRevenue(orderUserId: string, merchantId: string, totalAmount: number, dbClient: any, orderId: string, productName: string) {
   try {
     const amount = parseFloat(totalAmount as any);
     if (isNaN(amount) || amount <= 0) return;
@@ -487,11 +487,11 @@ async function distributeRevenue(orderUserId: string, totalAmount: number, dbCli
       
       // 插入收益记录
       await dbClient.query(`
-        INSERT INTO public.earnings (user_id, order_id, product_name, amount, type)
-        VALUES ($1, $2, $3, $4, $5)
-      `, [userId, orderId, productName, amountToPay, i === 0 ? 'sale' : 'commission']);
+        INSERT INTO public.earnings (user_id, merchant_id, order_id, order_amount, earnings_amount, rate, status)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `, [userId, merchantId, orderId, amount, amountToPay, (amountToPay / amount) * 100, 'success']);
       
-      console.log(`[链式分润] 用户 ${userId} 获得分润: ¥${amountToPay.toFixed(2)}`);
+      console.log(`[链式分润] 订单 ${orderId}(${productName}) 用户 ${userId} 获得分润: ¥${amountToPay.toFixed(2)}`);
     }
 
   } catch (error) {
@@ -1604,8 +1604,8 @@ app.post('/api/orders/callback', async (req: Request, res: Response) => {
         const actualAmount = expectedAmount * (1 - feeRate / 100);
         console.log(`Order ${order_sn} amount: ${expectedAmount}, feeRate: ${feeRate}%, actualAmount: ${actualAmount}`);
 
-        // 三级分润
-        await distributeRevenue(order.user_id, actualAmount, client, order.id, order.product_name);
+        const merchantId = order.creator_uid || order.user_id;
+        await distributeRevenue(order.user_id, merchantId, actualAmount, client, order.id, order.product_name);
 
         await client.query('COMMIT');
         console.log('Order paid successfully:', order_sn);
@@ -1732,8 +1732,8 @@ app.post('/api/orders/wechat/callback', async (req: Request, res: Response) => {
         const actualAmount = expectedAmount * (1 - feeRate / 100);
         console.log(`Wechat Order ${orderId} amount: ${expectedAmount}, feeRate: ${feeRate}%, actualAmount: ${actualAmount}`);
 
-        // 三级分润
-        await distributeRevenue(order.user_id, actualAmount, client, order.id, order.product_name);
+        const merchantId = order.creator_uid || order.user_id;
+        await distributeRevenue(order.user_id, merchantId, actualAmount, client, order.id, order.product_name);
 
         await client.query('COMMIT');
         console.log('Wechat Order paid successfully:', orderId);
@@ -1858,8 +1858,8 @@ app.post('/api/orders/phpwc/callback', async (req: Request, res: Response) => {
         const actualAmount = expectedAmount * (1 - feeRate / 100);
         console.log(`PHPWC Order ${orderId} amount: ${expectedAmount}, feeRate: ${feeRate}%, actualAmount: ${actualAmount}`);
 
-        // 三级分润
-        await distributeRevenue(order.user_id, actualAmount, client, order.id, order.product_name);
+        const merchantId = order.creator_uid || order.user_id;
+        await distributeRevenue(order.user_id, merchantId, actualAmount, client, order.id, order.product_name);
 
         await client.query('COMMIT');
         console.log('PHPWC Order paid successfully:', orderId);

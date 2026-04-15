@@ -177,7 +177,7 @@ export const onAuthStateChanged = (
 /**
  * 检查是否为管理员（经理）- 支持 admin 和 manager 角色
  */
-export const isAdmin = async (email: string | null): Promise<boolean> => {
+export const isAdmin = async (_email: string | null): Promise<boolean> => {
   const user = await getCurrentUser();
   return user?.role === 'manager' || user?.role === 'admin';
 };
@@ -218,7 +218,7 @@ export const isPending = (user: AuthUser | null): boolean => {
 /**
  * 更新用户显示名称
  */
-export const updateDisplayName = async (displayName: string): Promise<{ error: string | null }> => {
+export const updateDisplayName = async (_displayName: string): Promise<{ error: string | null }> => {
   // TODO: 实现更新显示名称 API
   return { error: '功能暂未实现' };
 };
@@ -259,13 +259,13 @@ export const updatePassword = async (newPassword: string): Promise<{ error: stri
 /**
  * 发送密码重置邮件（暂未实现）
  */
-export const sendPasswordResetEmail = async (email: string): Promise<{ error: string | null }> => {
+export const sendPasswordResetEmail = async (_email: string): Promise<{ error: string | null }> => {
   return { error: '功能暂未实现，请联系管理员重置密码' };
 };
 
 // ==================== 兼容旧 API ====================
 
-export const sendMagicLink = async (email: string): Promise<{ error: string | null }> => {
+export const sendMagicLink = async (_email: string): Promise<{ error: string | null }> => {
   return { error: '请使用邮箱密码登录' };
 };
 
@@ -277,11 +277,11 @@ export const isEmailVerified = async (): Promise<boolean> => {
   return true; // 简化版本，不做邮箱验证
 };
 
-export const resendVerificationEmail = async (email: string): Promise<{ error: string | null }> => {
+export const resendVerificationEmail = async (_email: string): Promise<{ error: string | null }> => {
   return { error: '功能暂未实现' };
 };
 
-export const verifyEmail = async (tokenHash: string, type: string): Promise<{ user: AuthUser | null; error: string | null }> => {
+export const verifyEmail = async (_tokenHash: string, _type: string): Promise<{ user: AuthUser | null; error: string | null }> => {
   return { user: null, error: '无效的验证方式' };
 };
 
@@ -291,7 +291,7 @@ export const refreshSession = async (): Promise<{ session: any | null; error: st
   return { session: user && token ? { accessToken: token } : null, error: null };
 };
 
-export const setSession = async (accessToken: string, refreshToken: string): Promise<{ session: any | null; error: string | null }> => {
+export const setSession = async (accessToken: string, _refreshToken: string): Promise<{ session: any | null; error: string | null }> => {
   setToken(accessToken);
   return { session: { accessToken }, error: null };
 };

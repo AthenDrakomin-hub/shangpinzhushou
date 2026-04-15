@@ -67,7 +67,7 @@ const PAY_METHOD_CONFIG: Record<string, { label: string; icon: React.ReactNode; 
   bank: { label: '银行卡', icon: <CreditCard className="w-4 h-4" />, color: 'text-purple-600' },
 };
 
-export default function OrdersPage({ user, handleBack, showToast }: OrdersPageProps) {
+export default function OrdersPage({ user, handleBack: _handleBack, showToast }: OrdersPageProps) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [stats, setStats] = useState<OrderStats>({
     total: 0,

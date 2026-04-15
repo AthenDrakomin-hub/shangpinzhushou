@@ -34,7 +34,7 @@ const USDT_NETWORKS = [
   { id: 'Polygon', name: 'Polygon (马蹄链)', icon: '🟣' },
 ];
 
-export default function WithdrawPage({ user, handleBack, setCurrentView, showToast }: WithdrawPageProps) {
+export default function WithdrawPage({ user, handleBack: _handleBack, setCurrentView, showToast }: WithdrawPageProps) {
   const [wallet, setWallet] = useState<WalletData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);

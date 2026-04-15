@@ -32,7 +32,7 @@ interface Earning {
   type: 'sale' | 'refund' | 'commission';
 }
 
-export default function EarningsPage({ user, handleBack, setCurrentView, showToast }: EarningsPageProps) {
+export default function EarningsPage({ user, handleBack: _handleBack, setCurrentView, showToast }: EarningsPageProps) {
   const [earnings, setEarnings] = useState<Earning[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
