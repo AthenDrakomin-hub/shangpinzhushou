@@ -1,9 +1,36 @@
-import dotenv from 'dotenv';
-dotenv.config();
 import pkg from 'pg';
 const { Pool } = pkg;
 
-const pool = new Pool({ connectionString: process.env.PGDATABASE_URL || process.env.DATABASE_URL });
+function getEnvValue(key: string) {
+  const v = process.env[key];
+  if (typeof v === 'string' && v.length > 0) return v;
+  return undefined;
+}
+
+function loadDotEnvFile(filePath: string) {
+  const fs = require('node:fs');
+  if (!fs.existsSync(filePath)) return;
+  const text = fs.readFileSync(filePath, 'utf8');
+  for (const rawLine of text.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#')) continue;
+    const idx = line.indexOf('=');
+    if (idx < 0) continue;
+    const k = line.slice(0, idx).trim();
+    let v = line.slice(idx + 1).trim();
+    if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+      v = v.slice(1, -1);
+    }
+    if (!getEnvValue(k)) process.env[k] = v;
+  }
+}
+
+if (!getEnvValue('PGDATABASE_URL') && !getEnvValue('DATABASE_URL')) {
+  loadDotEnvFile('.env.local');
+  loadDotEnvFile('.env');
+}
+
+const pool = new Pool({ connectionString: getEnvValue('PGDATABASE_URL') || getEnvValue('DATABASE_URL') });
 
 const orderIds = [
   'O177622781645035YN',
@@ -151,4 +178,3 @@ run().catch(async (e) => {
   await pool.end();
   process.exit(1);
 });
-
