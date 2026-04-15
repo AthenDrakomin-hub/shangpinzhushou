@@ -198,7 +198,7 @@ async function distributeRevenue(client, orderUserId, merchantId, totalAmount, o
         );
       } else {
         await client.query(
-          `UPDATE public.orders SET payment_amount = CASE WHEN payment_amount IS NULL OR payment_amount <= 0 THEN $2 ELSE payment_amount END WHERE id = $1`,
+          `UPDATE public.orders SET payment_amount = $2 WHERE id = $1`,
           [orderId, actualAmount]
         );
       }
