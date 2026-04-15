@@ -180,7 +180,9 @@ async function distributeRevenue(client, orderUserId, merchantId, totalAmount, o
 
       const order = orderRes.rows[0];
       const channel = channels.find((c) => c && c.id === order.pay_type);
-      const feePermille = channel && (channel.feePermille != null ? Number(channel.feePermille) : (channel.feeRate != null ? Number(channel.feeRate) * 10 : 0));
+      const legacy = channel && channel.feeRate != null ? Number(channel.feeRate) : undefined;
+      let feePermille = channel && channel.feePermille != null ? Number(channel.feePermille) : (legacy != null ? (legacy > 100 ? legacy : legacy * 10) : 0);
+      feePermille = Math.max(0, Math.min(1000, feePermille));
       const actualAmount = calcNetAmount(order.amount, feePermille || 0);
 
       if (order.status !== 'paid') {
@@ -195,7 +197,10 @@ async function distributeRevenue(client, orderUserId, merchantId, totalAmount, o
           [orderId, actualAmount]
         );
       } else {
-        await client.query(`UPDATE public.orders SET payment_amount = COALESCE(payment_amount, $2) WHERE id = $1`, [orderId, actualAmount]);
+        await client.query(
+          `UPDATE public.orders SET payment_amount = CASE WHEN payment_amount IS NULL OR payment_amount <= 0 THEN $2 ELSE payment_amount END WHERE id = $1`,
+          [orderId, actualAmount]
+        );
       }
 
       const existedEarnings = await client.query(`SELECT 1 FROM public.earnings WHERE order_id = $1 LIMIT 1`, [orderId]);

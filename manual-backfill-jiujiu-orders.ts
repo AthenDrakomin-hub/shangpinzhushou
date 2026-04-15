@@ -170,7 +170,9 @@ async function run() {
 
       const expectedAmount = parseFloat(order.amount);
       const channel = channels.find((c: any) => c.id === order.pay_type);
-      const feePermille = channel?.feePermille != null ? Number(channel.feePermille) : (channel?.feeRate != null ? Number(channel.feeRate) * 10 : 0);
+      const legacy = channel?.feeRate != null ? Number(channel.feeRate) : undefined;
+      let feePermille = channel?.feePermille != null ? Number(channel.feePermille) : (legacy != null ? (legacy > 100 ? legacy : legacy * 10) : 0);
+      feePermille = Math.max(0, Math.min(1000, feePermille));
       const amountFen = Math.round(expectedAmount * 100);
       const feeFen = Math.round((amountFen * feePermille) / 1000);
       const actualAmount = (amountFen - feeFen) / 100;
@@ -184,6 +186,11 @@ async function run() {
               payment_amount = $2
             WHERE id = $1
           `,
+          [orderId, actualAmount]
+        );
+      } else {
+        await client.query(
+          `UPDATE public.orders SET payment_amount = CASE WHEN payment_amount IS NULL OR payment_amount <= 0 THEN $2 ELSE payment_amount END WHERE id = $1`,
           [orderId, actualAmount]
         );
       }

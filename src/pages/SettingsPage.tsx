@@ -346,7 +346,8 @@ function PaymentChannelsModal({
     setEditingId(channel.id);
     const next = { ...channel };
     if ((next.feePermille === undefined || next.feePermille === null) && next.feeRate !== undefined && next.feeRate !== null) {
-      next.feePermille = Number(next.feeRate) * 10;
+      const legacy = Number(next.feeRate);
+      next.feePermille = legacy > 100 ? legacy : legacy * 10;
     }
     delete next.feeRate;
     setFormData(next);
@@ -514,7 +515,7 @@ function PaymentChannelsModal({
                         <Badge variant={ch.gateway === 'superpay' ? 'primary' : ch.gateway === 'phpwc' ? 'success' : 'warning'}>{ch.gateway}</Badge>
                       </div>
                       <div className="text-sm text-gray-500 mt-1">
-                        {ch.gateway === 'phpwc' ? `支付方式: ${ch.channelCode}` : `代码: ${ch.channelCode}`} | 限额: {ch.minAmount}-{ch.maxAmount} | 费率: {(ch.feePermille ?? (ch.feeRate != null ? Number(ch.feeRate) * 10 : 0)) || 0}‰
+                        {ch.gateway === 'phpwc' ? `支付方式: ${ch.channelCode}` : `代码: ${ch.channelCode}`} | 限额: {ch.minAmount}-{ch.maxAmount} | 费率: {(ch.feePermille ?? (ch.feeRate != null ? (Number(ch.feeRate) > 100 ? Number(ch.feeRate) : Number(ch.feeRate) * 10) : 0)) || 0}‰
                       </div>
                     </div>
                     <div className="flex items-center gap-2">

@@ -1602,12 +1602,14 @@ app.post('/api/orders/callback', async (req: Request, res: Response) => {
           try {
             const channels = JSON.parse(channelsResult.rows[0].value);
             const channel = channels.find((c: any) => c.id === order.pay_type);
-            const rawPermille = channel?.feePermille ?? (channel?.feeRate != null ? Number(channel.feeRate) * 10 : 0);
+            const legacy = channel?.feeRate != null ? Number(channel.feeRate) : undefined;
+            const rawPermille = channel?.feePermille ?? (legacy != null ? (legacy > 100 ? legacy : legacy * 10) : 0);
             if (rawPermille != null && rawPermille !== '') feePermille = Number(rawPermille);
           } catch (e) {
             console.error('Failed to parse payment channels in callback', e);
           }
         }
+        feePermille = Math.max(0, Math.min(1000, feePermille));
         
         const amountFen = Math.round(expectedAmount * 100);
         const feeFen = Math.round((amountFen * feePermille) / 1000);
@@ -1730,12 +1732,14 @@ app.post('/api/orders/wechat/callback', async (req: Request, res: Response) => {
           try {
             const channels = JSON.parse(channelsResult.rows[0].value);
             const channel = channels.find((c: any) => c.id === order.pay_type);
-            const rawPermille = channel?.feePermille ?? (channel?.feeRate != null ? Number(channel.feeRate) * 10 : 0);
+            const legacy = channel?.feeRate != null ? Number(channel.feeRate) : undefined;
+            const rawPermille = channel?.feePermille ?? (legacy != null ? (legacy > 100 ? legacy : legacy * 10) : 0);
             if (rawPermille != null && rawPermille !== '') feePermille = Number(rawPermille);
           } catch (e) {
             console.error('Failed to parse payment channels in Wechat callback', e);
           }
         }
+        feePermille = Math.max(0, Math.min(1000, feePermille));
         
         const expectedAmount = parseFloat(order.amount);
         const amountFen = Math.round(expectedAmount * 100);
@@ -1857,12 +1861,14 @@ app.post('/api/orders/phpwc/callback', async (req: Request, res: Response) => {
           try {
             const channels = JSON.parse(channelsResult.rows[0].value);
             const channel = channels.find((c: any) => c.id === order.pay_type);
-            const rawPermille = channel?.feePermille ?? (channel?.feeRate != null ? Number(channel.feeRate) * 10 : 0);
+            const legacy = channel?.feeRate != null ? Number(channel.feeRate) : undefined;
+            const rawPermille = channel?.feePermille ?? (legacy != null ? (legacy > 100 ? legacy : legacy * 10) : 0);
             if (rawPermille != null && rawPermille !== '') feePermille = Number(rawPermille);
           } catch (e) {
             console.error('Failed to parse payment channels in PHPWC callback', e);
           }
         }
+        feePermille = Math.max(0, Math.min(1000, feePermille));
         
         const expectedAmount = parseFloat(order.amount);
         const amountFen = Math.round(expectedAmount * 100);
