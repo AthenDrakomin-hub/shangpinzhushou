@@ -356,24 +356,28 @@ export default function DashboardPage({ user, onNavigate }: DashboardPageProps) 
           value={stats.totalProducts}
           icon={<Package className="w-5 h-5 text-blue-600 dark:text-blue-400" />}
           iconBgColor="bg-blue-100 dark:bg-blue-900/30"
+          onClick={() => onNavigate('#/products')}
         />
         <StatCard
           title="订单总数"
           value={stats.totalOrders}
           icon={<ShoppingCart className="w-5 h-5 text-green-600 dark:text-green-400" />}
           iconBgColor="bg-green-100 dark:bg-green-900/30"
+          onClick={() => onNavigate('#/orders?status=paid')}
         />
         <StatCard
           title={incomeTitle}
           value={`¥${incomeValue.toLocaleString()}`}
           icon={<Wallet className="w-5 h-5 text-purple-600 dark:text-purple-400" />}
           iconBgColor="bg-purple-100 dark:bg-purple-900/30"
+          onClick={() => (isManager(user) ? onNavigate('#/orders?status=paid') : onNavigate('#/earnings'))}
         />
         <StatCard
           title="待处理订单"
           value={pendingOrders}
           icon={<Clock className="w-5 h-5 text-orange-600 dark:text-orange-400" />}
           iconBgColor="bg-orange-100 dark:bg-orange-900/30"
+          onClick={() => onNavigate('#/orders?status=pending')}
         />
       </div>
 
@@ -391,6 +395,7 @@ export default function DashboardPage({ user, onNavigate }: DashboardPageProps) 
             value={`¥${stats.walletBalance.toLocaleString()}`}
             icon={<TrendingUp className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />}
             iconBgColor="bg-emerald-100 dark:bg-emerald-900/30"
+            onClick={() => onNavigate('#/wallet')}
           />
         </div>
       )}

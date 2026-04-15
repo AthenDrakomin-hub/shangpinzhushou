@@ -281,6 +281,18 @@ export default function App() {
     }
   };
 
+  const handleDashboardNavigate = (target: string) => {
+    if (target.startsWith('#/')) {
+      window.location.hash = target;
+      const view = target.slice(2).split('?')[0];
+      if (view) {
+        setCurrentView(view as View);
+      }
+      return;
+    }
+    setCurrentView(target as View);
+  };
+
   if (isAuthLoading) {
     return (
       <div className="min-h-screen bg-[#0A0E29] flex items-center justify-center">
@@ -318,7 +330,7 @@ export default function App() {
             />
           )}
 
-          {currentView === 'dashboard' && <DashboardPage key="dashboard" user={user} onNavigate={(view) => setCurrentView(view as View)} />}
+          {currentView === 'dashboard' && <DashboardPage key="dashboard" user={user} onNavigate={handleDashboardNavigate} />}
           {currentView === 'chief_dashboard' && <ChiefEngineerDashboard key="chief_dashboard" />}
           {currentView === 'db_admin' && <DatabaseAdminPage key="db_admin" />}
           {currentView === 'products' && <ProductsPage key="products" handleBack={handleBack} setCurrentView={(view) => setCurrentView(view as View)} showToast={showToast} user={user} setSharingProduct={setSharingProduct} />}

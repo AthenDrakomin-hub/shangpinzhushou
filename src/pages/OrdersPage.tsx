@@ -68,6 +68,17 @@ const PAY_METHOD_CONFIG: Record<string, { label: string; icon: React.ReactNode; 
 };
 
 export default function OrdersPage({ user, handleBack: _handleBack, showToast }: OrdersPageProps) {
+  const getInitialStatusFilter = (): 'all' | 'pending' | 'paid' | 'failed' => {
+    const hash = window.location.hash || '';
+    const queryString = hash.includes('?') ? hash.split('?')[1] : '';
+    const params = new URLSearchParams(queryString);
+    const status = params.get('status');
+    if (status === 'pending' || status === 'paid' || status === 'failed') {
+      return status;
+    }
+    return 'all';
+  };
+
   const [orders, setOrders] = useState<Order[]>([]);
   const [stats, setStats] = useState<OrderStats>({
     total: 0,
@@ -79,7 +90,7 @@ export default function OrdersPage({ user, handleBack: _handleBack, showToast }:
   });
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'paid' | 'failed'>('all');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'paid' | 'failed'>(() => getInitialStatusFilter());
   const [filterPayMethod, setFilterPayMethod] = useState('all');
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);

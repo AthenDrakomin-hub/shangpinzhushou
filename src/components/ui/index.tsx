@@ -298,6 +298,8 @@ interface StatCardProps {
   iconBgColor?: string;
   color?: 'blue' | 'green' | 'yellow' | 'red' | 'purple' | 'gray';
   className?: string;
+  onClick?: () => void;
+  onNavigate?: () => void;
 }
 
 const STATCARD_COLORS: Record<string, string> = {
@@ -309,11 +311,12 @@ const STATCARD_COLORS: Record<string, string> = {
   gray: 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400',
 };
 
-export function StatCard({ title, value, change, icon, iconBgColor, color = 'blue', className = '' }: StatCardProps) {
+export function StatCard({ title, value, change, icon, iconBgColor, color = 'blue', className = '', onClick, onNavigate }: StatCardProps) {
   const iconBg = iconBgColor || STATCARD_COLORS[color] || STATCARD_COLORS.blue;
+  const handleClick = onClick || onNavigate;
   
   return (
-    <Card className={`p-6 ${className}`}>
+    <Card className={`p-6 ${className}`} hover={Boolean(handleClick)} onClick={handleClick}>
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
           <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{title}</p>
