@@ -1577,8 +1577,7 @@ app.post('/api/orders/callback', async (req: Request, res: Response) => {
           UPDATE public.orders SET
             status = 'paid',
             pay_url = NULL,
-            paid_at = $1,
-            updated_at = NOW()
+            paid_at = $1
           WHERE id = $2
         `, [payment_date || new Date(), order_sn]);
 
@@ -1594,7 +1593,7 @@ app.post('/api/orders/callback', async (req: Request, res: Response) => {
         console.log('Order paid successfully:', order_sn);
       } else if (state === 1 || state === 2) {
         // 失败或超时
-        await client.query(`UPDATE public.orders SET status = 'failed', updated_at = NOW() WHERE id = $1`, [order_sn]);
+        await client.query(`UPDATE public.orders SET status = 'failed' WHERE id = $1`, [order_sn]);
         await client.query('COMMIT');
         console.log('Order failed:', order_sn, 'state:', state);
       } else {
@@ -1688,8 +1687,7 @@ app.post('/api/orders/wechat/callback', async (req: Request, res: Response) => {
           UPDATE public.orders SET
             status = 'paid',
             pay_url = NULL,
-            paid_at = NOW(),
-            updated_at = NOW()
+            paid_at = NOW()
           WHERE id = $1
         `, [orderId]);
 
@@ -1703,7 +1701,7 @@ app.post('/api/orders/wechat/callback', async (req: Request, res: Response) => {
         await client.query('COMMIT');
         console.log('Wechat Order paid successfully:', orderId);
       } else {
-        await client.query(`UPDATE public.orders SET status = 'failed', updated_at = NOW() WHERE id = $1`, [orderId]);
+        await client.query(`UPDATE public.orders SET status = 'failed' WHERE id = $1`, [orderId]);
         await client.query('COMMIT');
         console.log('Wechat Order failed:', orderId);
         }
@@ -1796,8 +1794,7 @@ app.post('/api/orders/phpwc/callback', async (req: Request, res: Response) => {
           UPDATE public.orders SET
             status = 'paid',
             pay_url = NULL,
-            paid_at = NOW(),
-            updated_at = NOW()
+            paid_at = NOW()
           WHERE id = $1
         `, [orderId]);
 
@@ -1811,7 +1808,7 @@ app.post('/api/orders/phpwc/callback', async (req: Request, res: Response) => {
         await client.query('COMMIT');
         console.log('PHPWC Order paid successfully:', orderId);
       } else {
-        await client.query(`UPDATE public.orders SET status = 'failed', updated_at = NOW() WHERE id = $1`, [orderId]);
+        await client.query(`UPDATE public.orders SET status = 'failed' WHERE id = $1`, [orderId]);
         await client.query('COMMIT');
         console.log('PHPWC Order failed:', orderId);
       }
