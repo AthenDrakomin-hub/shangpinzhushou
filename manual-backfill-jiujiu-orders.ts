@@ -120,7 +120,7 @@ async function distributeRevenue(orderUserId: string, merchantId: string, totalA
         INSERT INTO public.earnings (user_id, merchant_id, order_id, order_amount, earnings_amount, rate, status)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
       `,
-      [userId, merchantId, orderId, amount, amountToPay, (amountToPay / amount) * 100, 'success']
+      [userId, merchantId, orderId, amount, amountToPay, amountToPay / amount, 'success']
     );
   }
 }

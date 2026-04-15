@@ -489,7 +489,7 @@ async function distributeRevenue(orderUserId: string, merchantId: string, totalA
       await dbClient.query(`
         INSERT INTO public.earnings (user_id, merchant_id, order_id, order_amount, earnings_amount, rate, status)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
-      `, [userId, merchantId, orderId, amount, amountToPay, (amountToPay / amount) * 100, 'success']);
+      `, [userId, merchantId, orderId, amount, amountToPay, amountToPay / amount, 'success']);
       
       console.log(`[链式分润] 订单 ${orderId}(${productName}) 用户 ${userId} 获得分润: ¥${amountToPay.toFixed(2)}`);
     }
