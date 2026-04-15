@@ -138,10 +138,12 @@ async function fixOrders() {
         const channelsStr = channelsResult.rows[0]?.value || '[]';
         const channels = JSON.parse(channelsStr);
         const channel = channels.find((c: any) => c.id === order.pay_type);
-        const feeRate = channel?.feeRate ? parseFloat(channel.feeRate) : 0;
+        const feePermille = channel?.feePermille != null ? Number(channel.feePermille) : (channel?.feeRate != null ? Number(channel.feeRate) * 10 : 0);
         
         // 3. 计算实际分润金额
-        const actualAmount = parseFloat(order.amount) * (1 - feeRate / 100);
+        const amountFen = Math.round(parseFloat(order.amount) * 100);
+        const feeFen = Math.round((amountFen * feePermille) / 1000);
+        const actualAmount = (amountFen - feeFen) / 100;
 
         // 4. 更新订单状态
         const updateRes = await client.query(

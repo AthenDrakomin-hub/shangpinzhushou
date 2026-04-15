@@ -107,7 +107,7 @@ interface PaymentChannel {
   icon?: string;
   color?: string;
   bgColor?: string;
-  feeRate?: number;
+  feePermille?: number;
 }
 interface H5ProductPageProps {
   productId?: string;

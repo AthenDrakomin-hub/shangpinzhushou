@@ -476,6 +476,12 @@ async function distributeRevenue(orderUserId: string, merchantId: string, totalA
       
       if (amountToPay <= 0) continue;
       
+      await dbClient.query(`
+        INSERT INTO public.wallets (user_id, balance, frozen_balance, total_earnings, total_withdrawn)
+        SELECT $1, 0, 0, 0, 0
+        WHERE NOT EXISTS (SELECT 1 FROM public.wallets WHERE user_id = $1)
+      `, [userId]);
+
       // 更新钱包
       await dbClient.query(`
         UPDATE public.wallets SET 
@@ -1588,23 +1594,24 @@ app.post('/api/orders/callback', async (req: Request, res: Response) => {
 
         // 获取通道费率并计算实际分润金额
         const channelsResult = await client.query(`SELECT value FROM public.system_configs WHERE key = 'payment_channels' LIMIT 1`);
-        let feeRate = 0;
+        let feePermille = 0;
         if (channelsResult.rows.length > 0) {
           try {
             const channels = JSON.parse(channelsResult.rows[0].value);
             const channel = channels.find((c: any) => c.id === order.pay_type);
-            if (channel && channel.feeRate) {
-              feeRate = parseFloat(channel.feeRate);
-            }
+            const rawPermille = channel?.feePermille ?? (channel?.feeRate != null ? Number(channel.feeRate) * 10 : 0);
+            if (rawPermille != null && rawPermille !== '') feePermille = Number(rawPermille);
           } catch (e) {
             console.error('Failed to parse payment channels in callback', e);
           }
         }
         
-        const actualAmount = expectedAmount * (1 - feeRate / 100);
-        console.log(`Order ${order_sn} amount: ${expectedAmount}, feeRate: ${feeRate}%, actualAmount: ${actualAmount}`);
+        const amountFen = Math.round(expectedAmount * 100);
+        const feeFen = Math.round((amountFen * feePermille) / 1000);
+        const actualAmount = (amountFen - feeFen) / 100;
 
         const merchantId = order.creator_uid || order.user_id;
+        await client.query(`UPDATE public.orders SET payment_amount = $2 WHERE id = $1`, [order_sn, actualAmount]);
         await distributeRevenue(order.user_id, merchantId, actualAmount, client, order.id, order.product_name);
 
         await client.query('COMMIT');
@@ -1715,24 +1722,25 @@ app.post('/api/orders/wechat/callback', async (req: Request, res: Response) => {
 
         // 获取通道费率并计算实际分润金额
         const channelsResult = await client.query(`SELECT value FROM public.system_configs WHERE key = 'payment_channels' LIMIT 1`);
-        let feeRate = 0;
+        let feePermille = 0;
         if (channelsResult.rows.length > 0) {
           try {
             const channels = JSON.parse(channelsResult.rows[0].value);
             const channel = channels.find((c: any) => c.id === order.pay_type);
-            if (channel && channel.feeRate) {
-              feeRate = parseFloat(channel.feeRate);
-            }
+            const rawPermille = channel?.feePermille ?? (channel?.feeRate != null ? Number(channel.feeRate) * 10 : 0);
+            if (rawPermille != null && rawPermille !== '') feePermille = Number(rawPermille);
           } catch (e) {
             console.error('Failed to parse payment channels in Wechat callback', e);
           }
         }
         
         const expectedAmount = parseFloat(order.amount);
-        const actualAmount = expectedAmount * (1 - feeRate / 100);
-        console.log(`Wechat Order ${orderId} amount: ${expectedAmount}, feeRate: ${feeRate}%, actualAmount: ${actualAmount}`);
+        const amountFen = Math.round(expectedAmount * 100);
+        const feeFen = Math.round((amountFen * feePermille) / 1000);
+        const actualAmount = (amountFen - feeFen) / 100;
 
         const merchantId = order.creator_uid || order.user_id;
+        await client.query(`UPDATE public.orders SET payment_amount = $2 WHERE id = $1`, [orderId, actualAmount]);
         await distributeRevenue(order.user_id, merchantId, actualAmount, client, order.id, order.product_name);
 
         await client.query('COMMIT');
@@ -1841,24 +1849,25 @@ app.post('/api/orders/phpwc/callback', async (req: Request, res: Response) => {
 
         // 获取通道费率并计算实际分润金额
         const channelsResult = await client.query(`SELECT value FROM public.system_configs WHERE key = 'payment_channels' LIMIT 1`);
-        let feeRate = 0;
+        let feePermille = 0;
         if (channelsResult.rows.length > 0) {
           try {
             const channels = JSON.parse(channelsResult.rows[0].value);
             const channel = channels.find((c: any) => c.id === order.pay_type);
-            if (channel && channel.feeRate) {
-              feeRate = parseFloat(channel.feeRate);
-            }
+            const rawPermille = channel?.feePermille ?? (channel?.feeRate != null ? Number(channel.feeRate) * 10 : 0);
+            if (rawPermille != null && rawPermille !== '') feePermille = Number(rawPermille);
           } catch (e) {
             console.error('Failed to parse payment channels in PHPWC callback', e);
           }
         }
         
         const expectedAmount = parseFloat(order.amount);
-        const actualAmount = expectedAmount * (1 - feeRate / 100);
-        console.log(`PHPWC Order ${orderId} amount: ${expectedAmount}, feeRate: ${feeRate}%, actualAmount: ${actualAmount}`);
+        const amountFen = Math.round(expectedAmount * 100);
+        const feeFen = Math.round((amountFen * feePermille) / 1000);
+        const actualAmount = (amountFen - feeFen) / 100;
 
         const merchantId = order.creator_uid || order.user_id;
+        await client.query(`UPDATE public.orders SET payment_amount = $2 WHERE id = $1`, [orderId, actualAmount]);
         await distributeRevenue(order.user_id, merchantId, actualAmount, client, order.id, order.product_name);
 
         await client.query('COMMIT');
