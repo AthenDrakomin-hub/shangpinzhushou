@@ -1,4 +1,4 @@
-import pkg from 'pg';
+const pkg = require('pg');
 const { Pool } = pkg;
 
 function getEnvValue(key: string) {
