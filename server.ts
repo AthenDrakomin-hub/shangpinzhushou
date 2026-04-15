@@ -1638,7 +1638,7 @@ app.post('/api/orders/wechat/callback', async (req: Request, res: Response) => {
       return res.status(400).send('fail');
     }
 
-    // 获取订单号
+    // 获取订单号 (优先尝试从自定义参数提取系统单号)
       const orderId = params.transaction_id || params.orderid || params.outTradeNo || params.order_sn || params.out_trade_no;
       if (!orderId) {
         console.error('No order ID found in callback');
