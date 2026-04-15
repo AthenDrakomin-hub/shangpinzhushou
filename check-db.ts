@@ -1,8 +1,8 @@
 import { Pool } from 'pg';
-import { config } from './src/config.js';
+import 'dotenv/config';
 
 const pool = new Pool({
-  connectionString: config.databaseUrl
+  connectionString: process.env.PGDATABASE_URL || process.env.DATABASE_URL
 });
 
 async function check() {
